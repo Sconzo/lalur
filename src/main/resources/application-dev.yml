@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/ecf_db
+    username: ecf_user
+    password: ecf_password_dev
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  secret: dev-secret-key-change-in-production-minimum-256-bits
+  access-token-expiration: 900000  # 15 minutes
+  refresh-token-expiration: 604800000  # 7 days
