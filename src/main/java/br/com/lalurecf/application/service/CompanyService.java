@@ -3,6 +3,7 @@ package br.com.lalurecf.application.service;
 import br.com.lalurecf.application.port.in.company.CreateCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.GetCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ListCompaniesUseCase;
+import br.com.lalurecf.application.port.in.company.SelectCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ToggleCompanyStatusUseCase;
 import br.com.lalurecf.application.port.in.company.UpdateCompanyUseCase;
 import br.com.lalurecf.domain.enums.Status;
@@ -41,7 +42,8 @@ public class CompanyService implements
     ListCompaniesUseCase,
     GetCompanyUseCase,
     UpdateCompanyUseCase,
-    ToggleCompanyStatusUseCase {
+    ToggleCompanyStatusUseCase,
+    SelectCompanyUseCase {
 
   private final CompanyJpaRepository companyRepository;
 
@@ -58,7 +60,7 @@ public class CompanyService implements
         .ifPresent(existing -> {
           log.warn("Tentativa de criar empresa com CNPJ duplicado: {}", cnpj.getValue());
           throw new IllegalArgumentException(
-              "Já existe uma empresa ativa com o CNPJ: " + cnpj.getFormattedValue());
+              "Já existe uma empresa ativa com o CNPJ: " + cnpj.format());
         });
 
     // Criar entidade
@@ -254,5 +256,48 @@ public class CompanyService implements
         cnpj.substring(8, 12),
         cnpj.substring(12, 14)
     );
+  }
+
+  /**
+   * Seleciona uma empresa para trabalho do usuário.
+   * Valida que empresa existe e está ACTIVE.
+   *
+   * @param companyId ID da empresa
+   * @return Company domain model
+   * @throws EntityNotFoundException se empresa não existe ou está inativa
+   */
+  @Override
+  @Transactional(readOnly = true)
+  public br.com.lalurecf.domain.model.Company selectCompany(Long companyId) {
+    log.info("Selecionando empresa: companyId={}", companyId);
+
+    CompanyEntity entity = companyRepository.findById(companyId)
+        .orElseThrow(() -> {
+          log.warn("Empresa não encontrada: companyId={}", companyId);
+          return new EntityNotFoundException(
+              "Empresa com ID " + companyId + " não encontrada");
+        });
+
+    if (!Status.ACTIVE.equals(entity.getStatus())) {
+      log.warn("Tentativa de selecionar empresa inativa: companyId={}", companyId);
+      throw new EntityNotFoundException(
+          "Empresa com ID " + companyId + " está inativa");
+    }
+
+    log.info("Empresa selecionada com sucesso: companyId={}, razaoSocial={}",
+        companyId, entity.getRazaoSocial());
+
+    // Convert to domain model
+    br.com.lalurecf.domain.model.Company company = new br.com.lalurecf.domain.model.Company();
+    company.setId(entity.getId());
+    company.setCnpj(CNPJ.of(entity.getCnpj()));
+    company.setRazaoSocial(entity.getRazaoSocial());
+    company.setCnae(entity.getCnae());
+    company.setQualificacaoPessoaJuridica(entity.getQualificacaoPessoaJuridica());
+    company.setNaturezaJuridica(entity.getNaturezaJuridica());
+    company.setPeriodoContabil(entity.getPeriodoContabil());
+    company.setStatus(entity.getStatus());
+
+    return company;
   }
 }

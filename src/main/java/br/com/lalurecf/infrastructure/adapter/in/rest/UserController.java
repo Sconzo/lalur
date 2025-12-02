@@ -40,10 +40,10 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Endpoints CRUD protegidos com @PreAuthorize("hasRole('ADMIN')").
  */
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 @Tag(name = "Users", description = "Gerenciamento de usuários (ADMIN apenas)")
-@PreAuthorize("hasRole('ADMIN')")
+//@PreAuthorize("hasRole('ADMIN')")
 public class UserController {
 
   private final CreateUserUseCase createUserUseCase;

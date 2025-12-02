@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Endpoints protegidos que exigem autenticação JWT válida.
  */
 @RestController
-@RequestMapping("/api/v1/test")
+@RequestMapping("/test")
 public class TestController {
 
   /**

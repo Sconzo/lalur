@@ -3,6 +3,7 @@ package br.com.lalurecf.infrastructure.adapter.in.rest;
 import br.com.lalurecf.application.port.in.company.CreateCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.GetCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ListCompaniesUseCase;
+import br.com.lalurecf.application.port.in.company.SelectCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ToggleCompanyStatusUseCase;
 import br.com.lalurecf.application.port.in.company.UpdateCompanyUseCase;
 import br.com.lalurecf.application.port.out.CnpjData;
@@ -12,12 +13,16 @@ import br.com.lalurecf.domain.model.CompanyStatus;
 import br.com.lalurecf.domain.model.valueobject.CNPJ;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
+import br.com.lalurecf.infrastructure.dto.company.CompanyListItemResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.CreateCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.FilterOptionsResponse;
+import br.com.lalurecf.infrastructure.dto.company.SelectCompanyRequest;
+import br.com.lalurecf.infrastructure.dto.company.SelectCompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
+import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -65,6 +70,7 @@ public class CompanyController {
   private final GetCompanyUseCase getCompanyUseCase;
   private final UpdateCompanyUseCase updateCompanyUseCase;
   private final ToggleCompanyStatusUseCase toggleCompanyStatusUseCase;
+  private final SelectCompanyUseCase selectCompanyUseCase;
   private final CompanyJpaRepository companyRepository;
 
   /**
@@ -270,6 +276,93 @@ public class CompanyController {
       log.warn("CNPJ inválido recebido: {} - Erro: {}", cnpjStr, e.getMessage());
       return ResponseEntity.badRequest().build();
     }
+  }
+
+  /**
+   * Lista empresas disponíveis para o usuário autenticado (CONTADOR e ADMIN).
+   * Endpoint para dropdown de seleção de empresa.
+   */
+  @GetMapping("/my-companies")
+  public ResponseEntity<List<CompanyListItemResponse>> getMyCompanies() {
+    log.info("Buscando empresas disponíveis para usuário autenticado");
+
+    List<CompanyListItemResponse> companies = companyRepository.findByStatus(Status.ACTIVE)
+        .stream()
+        .map(entity -> new CompanyListItemResponse(
+            entity.getId(),
+            formatCnpj(entity.getCnpj()),
+            entity.getRazaoSocial()
+        ))
+        .toList();
+
+    log.info("Retornando {} empresas ativas", companies.size());
+    return ResponseEntity.ok(companies);
+  }
+
+  /**
+   * Seleciona uma empresa para trabalho (CONTADOR e ADMIN).
+   * Valida que empresa existe e está ACTIVE.
+   */
+  @PostMapping("/select-company")
+  public ResponseEntity<SelectCompanyResponse> selectCompany(
+      @Valid @RequestBody SelectCompanyRequest request) {
+    log.info("Requisição de seleção de empresa: companyId={}", request.companyId());
+
+    try {
+      br.com.lalurecf.domain.model.Company company =
+          selectCompanyUseCase.selectCompany(request.companyId());
+
+      SelectCompanyResponse response = new SelectCompanyResponse(
+          true,
+          company.getId(),
+          company.getRazaoSocial(),
+          "Empresa selecionada com sucesso"
+      );
+
+      log.info("Empresa selecionada: companyId={}, nome={}",
+          company.getId(), company.getRazaoSocial());
+      return ResponseEntity.ok(response);
+
+    } catch (Exception e) {
+      log.error("Erro ao selecionar empresa: {}", e.getMessage());
+      SelectCompanyResponse response = new SelectCompanyResponse(
+          false,
+          request.companyId(),
+          null,
+          e.getMessage()
+      );
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+  }
+
+  /**
+   * Retorna a empresa atualmente selecionada no contexto (via header X-Company-Id).
+   * Requer que header X-Company-Id esteja presente.
+   */
+  @GetMapping("/current-company")
+  public ResponseEntity<CompanyListItemResponse> getCurrentCompany() {
+    Long companyId = CompanyContext.getCurrentCompanyId();
+
+    if (companyId == null) {
+      log.warn("Tentativa de obter empresa atual sem contexto definido");
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+
+    log.info("Buscando empresa do contexto atual: companyId={}", companyId);
+
+    return companyRepository.findById(companyId)
+        .map(entity -> {
+          CompanyListItemResponse response = new CompanyListItemResponse(
+              entity.getId(),
+              formatCnpj(entity.getCnpj()),
+              entity.getRazaoSocial()
+          );
+          return ResponseEntity.ok(response);
+        })
+        .orElseGet(() -> {
+          log.warn("Empresa do contexto não encontrada: companyId={}", companyId);
+          return ResponseEntity.notFound().build();
+        });
   }
 
   /**
