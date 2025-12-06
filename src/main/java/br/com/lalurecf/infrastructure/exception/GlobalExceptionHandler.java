@@ -3,6 +3,7 @@ package br.com.lalurecf.infrastructure.exception;
 import br.com.lalurecf.domain.exception.BusinessRuleViolationException;
 import br.com.lalurecf.domain.exception.InvalidCredentialsException;
 import br.com.lalurecf.domain.exception.InvalidCurrentPasswordException;
+import br.com.lalurecf.domain.exception.MustChangePasswordException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +41,25 @@ public class GlobalExceptionHandler {
             .message(ex.getMessage())
             .build();
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+  }
+
+  /**
+   * Handler para MustChangePasswordException.
+   *
+   * @param ex exceção lançada
+   * @return response 403 Forbidden
+   */
+  @ExceptionHandler(MustChangePasswordException.class)
+  public ResponseEntity<ErrorResponse> handleMustChangePassword(MustChangePasswordException ex) {
+    log.warn("Tentativa de login com mustChangePassword=true: {}", ex.getMessage());
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.FORBIDDEN.value())
+            .error("Forbidden")
+            .message(ex.getMessage())
+            .build();
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
   }
 
   /**

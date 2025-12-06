@@ -3,6 +3,7 @@ package br.com.lalurecf.application.service;
 import br.com.lalurecf.application.port.in.AuthenticateUserUseCase;
 import br.com.lalurecf.application.port.out.UserRepositoryPort;
 import br.com.lalurecf.domain.exception.InvalidCredentialsException;
+import br.com.lalurecf.domain.exception.MustChangePasswordException;
 import br.com.lalurecf.domain.model.User;
 import br.com.lalurecf.infrastructure.dto.auth.LoginRequest;
 import br.com.lalurecf.infrastructure.dto.auth.LoginResponse;
@@ -40,6 +41,13 @@ public class AuthService implements AuthenticateUserUseCase {
     if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
       log.warn("Tentativa de login com senha incorreta: {}", request.getEmail());
       throw new InvalidCredentialsException("Credenciais inválidas");
+    }
+
+    // CRÍTICO: Bloqueia login se usuário deve trocar senha
+    if (user.getMustChangePassword()) {
+      log.warn("Tentativa de login com mustChangePassword=true: {}", request.getEmail());
+      throw new MustChangePasswordException(
+          "Você deve trocar sua senha temporária antes de fazer login. ");
     }
 
     String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getRole());

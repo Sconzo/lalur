@@ -47,12 +47,13 @@ public class AuthController {
   /**
    * Endpoint de troca de senha.
    *
-   * @param request requisição com senha atual e nova senha
+   * @param request requisição com email, senha temporária e nova senha
    * @return resposta indicando sucesso
    */
   @PostMapping("/change-password")
-  @PreAuthorize("isAuthenticated()")
-  @Operation(summary = "Trocar senha", description = "Trocar senha do usuário autenticado")
+  @Operation(
+      summary = "Trocar senha",
+      description = "Trocar senha temporária (usuário com mustChangePassword=true)")
   public ResponseEntity<ChangePasswordResponse> changePassword(
       @Valid @RequestBody ChangePasswordRequest request) {
     ChangePasswordResponse response = changePasswordUseCase.changePassword(request);
