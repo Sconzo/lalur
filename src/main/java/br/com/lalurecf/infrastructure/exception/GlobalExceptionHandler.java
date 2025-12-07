@@ -149,4 +149,24 @@ public class GlobalExceptionHandler {
             .build();
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
   }
+
+  /**
+   * Handler para PeriodoContabilViolationException.
+   *
+   * @param ex exceção lançada
+   * @return response 400 Bad Request
+   */
+  @ExceptionHandler(PeriodoContabilViolationException.class)
+  public ResponseEntity<ErrorResponse> handlePeriodoContabilViolation(
+      PeriodoContabilViolationException ex) {
+    log.warn("Violação de Período Contábil: {}", ex.getMessage());
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("Período Contábil Violation")
+            .message(ex.getMessage())
+            .build();
+    return ResponseEntity.badRequest().body(error);
+  }
 }

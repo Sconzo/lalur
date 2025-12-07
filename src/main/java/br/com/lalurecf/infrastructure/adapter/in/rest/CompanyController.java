@@ -17,11 +17,14 @@ import br.com.lalurecf.infrastructure.dto.company.CompanyListItemResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.CreateCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.FilterOptionsResponse;
+import br.com.lalurecf.infrastructure.dto.company.PeriodoContabilAuditResponse;
 import br.com.lalurecf.infrastructure.dto.company.SelectCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.SelectCompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilResponse;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -72,6 +75,10 @@ public class CompanyController {
   private final ToggleCompanyStatusUseCase toggleCompanyStatusUseCase;
   private final SelectCompanyUseCase selectCompanyUseCase;
   private final CompanyJpaRepository companyRepository;
+  private final br.com.lalurecf.application.port.in.company.UpdatePeriodoContabilUseCase
+      updatePeriodoContabilUseCase;
+  private final br.com.lalurecf.application.port.in.company.GetPeriodoContabilAuditUseCase
+      getPeriodoContabilAuditUseCase;
 
   /**
    * Cria uma nova empresa.
@@ -363,6 +370,51 @@ public class CompanyController {
           log.warn("Empresa do contexto não encontrada: companyId={}", companyId);
           return ResponseEntity.notFound().build();
         });
+  }
+
+  /**
+   * Atualiza o Período Contábil de uma empresa.
+   *
+   * <p>Apenas ADMIN pode atualizar.
+   * Validações:
+   * <ul>
+   *   <li>Nova data não pode ser no futuro
+   *   <li>Nova data não pode retroagir (deve ser posterior à atual)
+   *   <li>Registra alteração em log de auditoria
+   * </ul>
+   *
+   * @param id ID da empresa
+   * @param request novo período contábil
+   * @return resposta com sucesso e dados anterior/novo
+   */
+  @PutMapping("/{id}/periodo-contabil")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<UpdatePeriodoContabilResponse> updatePeriodoContabil(
+      @PathVariable Long id,
+      @Valid @RequestBody UpdatePeriodoContabilRequest request) {
+
+    log.info("PUT /companies/{}/periodo-contabil - Atualizando período contábil", id);
+    UpdatePeriodoContabilResponse response = updatePeriodoContabilUseCase.update(id, request);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Retorna histórico de alterações do Período Contábil de uma empresa.
+   *
+   * <p>Apenas ADMIN pode acessar.
+   *
+   * @param id ID da empresa
+   * @return lista de registros de auditoria ordenada do mais recente ao mais antigo
+   */
+  @GetMapping("/{id}/periodo-contabil/audit")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<List<PeriodoContabilAuditResponse>> getPeriodoContabilAudit(
+      @PathVariable Long id) {
+
+    log.info("GET /companies/{}/periodo-contabil/audit - Buscando histórico", id);
+    List<PeriodoContabilAuditResponse> response =
+        getPeriodoContabilAuditUseCase.getAuditHistory(id);
+    return ResponseEntity.ok(response);
   }
 
   /**

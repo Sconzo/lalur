@@ -4,6 +4,7 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParamete
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,8 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface TaxParameterJpaRepository
-    extends JpaRepository<TaxParameterEntity, Long> {
+    extends JpaRepository<TaxParameterEntity, Long>,
+    JpaSpecificationExecutor<TaxParameterEntity> {
 
   /**
    * Busca parâmetro tributário por código único.
@@ -45,5 +47,14 @@ public interface TaxParameterJpaRepository
   List<TaxParameterEntity> findByIdInAndTipo(
       @Param("ids") List<Long> ids,
       @Param("tipo") String tipo);
+
+  /**
+   * Busca tipos/categorias distintos de parâmetros tributários.
+   * Útil para popular dropdowns de filtros.
+   *
+   * @return lista de tipos únicos ordenados
+   */
+  @Query("SELECT DISTINCT t.tipo FROM TaxParameterEntity t ORDER BY t.tipo")
+  List<String> findDistinctTipos();
 
 }

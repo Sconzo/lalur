@@ -2,35 +2,47 @@ package br.com.lalurecf.application.service;
 
 import br.com.lalurecf.application.port.in.company.CreateCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.GetCompanyUseCase;
+import br.com.lalurecf.application.port.in.company.GetPeriodoContabilAuditUseCase;
 import br.com.lalurecf.application.port.in.company.ListCompaniesUseCase;
 import br.com.lalurecf.application.port.in.company.SelectCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ToggleCompanyStatusUseCase;
 import br.com.lalurecf.application.port.in.company.UpdateCompanyUseCase;
+import br.com.lalurecf.application.port.in.company.UpdatePeriodoContabilUseCase;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.CompanyStatus;
 import br.com.lalurecf.domain.model.valueobject.CNPJ;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyTaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PeriodoContabilAuditEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyTaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PeriodoContabilAuditJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.CreateCompanyRequest;
+import br.com.lalurecf.infrastructure.dto.company.PeriodoContabilAuditResponse;
 import br.com.lalurecf.infrastructure.dto.company.TaxParameterSummary;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilResponse;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,11 +60,14 @@ public class CompanyService implements
     GetCompanyUseCase,
     UpdateCompanyUseCase,
     ToggleCompanyStatusUseCase,
-    SelectCompanyUseCase {
+    SelectCompanyUseCase,
+    UpdatePeriodoContabilUseCase,
+    GetPeriodoContabilAuditUseCase {
 
   private final CompanyJpaRepository companyRepository;
   private final TaxParameterJpaRepository taxParameterRepository;
   private final CompanyTaxParameterJpaRepository companyTaxParameterRepository;
+  private final PeriodoContabilAuditJpaRepository periodoContabilAuditRepository;
 
   @Override
   @Transactional
@@ -178,6 +193,74 @@ public class CompanyService implements
     log.info("Empresa atualizada com sucesso. ID: {}", id);
 
     return toDetailResponse(updated);
+  }
+
+  @Override
+  @Transactional
+  public UpdatePeriodoContabilResponse update(
+      Long companyId,
+      UpdatePeriodoContabilRequest request) {
+
+    log.info("Atualizando Período Contábil da empresa ID: {}", companyId);
+
+    // Buscar empresa
+    CompanyEntity company = companyRepository.findById(companyId)
+        .orElseThrow(() -> new EntityNotFoundException(
+            "Empresa não encontrada com ID: " + companyId));
+
+    LocalDate periodoAnterior = company.getPeriodoContabil();
+    LocalDate periodoNovo = request.novoPeriodoContabil();
+
+    // Validação 1: Nova data não pode ser no futuro
+    if (periodoNovo.isAfter(LocalDate.now())) {
+      throw new IllegalArgumentException(
+          "Período Contábil não pode ser uma data futura: " + periodoNovo);
+    }
+
+    // Validação 2: Nova data não pode retroagir (deve ser posterior à atual)
+    if (periodoNovo.isBefore(periodoAnterior)) {
+      throw new IllegalArgumentException(
+          "Período Contábil não pode retroagir. Valor atual: " + periodoAnterior
+              + ", Valor fornecido: " + periodoNovo);
+    }
+
+    // Validação 3: Nova data deve ser diferente da atual
+    if (periodoNovo.equals(periodoAnterior)) {
+      throw new IllegalArgumentException(
+          "Período Contábil já está definido como: " + periodoNovo);
+    }
+
+    // Obter usuário autenticado
+    String userEmail = getCurrentUserEmail();
+
+    // Registrar em log de auditoria ANTES de atualizar
+    PeriodoContabilAuditEntity audit = PeriodoContabilAuditEntity.builder()
+        .companyId(companyId)
+        .periodoContabilAnterior(periodoAnterior)
+        .periodoContabilNovo(periodoNovo)
+        .changedBy(userEmail)
+        .changedAt(LocalDateTime.now())
+        .build();
+
+    periodoContabilAuditRepository.save(audit);
+    log.info("Registro de auditoria criado para alteração de Período Contábil. "
+        + "Company ID: {}, Anterior: {}, Novo: {}, Por: {}",
+        companyId, periodoAnterior, periodoNovo, userEmail);
+
+    // Atualizar empresa
+    company.setPeriodoContabil(periodoNovo);
+    companyRepository.save(company);
+
+    log.info("Período Contábil atualizado com sucesso. "
+        + "Company ID: {}, Anterior: {}, Novo: {}",
+        companyId, periodoAnterior, periodoNovo);
+
+    return new UpdatePeriodoContabilResponse(
+        true,
+        "Período Contábil atualizado com sucesso",
+        periodoAnterior,
+        periodoNovo
+    );
   }
 
   @Override
@@ -402,6 +485,44 @@ public class CompanyService implements
     company.setUpdatedAt(entity.getUpdatedAt());
 
     return company;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<PeriodoContabilAuditResponse> getAuditHistory(Long companyId) {
+    log.info("Buscando histórico de auditoria do Período Contábil para empresa ID: {}",
+        companyId);
+
+    // Validar que empresa existe
+    if (!companyRepository.existsById(companyId)) {
+      throw new EntityNotFoundException("Empresa não encontrada com ID: " + companyId);
+    }
+
+    List<PeriodoContabilAuditEntity> audits =
+        periodoContabilAuditRepository.findByCompanyIdOrderByChangedAtDesc(companyId);
+
+    return audits.stream()
+        .map(audit -> new PeriodoContabilAuditResponse(
+            audit.getId(),
+            audit.getPeriodoContabilAnterior(),
+            audit.getPeriodoContabilNovo(),
+            audit.getChangedBy(),
+            audit.getChangedAt()
+        ))
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Obtém o email do usuário autenticado do contexto de segurança.
+   *
+   * @return email do usuário
+   */
+  private String getCurrentUserEmail() {
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return "SYSTEM";
+    }
+    return authentication.getName();
   }
 
   /**
