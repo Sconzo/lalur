@@ -15,11 +15,10 @@ public class Company {
   private Long id;
   private CNPJ cnpj;
   private String razaoSocial;
-  private String cnae;
-  private String qualificacaoPessoaJuridica;
-  private String naturezaJuridica;
   private LocalDate periodoContabil;
   private Status status;
+  // CNAE, Qualificação PJ e Natureza Jurídica são gerenciados como
+  // parâmetros tributários (ADR-001 v2.0)
   private String createdBy;
   private LocalDateTime createdAt;
   private String updatedBy;
@@ -34,17 +33,13 @@ public class Company {
   /**
    * Full constructor with all fields.
    */
-  public Company(Long id, CNPJ cnpj, String razaoSocial, String cnae,
-                 String qualificacaoPessoaJuridica, String naturezaJuridica,
+  public Company(Long id, CNPJ cnpj, String razaoSocial,
                  LocalDate periodoContabil, Status status,
                  String createdBy, LocalDateTime createdAt,
                  String updatedBy, LocalDateTime updatedAt) {
     this.id = id;
     this.cnpj = cnpj;
     this.razaoSocial = razaoSocial;
-    this.cnae = cnae;
-    this.qualificacaoPessoaJuridica = qualificacaoPessoaJuridica;
-    this.naturezaJuridica = naturezaJuridica;
     this.periodoContabil = periodoContabil;
     this.status = status;
     this.createdBy = createdBy;
@@ -75,30 +70,6 @@ public class Company {
 
   public void setRazaoSocial(String razaoSocial) {
     this.razaoSocial = razaoSocial;
-  }
-
-  public String getCnae() {
-    return cnae;
-  }
-
-  public void setCnae(String cnae) {
-    this.cnae = cnae;
-  }
-
-  public String getQualificacaoPessoaJuridica() {
-    return qualificacaoPessoaJuridica;
-  }
-
-  public void setQualificacaoPessoaJuridica(String qualificacaoPessoaJuridica) {
-    this.qualificacaoPessoaJuridica = qualificacaoPessoaJuridica;
-  }
-
-  public String getNaturezaJuridica() {
-    return naturezaJuridica;
-  }
-
-  public void setNaturezaJuridica(String naturezaJuridica) {
-    this.naturezaJuridica = naturezaJuridica;
   }
 
   public LocalDate getPeriodoContabil() {

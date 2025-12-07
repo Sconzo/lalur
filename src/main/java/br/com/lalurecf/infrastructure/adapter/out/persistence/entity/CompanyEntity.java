@@ -28,15 +28,9 @@ public class CompanyEntity extends BaseEntity {
   @Column(name = "razao_social", nullable = false)
   private String razaoSocial;
 
-  @Column(nullable = false, length = 7)
-  private String cnae;
-
-  @Column(name = "qualificacao_pessoa_juridica", nullable = false)
-  private String qualificacaoPessoaJuridica;
-
-  @Column(name = "natureza_juridica", nullable = false)
-  private String naturezaJuridica;
-
   @Column(name = "periodo_contabil", nullable = false)
   private LocalDate periodoContabil;
+
+  // CNAE, Qualificação PJ e Natureza Jurídica são gerenciados como parâmetros tributários
+  // via tabela tb_empresa_parametros_tributarios (ADR-001 v2.0)
 }

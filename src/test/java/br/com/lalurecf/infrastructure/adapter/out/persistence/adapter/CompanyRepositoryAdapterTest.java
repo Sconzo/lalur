@@ -199,9 +199,6 @@ class CompanyRepositoryAdapterTest {
     Company company = new Company();
     company.setCnpj(CNPJ.of(cnpj));
     company.setRazaoSocial(razaoSocial);
-    company.setCnae("1234567");
-    company.setQualificacaoPessoaJuridica("Administrador");
-    company.setNaturezaJuridica("206-2");
     company.setPeriodoContabil(LocalDate.of(2024, 1, 1));
     company.setStatus(Status.ACTIVE);
     return company;

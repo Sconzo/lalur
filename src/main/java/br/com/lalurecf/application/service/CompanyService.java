@@ -10,10 +10,15 @@ import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.CompanyStatus;
 import br.com.lalurecf.domain.model.valueobject.CNPJ;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyTaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyTaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.CreateCompanyRequest;
+import br.com.lalurecf.infrastructure.dto.company.TaxParameterSummary;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
 import jakarta.persistence.EntityNotFoundException;
@@ -46,6 +51,8 @@ public class CompanyService implements
     SelectCompanyUseCase {
 
   private final CompanyJpaRepository companyRepository;
+  private final TaxParameterJpaRepository taxParameterRepository;
+  private final CompanyTaxParameterJpaRepository companyTaxParameterRepository;
 
   @Override
   @Transactional
@@ -63,18 +70,34 @@ public class CompanyService implements
               "Já existe uma empresa ativa com o CNPJ: " + cnpj.format());
         });
 
+    // Validar os 3 parâmetros tributários obrigatórios
+    validateRequiredTaxParameters(
+        request.cnaeParametroId(),
+        request.qualificacaoPjParametroId(),
+        request.naturezaJuridicaParametroId()
+    );
+
     // Criar entidade
     CompanyEntity entity = new CompanyEntity();
     entity.setCnpj(cnpj.getValue());
     entity.setRazaoSocial(request.razaoSocial());
-    entity.setCnae(request.cnae());
-    entity.setQualificacaoPessoaJuridica(request.qualificacaoPessoaJuridica());
-    entity.setNaturezaJuridica(request.naturezaJuridica());
     entity.setPeriodoContabil(request.periodoContabil());
     entity.setStatus(Status.ACTIVE);
 
     CompanyEntity saved = companyRepository.save(entity);
     log.info("Empresa criada com sucesso. ID: {}, CNPJ: {}", saved.getId(), cnpj.getValue());
+
+    // Criar associações com os 3 parâmetros obrigatórios
+    createTaxParameterAssociation(saved.getId(), request.cnaeParametroId());
+    createTaxParameterAssociation(saved.getId(), request.qualificacaoPjParametroId());
+    createTaxParameterAssociation(saved.getId(), request.naturezaJuridicaParametroId());
+
+    // Criar associações com outros parâmetros opcionais
+    if (request.outrosParametrosIds() != null) {
+      for (Long parametroId : request.outrosParametrosIds()) {
+        createTaxParameterAssociation(saved.getId(), parametroId);
+      }
+    }
 
     return toDetailResponse(saved);
   }
@@ -82,18 +105,18 @@ public class CompanyService implements
   @Override
   @Transactional(readOnly = true)
   public Page<CompanyResponse> list(
-      String globalSearch,
-      String cnpjFilter,
-      String razaoSocialFilter,
+      String strSearch,
+      List<String> cnpjFilters,
+      List<String> razaoSocialFilters,
       boolean includeInactive,
       Pageable pageable) {
 
-    log.debug("Listando empresas - globalSearch: {}, cnpjFilter: {}, razaoSocialFilter: {}, "
+    log.info("Listando empresas - strSearch: {}, cnpjFilters: {}, razaoSocialFilters: {}, "
             + "includeInactive: {}",
-        globalSearch, cnpjFilter, razaoSocialFilter, includeInactive);
+        strSearch, cnpjFilters, razaoSocialFilters, includeInactive);
 
     Specification<CompanyEntity> spec = buildSpecification(
-        globalSearch, cnpjFilter, razaoSocialFilter, includeInactive);
+        strSearch, cnpjFilters, razaoSocialFilters, includeInactive);
 
     Page<CompanyEntity> entities = companyRepository.findAll(spec, pageable);
 
@@ -125,12 +148,31 @@ public class CompanyService implements
           return new EntityNotFoundException("Empresa não encontrada com ID: " + id);
         });
 
+    // Validar os 3 parâmetros tributários obrigatórios
+    validateRequiredTaxParameters(
+        request.cnaeParametroId(),
+        request.qualificacaoPjParametroId(),
+        request.naturezaJuridicaParametroId()
+    );
+
     // Atualizar campos (CNPJ é imutável)
     entity.setRazaoSocial(request.razaoSocial());
-    entity.setCnae(request.cnae());
-    entity.setQualificacaoPessoaJuridica(request.qualificacaoPessoaJuridica());
-    entity.setNaturezaJuridica(request.naturezaJuridica());
     entity.setPeriodoContabil(request.periodoContabil());
+
+    // Remover todas as associações existentes
+    companyTaxParameterRepository.deleteAllByCompanyId(id);
+
+    // Criar associações com os 3 parâmetros obrigatórios
+    createTaxParameterAssociation(id, request.cnaeParametroId());
+    createTaxParameterAssociation(id, request.qualificacaoPjParametroId());
+    createTaxParameterAssociation(id, request.naturezaJuridicaParametroId());
+
+    // Criar associações com outros parâmetros opcionais
+    if (request.outrosParametrosIds() != null) {
+      for (Long parametroId : request.outrosParametrosIds()) {
+        createTaxParameterAssociation(id, parametroId);
+      }
+    }
 
     CompanyEntity updated = companyRepository.save(entity);
     log.info("Empresa atualizada com sucesso. ID: {}", id);
@@ -166,9 +208,9 @@ public class CompanyService implements
    * Constrói Specification para filtros dinâmicos.
    */
   private Specification<CompanyEntity> buildSpecification(
-      String globalSearch,
-      String cnpjFilter,
-      String razaoSocialFilter,
+      String strSearch,
+      List<String> cnpjFilters,
+      List<String> razaoSocialFilters,
       boolean includeInactive) {
 
     return (root, query, cb) -> {
@@ -179,29 +221,45 @@ public class CompanyService implements
         predicates.add(cb.equal(root.get("status"), Status.ACTIVE));
       }
 
-      // Filtro global (busca em todos os campos)
-      if (globalSearch != null && !globalSearch.isBlank()) {
-        String search = "%" + globalSearch.toLowerCase() + "%";
+      // Filtro global (busca em CNPJ, Razão Social e Parâmetros Tributários)
+      if (strSearch != null && !strSearch.isBlank()) {
+        String search = "%" + strSearch.toLowerCase() + "%";
+
+        // Subquery para buscar empresas com parâmetros tributários que correspondem
+        var subquery = query.subquery(Long.class);
+        var assocRoot = subquery.from(CompanyTaxParameterEntity.class);
+
+        // Subquery aninhada para buscar IDs de parâmetros que correspondem ao filtro
+        var paramSubquery = subquery.subquery(Long.class);
+        var paramRoot = paramSubquery.from(TaxParameterEntity.class);
+        paramSubquery.select(paramRoot.get("id"))
+            .where(cb.or(
+                cb.like(cb.lower(paramRoot.get("codigo")), search),
+                cb.like(cb.lower(paramRoot.get("descricao")), search)
+            ));
+
+        subquery.select(assocRoot.get("companyId"))
+            .where(cb.and(
+                cb.equal(assocRoot.get("companyId"), root.get("id")),
+                assocRoot.get("taxParameterId").in(paramSubquery)
+            ));
+
         Predicate globalPredicate = cb.or(
             cb.like(cb.lower(root.get("cnpj")), search),
             cb.like(cb.lower(root.get("razaoSocial")), search),
-            cb.like(cb.lower(root.get("cnae")), search),
-            cb.like(cb.lower(root.get("qualificacaoPessoaJuridica")), search),
-            cb.like(cb.lower(root.get("naturezaJuridica")), search)
+            cb.exists(subquery)
         );
         predicates.add(globalPredicate);
       }
 
-      // Filtro específico por CNPJ
-      if (cnpjFilter != null && !cnpjFilter.isBlank()) {
-        String cnpjSearch = "%" + cnpjFilter.replaceAll("[^0-9]", "") + "%";
-        predicates.add(cb.like(root.get("cnpj"), cnpjSearch));
+      // Filtro específico por CNPJ (lista com comparação exata)
+      if (cnpjFilters != null && !cnpjFilters.isEmpty()) {
+        predicates.add(root.get("cnpj").in(cnpjFilters));
       }
 
-      // Filtro específico por Razão Social
-      if (razaoSocialFilter != null && !razaoSocialFilter.isBlank()) {
-        String razaoSearch = "%" + razaoSocialFilter.toLowerCase() + "%";
-        predicates.add(cb.like(cb.lower(root.get("razaoSocial")), razaoSearch));
+      // Filtro específico por Razão Social (lista com comparação exata)
+      if (razaoSocialFilters != null && !razaoSocialFilters.isEmpty()) {
+        predicates.add(root.get("razaoSocial").in(razaoSocialFilters));
       }
 
       return cb.and(predicates.toArray(new Predicate[0]));
@@ -212,14 +270,32 @@ public class CompanyService implements
    * Converte Entity para CompanyResponse (listagem).
    */
   private CompanyResponse toResponse(CompanyEntity entity) {
+    // Buscar os 3 parâmetros tributários obrigatórios via JOIN
+    List<CompanyTaxParameterEntity> associations =
+        companyTaxParameterRepository.findByCompanyId(entity.getId());
+
+    // Buscar os parâmetros tributários completos
+    List<Long> parameterIds = associations.stream()
+        .map(CompanyTaxParameterEntity::getTaxParameterId)
+        .toList();
+
+    List<TaxParameterEntity> parameters = parameterIds.isEmpty()
+        ? Collections.emptyList()
+        : taxParameterRepository.findAllById(parameterIds);
+
+    // Encontrar cada parâmetro pelo tipo
+    TaxParameterSummary cnae = findParameterByType(parameters, "CNAE");
+    TaxParameterSummary qualificacaoPj = findParameterByType(parameters, "QUALIFICACAO_PJ");
+    TaxParameterSummary naturezaJuridica = findParameterByType(parameters, "NATUREZA_JURIDICA");
+
     return new CompanyResponse(
         entity.getId(),
         formatCnpj(entity.getCnpj()),
         CompanyStatus.fromStatus(entity.getStatus()),
         entity.getRazaoSocial(),
-        entity.getCnae(),
-        entity.getQualificacaoPessoaJuridica(),
-        entity.getNaturezaJuridica()
+        cnae,
+        qualificacaoPj,
+        naturezaJuridica
     );
   }
 
@@ -227,16 +303,42 @@ public class CompanyService implements
    * Converte Entity para CompanyDetailResponse (detalhes).
    */
   private CompanyDetailResponse toDetailResponse(CompanyEntity entity) {
+    // Buscar todos os parâmetros tributários associados
+    List<CompanyTaxParameterEntity> associations =
+        companyTaxParameterRepository.findByCompanyId(entity.getId());
+
+    // Buscar os parâmetros tributários completos
+    List<Long> parameterIds = associations.stream()
+        .map(CompanyTaxParameterEntity::getTaxParameterId)
+        .toList();
+
+    List<TaxParameterEntity> parameters = parameterIds.isEmpty()
+        ? Collections.emptyList()
+        : taxParameterRepository.findAllById(parameterIds);
+
+    // Encontrar os 3 parâmetros obrigatórios pelo tipo
+    TaxParameterSummary cnae = findParameterByType(parameters, "CNAE");
+    TaxParameterSummary qualificacaoPj = findParameterByType(parameters, "QUALIFICACAO_PJ");
+    TaxParameterSummary naturezaJuridica = findParameterByType(parameters, "NATUREZA_JURIDICA");
+
+    // Encontrar outros parâmetros (que não são os 3 obrigatórios)
+    List<TaxParameterSummary> outrosParametros = parameters.stream()
+        .filter(p -> !p.getTipo().equals("CNAE")
+            && !p.getTipo().equals("QUALIFICACAO_PJ")
+            && !p.getTipo().equals("NATUREZA_JURIDICA"))
+        .map(p -> new TaxParameterSummary(p.getId(), p.getCodigo(), p.getDescricao()))
+        .toList();
+
     return new CompanyDetailResponse(
         entity.getId(),
         formatCnpj(entity.getCnpj()),
         CompanyStatus.fromStatus(entity.getStatus()),
         entity.getRazaoSocial(),
-        entity.getCnae(),
-        entity.getQualificacaoPessoaJuridica(),
-        entity.getNaturezaJuridica(),
         entity.getPeriodoContabil(),
-        Collections.emptyList(), // TODO: Implementar quando TaxParameter estiver pronto
+        cnae,
+        qualificacaoPj,
+        naturezaJuridica,
+        outrosParametros,
         entity.getCreatedAt(),
         entity.getUpdatedAt()
     );
@@ -292,12 +394,94 @@ public class CompanyService implements
     company.setId(entity.getId());
     company.setCnpj(CNPJ.of(entity.getCnpj()));
     company.setRazaoSocial(entity.getRazaoSocial());
-    company.setCnae(entity.getCnae());
-    company.setQualificacaoPessoaJuridica(entity.getQualificacaoPessoaJuridica());
-    company.setNaturezaJuridica(entity.getNaturezaJuridica());
     company.setPeriodoContabil(entity.getPeriodoContabil());
     company.setStatus(entity.getStatus());
+    company.setCreatedBy(entity.getCreatedBy());
+    company.setCreatedAt(entity.getCreatedAt());
+    company.setUpdatedBy(entity.getUpdatedBy());
+    company.setUpdatedAt(entity.getUpdatedAt());
 
     return company;
+  }
+
+  /**
+   * Valida se os 3 parâmetros tributários obrigatórios existem e são dos tipos corretos.
+   *
+   * @param cnaeId ID do parâmetro CNAE
+   * @param qualificacaoPjId ID do parâmetro Qualificação PJ
+   * @param naturezaJuridicaId ID do parâmetro Natureza Jurídica
+   * @throws IllegalArgumentException se algum parâmetro não existe ou não é do tipo correto
+   */
+  private void validateRequiredTaxParameters(
+      Long cnaeId,
+      Long qualificacaoPjId,
+      Long naturezaJuridicaId) {
+
+    // Validar CNAE
+    TaxParameterEntity cnae = taxParameterRepository.findById(cnaeId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Parâmetro CNAE não encontrado com ID: " + cnaeId));
+
+    if (!"CNAE".equals(cnae.getTipo())) {
+      throw new IllegalArgumentException(
+          "Parâmetro com ID " + cnaeId + " não é do tipo CNAE (tipo atual: "
+              + cnae.getTipo() + ")");
+    }
+
+    // Validar Qualificação PJ
+    TaxParameterEntity qualificacaoPj = taxParameterRepository.findById(qualificacaoPjId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Parâmetro Qualificação PJ não encontrado com ID: " + qualificacaoPjId));
+
+    if (!"QUALIFICACAO_PJ".equals(qualificacaoPj.getTipo())) {
+      throw new IllegalArgumentException(
+          "Parâmetro com ID " + qualificacaoPjId
+              + " não é do tipo QUALIFICACAO_PJ (tipo atual: "
+              + qualificacaoPj.getTipo() + ")");
+    }
+
+    // Validar Natureza Jurídica
+    TaxParameterEntity naturezaJuridica = taxParameterRepository.findById(naturezaJuridicaId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Parâmetro Natureza Jurídica não encontrado com ID: " + naturezaJuridicaId));
+
+    if (!"NATUREZA_JURIDICA".equals(naturezaJuridica.getTipo())) {
+      throw new IllegalArgumentException(
+          "Parâmetro com ID " + naturezaJuridicaId
+              + " não é do tipo NATUREZA_JURIDICA (tipo atual: "
+              + naturezaJuridica.getTipo() + ")");
+    }
+  }
+
+  /**
+   * Cria uma associação entre empresa e parâmetro tributário.
+   *
+   * @param companyId ID da empresa
+   * @param taxParameterId ID do parâmetro tributário
+   */
+  private void createTaxParameterAssociation(Long companyId, Long taxParameterId) {
+    CompanyTaxParameterEntity association = new CompanyTaxParameterEntity();
+    association.setCompanyId(companyId);
+    association.setTaxParameterId(taxParameterId);
+    association.setCreatedAt(java.time.LocalDateTime.now());
+    companyTaxParameterRepository.save(association);
+  }
+
+  /**
+   * Encontra um parâmetro tributário pelo tipo na lista fornecida.
+   *
+   * @param parameters lista de parâmetros
+   * @param tipo tipo do parâmetro (ex: "CNAE", "QUALIFICACAO_PJ", "NATUREZA_JURIDICA")
+   * @return TaxParameterSummary ou null se não encontrado
+   */
+  private TaxParameterSummary findParameterByType(
+      List<TaxParameterEntity> parameters,
+      String tipo) {
+
+    return parameters.stream()
+        .filter(p -> tipo.equals(p.getTipo()))
+        .findFirst()
+        .map(p -> new TaxParameterSummary(p.getId(), p.getCodigo(), p.getDescricao()))
+        .orElse(null);
   }
 }

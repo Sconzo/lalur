@@ -74,7 +74,8 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve trocar senha com sucesso e mudar mustChangePassword para false")
   void shouldChangePasswordSuccessfullyAndUpdateMustChangePasswordFlag() {
     // Arrange
-    ChangePasswordRequest request = new ChangePasswordRequest("oldPassword123", "newPassword123");
+    ChangePasswordRequest request =
+        new ChangePasswordRequest(testEmail, "oldPassword123", "newPassword123");
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<ChangePasswordRequest> entity = new HttpEntity<>(request, headers);
@@ -105,7 +106,8 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 400 quando senha atual está incorreta")
   void shouldReturn400WhenCurrentPasswordIsIncorrect() {
     // Arrange
-    ChangePasswordRequest request = new ChangePasswordRequest("wrongPassword", "newPassword123");
+    ChangePasswordRequest request =
+        new ChangePasswordRequest(testEmail, "wrongPassword", "newPassword123");
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<ChangePasswordRequest> entity = new HttpEntity<>(request, headers);
@@ -126,7 +128,8 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 400 quando nova senha tem menos de 8 caracteres")
   void shouldReturn400WhenNewPasswordIsTooShort() {
     // Arrange
-    ChangePasswordRequest request = new ChangePasswordRequest("oldPassword123", "short");
+    ChangePasswordRequest request =
+        new ChangePasswordRequest(testEmail, "oldPassword123", "short");
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<ChangePasswordRequest> entity = new HttpEntity<>(request, headers);
@@ -149,7 +152,8 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 400 quando nova senha é igual à atual")
   void shouldReturn400WhenNewPasswordIsSameAsCurrent() {
     // Arrange
-    ChangePasswordRequest request = new ChangePasswordRequest("oldPassword123", "oldPassword123");
+    ChangePasswordRequest request =
+        new ChangePasswordRequest(testEmail, "oldPassword123", "oldPassword123");
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<ChangePasswordRequest> entity = new HttpEntity<>(request, headers);
@@ -170,7 +174,8 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 400 quando campos estão vazios")
   void shouldReturn400WhenFieldsAreEmpty() {
     // Arrange
-    ChangePasswordRequest request = new ChangePasswordRequest("", "");
+    ChangePasswordRequest request =
+        new ChangePasswordRequest("", "", "");
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(accessToken);
     HttpEntity<ChangePasswordRequest> entity = new HttpEntity<>(request, headers);
@@ -192,7 +197,8 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 401 quando usuário não está autenticado")
   void shouldReturn401WhenUserIsNotAuthenticated() {
     // Arrange
-    ChangePasswordRequest request = new ChangePasswordRequest("oldPassword123", "newPassword123");
+    ChangePasswordRequest request =
+        new ChangePasswordRequest(testEmail, "oldPassword123", "newPassword123");
     HttpEntity<ChangePasswordRequest> entity = new HttpEntity<>(request);
 
     // Act
@@ -208,7 +214,8 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 401 quando token JWT é inválido")
   void shouldReturn401WhenJwtTokenIsInvalid() {
     // Arrange
-    ChangePasswordRequest request = new ChangePasswordRequest("oldPassword123", "newPassword123");
+    ChangePasswordRequest request =
+        new ChangePasswordRequest(testEmail, "oldPassword123", "newPassword123");
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth("invalid.token.here");
     HttpEntity<ChangePasswordRequest> entity = new HttpEntity<>(request, headers);

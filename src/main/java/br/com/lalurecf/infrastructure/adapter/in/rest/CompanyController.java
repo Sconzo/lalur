@@ -91,9 +91,9 @@ public class CompanyController {
   /**
    * Lista empresas com filtros e paginação.
    *
-   * @param globalSearch busca global em todos os campos
-   * @param cnpjFilter filtro por CNPJ específico
-   * @param razaoSocialFilter filtro por Razão Social específica
+   * @param strSearch busca global em todos os campos
+   * @param cnpjFilters lista de CNPJs para filtro (comparação exata)
+   * @param razaoSocialFilters lista de Razões Sociais para filtro (comparação exata)
    * @param includeInactive incluir empresas inativas
    * @param pageable configuração de paginação
    * @return página de empresas
@@ -101,15 +101,15 @@ public class CompanyController {
   @GetMapping
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Page<CompanyResponse>> listCompanies(
-      @RequestParam(required = false) String globalSearch,
-      @RequestParam(required = false) String cnpjFilter,
-      @RequestParam(required = false) String razaoSocialFilter,
+      @RequestParam(required = false) String strSearch,
+      @RequestParam(required = false) List<String> cnpjFilters,
+      @RequestParam(required = false) List<String> razaoSocialFilters,
       @RequestParam(defaultValue = "false") boolean includeInactive,
       @PageableDefault(size = 20, sort = "razaoSocial") Pageable pageable) {
 
     log.info("GET /companies - Listando empresas");
     Page<CompanyResponse> response = listCompaniesUseCase.list(
-        globalSearch, cnpjFilter, razaoSocialFilter, includeInactive, pageable);
+        strSearch, cnpjFilters, razaoSocialFilters, includeInactive, pageable);
     return ResponseEntity.ok(response);
   }
 

@@ -169,9 +169,6 @@ class CompanyContextFilterTest {
     company.setId(id);
     company.setCnpj(CNPJ.of("12345678901234"));
     company.setRazaoSocial("Test Company");
-    company.setCnae("1234-5/67");
-    company.setQualificacaoPessoaJuridica("Sociedade Empresária Limitada");
-    company.setNaturezaJuridica("206-2 - Sociedade Empresária Limitada");
     company.setPeriodoContabil(LocalDate.of(2024, 1, 1));
     company.setStatus(Status.ACTIVE);
     return company;
