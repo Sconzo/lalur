@@ -10,8 +10,8 @@ COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
-# Baixar dependências (camada cacheada)
-RUN ./mvnw dependency:go-offline
+# Dar permissão de execução ao mvnw e baixar dependências
+RUN chmod +x ./mvnw && ./mvnw dependency:go-offline
 
 # Copiar código fonte
 COPY src src
