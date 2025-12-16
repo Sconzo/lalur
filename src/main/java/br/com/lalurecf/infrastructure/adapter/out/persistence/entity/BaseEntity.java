@@ -57,7 +57,7 @@ public abstract class BaseEntity {
   protected LocalDateTime createdAt;
 
   @LastModifiedDate
-  @Column(name = "atualizado_em", nullable = false)
+  @Column(name = "atualizado_em")
   protected LocalDateTime updatedAt;
 
   @CreatedBy
