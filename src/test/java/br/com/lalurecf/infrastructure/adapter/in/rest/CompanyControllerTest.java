@@ -3,7 +3,6 @@ package br.com.lalurecf.infrastructure.adapter.in.rest;
 import br.com.lalurecf.application.port.out.CnpjData;
 import br.com.lalurecf.application.port.out.CnpjSearchPort;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.UserJpaRepository;
-import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.anyString;
+import java.util.Optional;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -103,13 +103,11 @@ class CompanyControllerTest {
   }
 
   @Test
-  @DisplayName("Should return 403 Forbidden when user is not authenticated")
-  void shouldReturn403WhenNotAuthenticated() throws Exception {
+  @DisplayName("Should return 401 Unauthorized when user is not authenticated")
+  void shouldReturn401WhenNotAuthenticated() throws Exception {
     // Act & Assert
-    // Note: Current SecurityConfig returns 403 instead of 401 when not authenticated
-    // This is due to missing authentication entry point configuration
     mockMvc.perform(get("/companies/search-cnpj/{cnpj}", "00000000000191")
             .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isUnauthorized());
   }
 }
