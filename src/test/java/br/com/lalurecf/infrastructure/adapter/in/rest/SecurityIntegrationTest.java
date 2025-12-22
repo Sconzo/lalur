@@ -24,7 +24,7 @@ class SecurityIntegrationTest extends IntegrationTestBase {
   @Test
   @DisplayName("Deve retornar 401 ao acessar endpoint protegido sem token")
   void shouldReturn401WithoutToken() throws Exception {
-    mockMvc.perform(get("/api/v1/test/protected")).andExpect(status().isUnauthorized());
+    mockMvc.perform(get("/test/protected")).andExpect(status().isUnauthorized());
   }
 
   @Test
@@ -35,7 +35,7 @@ class SecurityIntegrationTest extends IntegrationTestBase {
 
     // Act & Assert
     mockMvc
-        .perform(get("/api/v1/test/protected").header("Authorization", "Bearer " + token))
+        .perform(get("/test/protected").header("Authorization", "Bearer " + token))
         .andExpect(status().isOk());
   }
 
@@ -43,7 +43,7 @@ class SecurityIntegrationTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 401 ao acessar endpoint protegido com token inválido")
   void shouldReturn401WithInvalidToken() throws Exception {
     mockMvc
-        .perform(get("/api/v1/test/protected").header("Authorization", "Bearer invalid_token"))
+        .perform(get("/test/protected").header("Authorization", "Bearer invalid_token"))
         .andExpect(status().isUnauthorized());
   }
 
@@ -55,7 +55,7 @@ class SecurityIntegrationTest extends IntegrationTestBase {
 
     // Act & Assert
     mockMvc
-        .perform(get("/api/v1/test/admin").header("Authorization", "Bearer " + token))
+        .perform(get("/test/admin").header("Authorization", "Bearer " + token))
         .andExpect(status().isForbidden());
   }
 
@@ -67,13 +67,13 @@ class SecurityIntegrationTest extends IntegrationTestBase {
 
     // Act & Assert
     mockMvc
-        .perform(get("/api/v1/test/admin").header("Authorization", "Bearer " + token))
+        .perform(get("/test/admin").header("Authorization", "Bearer " + token))
         .andExpect(status().isOk());
   }
 
   @Test
   @DisplayName("Deve permitir acesso ao health check sem autenticação")
   void shouldAllowHealthCheckWithoutAuthentication() throws Exception {
-    mockMvc.perform(get("/api/v1/actuator/health")).andExpect(status().isOk());
+    mockMvc.perform(get("/actuator/health")).andExpect(status().isOk());
   }
 }

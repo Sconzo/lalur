@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * <p>Configura um container PostgreSQL compartilhado para todos os testes de integração. Todos os
  * testes de integração devem estender esta classe.
  */
-@SpringBootTest
+@SpringBootTest(properties = {"spring.profiles.active=test"})
 @Testcontainers
 public abstract class IntegrationTestBase {
 
