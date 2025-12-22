@@ -15,7 +15,9 @@ import lombok.experimental.SuperBuilder;
  *
  * <p>Estrutura flat (sem hierarquia parent/child) conforme ADR-001 v2.0.
  * Tipos comuns: "CNAE", "QUALIFICACAO_PJ", "NATUREZA_JURIDICA", "IRPJ", "CSLL", "GERAL".
- * <p>Constraint: codigo + tipo devem ser únicos em conjunto (permite mesmo código para tipos diferentes).
+ *
+ * <p>Constraint: codigo + tipo devem ser únicos em conjunto
+ * (permite mesmo código para tipos diferentes).
  */
 @Entity
 @Table(
