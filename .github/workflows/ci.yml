@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t lalurecf-app:latest .
+        run: docker build -t lalurecf-app:latest -f docker/Dockerfile .
 
       - name: Save Docker image
         run: docker save lalurecf-app:latest | gzip > lalurecf-app.tar.gz
