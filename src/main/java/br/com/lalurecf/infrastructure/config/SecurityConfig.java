@@ -108,6 +108,8 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/auth/login", "/auth/change-password")
                     .permitAll()
+                    .requestMatchers("/public/**")
+                    .permitAll()
                     .requestMatchers("/actuator/health")
                     .permitAll()
                     .requestMatchers(
