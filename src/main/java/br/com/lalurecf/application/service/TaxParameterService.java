@@ -6,9 +6,10 @@ import br.com.lalurecf.application.port.in.taxparameter.GetTaxParameterUseCase;
 import br.com.lalurecf.application.port.in.taxparameter.ListTaxParametersUseCase;
 import br.com.lalurecf.application.port.in.taxparameter.ToggleTaxParameterStatusUseCase;
 import br.com.lalurecf.application.port.in.taxparameter.UpdateTaxParameterUseCase;
+import br.com.lalurecf.application.port.out.TaxParameterRepositoryPort;
 import br.com.lalurecf.domain.enums.Status;
+import br.com.lalurecf.domain.model.TaxParameter;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.CreateTaxParameterRequest;
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterResponse;
@@ -39,7 +40,7 @@ public class TaxParameterService implements
     ToggleTaxParameterStatusUseCase,
     GetTaxParameterTypesUseCase {
 
-  private final TaxParameterJpaRepository taxParameterRepository;
+  private final TaxParameterRepositoryPort taxParameterRepository;
 
   @Override
   @Transactional
@@ -47,23 +48,24 @@ public class TaxParameterService implements
     log.info("Criando parâmetro tributário com código: {}", request.code());
 
     // Verificar se código já existe
-    taxParameterRepository.findByCodigo(request.code())
+    taxParameterRepository.findByCode(request.code())
         .ifPresent(existing -> {
           log.warn("Tentativa de criar parâmetro com código duplicado: {}", request.code());
           throw new IllegalArgumentException(
               "Já existe um parâmetro tributário com o código: " + request.code());
         });
 
-    // Criar entidade
-    TaxParameterEntity entity = new TaxParameterEntity();
-    entity.setCodigo(request.code());
-    entity.setTipo(request.type());
-    entity.setDescricao(request.description());
-    entity.setStatus(Status.ACTIVE);
+    // Criar domain model
+    TaxParameter taxParameter = TaxParameter.builder()
+        .code(request.code())
+        .type(request.type())
+        .description(request.description())
+        .status(Status.ACTIVE)
+        .build();
 
-    TaxParameterEntity saved = taxParameterRepository.save(entity);
+    TaxParameter saved = taxParameterRepository.save(taxParameter);
     log.info("Parâmetro tributário criado com sucesso. ID: {}, Código: {}",
-        saved.getId(), saved.getCodigo());
+        saved.getId(), saved.getCode());
 
     return toResponse(saved);
   }
@@ -80,7 +82,7 @@ public class TaxParameterService implements
         type, search, includeInactive);
 
     Specification<TaxParameterEntity> spec = buildSpecification(type, search, includeInactive);
-    Page<TaxParameterEntity> page = taxParameterRepository.findAll(spec, pageable);
+    Page<TaxParameter> page = taxParameterRepository.findAll(spec, pageable);
 
     return page.map(this::toResponse);
   }
@@ -90,13 +92,13 @@ public class TaxParameterService implements
   public TaxParameterResponse getById(Long id) {
     log.info("Buscando parâmetro tributário por ID: {}", id);
 
-    TaxParameterEntity entity = taxParameterRepository.findById(id)
+    TaxParameter taxParameter = taxParameterRepository.findById(id)
         .orElseThrow(() -> {
           log.warn("Parâmetro tributário não encontrado. ID: {}", id);
           return new EntityNotFoundException("Parâmetro tributário não encontrado com ID: " + id);
         });
 
-    return toResponse(entity);
+    return toResponse(taxParameter);
   }
 
   @Override
@@ -104,15 +106,15 @@ public class TaxParameterService implements
   public TaxParameterResponse update(Long id, UpdateTaxParameterRequest request) {
     log.info("Atualizando parâmetro tributário ID: {}", id);
 
-    TaxParameterEntity entity = taxParameterRepository.findById(id)
+    TaxParameter taxParameter = taxParameterRepository.findById(id)
         .orElseThrow(() -> {
           log.warn("Tentativa de atualizar parâmetro inexistente. ID: {}", id);
           return new EntityNotFoundException("Parâmetro tributário não encontrado com ID: " + id);
         });
 
     // Verificar se o novo código já existe em outro registro
-    if (!entity.getCodigo().equals(request.code())) {
-      taxParameterRepository.findByCodigo(request.code())
+    if (!taxParameter.getCode().equals(request.code())) {
+      taxParameterRepository.findByCode(request.code())
           .ifPresent(existing -> {
             log.warn("Tentativa de alterar código para um já existente: {}", request.code());
             throw new IllegalArgumentException(
@@ -121,14 +123,16 @@ public class TaxParameterService implements
     }
 
     // Atualizar campos
-    entity.setCodigo(request.code());
-    entity.setTipo(request.type());
-    entity.setDescricao(request.description());
+    TaxParameter updated = taxParameter.toBuilder()
+        .code(request.code())
+        .type(request.type())
+        .description(request.description())
+        .build();
 
-    TaxParameterEntity updated = taxParameterRepository.save(entity);
+    TaxParameter saved = taxParameterRepository.save(updated);
     log.info("Parâmetro tributário atualizado com sucesso. ID: {}", id);
 
-    return toResponse(updated);
+    return toResponse(saved);
   }
 
   @Override
@@ -136,15 +140,17 @@ public class TaxParameterService implements
   public ToggleStatusResponse toggleStatus(Long id, Status newStatus) {
     log.info("Alterando status do parâmetro tributário ID: {} para {}", id, newStatus);
 
-    TaxParameterEntity entity = taxParameterRepository.findById(id)
+    TaxParameter taxParameter = taxParameterRepository.findById(id)
         .orElseThrow(() -> {
           log.warn("Tentativa de alterar status de parâmetro inexistente. ID: {}", id);
           return new EntityNotFoundException("Parâmetro tributário não encontrado com ID: " + id);
         });
 
-    Status oldStatus = entity.getStatus();
-    entity.setStatus(newStatus);
-    taxParameterRepository.save(entity);
+    Status oldStatus = taxParameter.getStatus();
+    TaxParameter updated = taxParameter.toBuilder()
+        .status(newStatus)
+        .build();
+    taxParameterRepository.save(updated);
 
     log.info("Status do parâmetro ID: {} alterado de {} para {}", id, oldStatus, newStatus);
 
@@ -160,7 +166,7 @@ public class TaxParameterService implements
   public List<String> getTypes(String search) {
     log.info("Buscando tipos de parâmetros tributários. Search: {}", search);
 
-    List<String> types = taxParameterRepository.findDistinctTipos();
+    List<String> types = taxParameterRepository.findDistinctTypes();
 
     // Aplicar filtro de busca se fornecido
     if (search != null && !search.isBlank()) {
@@ -213,17 +219,17 @@ public class TaxParameterService implements
   }
 
   /**
-   * Converte entidade para DTO de resposta.
+   * Converte domain model para DTO de resposta.
    */
-  private TaxParameterResponse toResponse(TaxParameterEntity entity) {
+  private TaxParameterResponse toResponse(TaxParameter taxParameter) {
     return new TaxParameterResponse(
-        entity.getId(),
-        entity.getCodigo(),
-        entity.getTipo(),
-        entity.getDescricao(),
-        entity.getStatus(),
-        entity.getCreatedAt(),
-        entity.getUpdatedAt()
+        taxParameter.getId(),
+        taxParameter.getCode(),
+        taxParameter.getType(),
+        taxParameter.getDescription(),
+        taxParameter.getStatus(),
+        taxParameter.getCreatedAt(),
+        taxParameter.getUpdatedAt()
     );
   }
 }

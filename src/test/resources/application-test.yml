@@ -3,9 +3,10 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+    defer-datasource-initialization: true
   sql:
     init:
-      mode: never
+      mode: always
 
 jwt:
   secret: test-secret-key-for-testing-minimum-256-bits-required-for-hs256-algorithm

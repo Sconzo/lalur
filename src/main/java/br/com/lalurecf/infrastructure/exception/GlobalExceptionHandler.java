@@ -4,6 +4,7 @@ import br.com.lalurecf.domain.exception.BusinessRuleViolationException;
 import br.com.lalurecf.domain.exception.InvalidCredentialsException;
 import br.com.lalurecf.domain.exception.InvalidCurrentPasswordException;
 import br.com.lalurecf.domain.exception.MustChangePasswordException;
+import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -168,5 +169,43 @@ public class GlobalExceptionHandler {
             .message(ex.getMessage())
             .build();
     return ResponseEntity.badRequest().body(error);
+  }
+
+  /**
+   * Handler para IllegalArgumentException.
+   *
+   * @param ex exceção lançada
+   * @return response 400 Bad Request
+   */
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+    log.warn("Argumento inválido: {}", ex.getMessage());
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("Bad Request")
+            .message(ex.getMessage())
+            .build();
+    return ResponseEntity.badRequest().body(error);
+  }
+
+  /**
+   * Handler para EntityNotFoundException (JPA).
+   *
+   * @param ex exceção lançada
+   * @return response 404 Not Found
+   */
+  @ExceptionHandler(EntityNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleEntityNotFound(EntityNotFoundException ex) {
+    log.warn("Entidade não encontrada: {}", ex.getMessage());
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.NOT_FOUND.value())
+            .error("Not Found")
+            .message(ex.getMessage())
+            .build();
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
   }
 }

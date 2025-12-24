@@ -18,6 +18,7 @@ import java.util.Optional;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -109,5 +110,146 @@ class CompanyControllerTest {
     mockMvc.perform(get("/companies/search-cnpj/{cnpj}", "00000000000191")
             .contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isUnauthorized());
+  }
+
+  // ==================================================================================
+  // Período Contábil Tests
+  // ==================================================================================
+
+  @Test
+  @DisplayName("Should update período contábil successfully")
+  @WithMockUser(username = "admin@gmail.com", roles = "ADMIN")
+  @org.springframework.test.context.jdbc.Sql("/reset-periodo-contabil.sql")
+  @org.springframework.transaction.annotation.Transactional
+  void shouldUpdatePeriodoContabilSuccessfully() throws Exception {
+    // Arrange - use yesterday's date
+    // @Sql resets company ID 1 período contábil to 2025-12-01 before test
+    String yesterday = java.time.LocalDate.now().minusDays(1).toString();
+    String requestBody = String.format("""
+        {
+          "novoPeriodoContabil": "%s"
+        }
+        """, yesterday);
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/periodo-contabil", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.message").exists())
+        .andExpect(jsonPath("$.periodoContabilAnterior").exists())
+        .andExpect(jsonPath("$.periodoContabilNovo").value(yesterday));
+  }
+
+  @Test
+  @DisplayName("Should return 400 when período contábil is in the future")
+  @WithMockUser(username = "admin@gmail.com", roles = "ADMIN")
+  void shouldReturn400WhenPeriodoContabilIsInFuture() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "novoPeriodoContabil": "2099-12-31"
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/periodo-contabil", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("Should return 400 when período contábil retroacts")
+  @WithMockUser(username = "admin@gmail.com", roles = "ADMIN")
+  void shouldReturn400WhenPeriodoContabilRetroacts() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "novoPeriodoContabil": "2020-01-01"
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/periodo-contabil", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("Should return 403 when non-ADMIN tries to update período contábil")
+  @WithMockUser(roles = "CONTADOR")
+  void shouldReturn403WhenNonAdminTriesToUpdatePeriodoContabil() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "novoPeriodoContabil": "2024-06-30"
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/periodo-contabil", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("Should get período contábil audit history successfully")
+  @WithMockUser(roles = "ADMIN")
+  void shouldGetPeriodoContabilAuditHistorySuccessfully() throws Exception {
+    // Act & Assert
+    mockMvc.perform(get("/companies/{id}/periodo-contabil/audit", 1L)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray());
+  }
+
+  @Test
+  @DisplayName("Should return 403 when non-ADMIN tries to get audit history")
+  @WithMockUser(roles = "CONTADOR")
+  void shouldReturn403WhenNonAdminTriesToGetAuditHistory() throws Exception {
+    // Act & Assert
+    mockMvc.perform(get("/companies/{id}/periodo-contabil/audit", 1L)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("Should return 404 when updating período contábil for non-existent company")
+  @WithMockUser(roles = "ADMIN")
+  void shouldReturn404WhenUpdatingPeriodoContabilForNonExistentCompany() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "novoPeriodoContabil": "2024-06-30"
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/periodo-contabil", 99999L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  @DisplayName("Should return 400 when novoPeriodoContabil is null")
+  @WithMockUser(roles = "ADMIN")
+  void shouldReturn400WhenNovoPeriodoContabilIsNull() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "novoPeriodoContabil": null
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/periodo-contabil", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isBadRequest());
   }
 }

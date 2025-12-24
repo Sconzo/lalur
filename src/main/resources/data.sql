@@ -73,90 +73,58 @@ INSERT INTO tb_parametros_tributarios (
     tipo,
     descricao,
     status,
-    criado_em
+    criado_em,
+    criado_por
 ) VALUES
-    ('1', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('2', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('3', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('4', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('5', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('6', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('7', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('8', 'FORMA_TRIB_LUCRO_REAL', 'Imune de IRPJ', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('9', 'FORMA_TRIB_LUCRO_REAL', 'Isento do IRPJ', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('A', 'PERIODO_DE_APURACAO', 'Anual', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('T', 'PERIODO_DE_APURACAO', 'Trimestral', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('01', 'QUALIFICACAO_PESSOA_JURIDICA', 'PJ em Geral', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('02', 'QUALIFICACAO_PESSOA_JURIDICA', 'PJ Componente do Sistema Financeiro', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('03', 'QUALIFICACAO_PESSOA_JURIDICA', 'Sociedades Seguradoras, de Capitalização e Previdência', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de caixa', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('2', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de competência', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1', 'ESTIMATIVA_MENSAL', 'Receita Bruta e Acréscimos', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('2', 'ESTIMATIVA_MENSAL', 'Balanço/Balancete de Suspensão/Redução', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('P', 'FORMA_TRIBUTACAO', 'Presumido', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('R', 'FORMA_TRIBUTACAO', 'Real', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('A', 'FORMA_TRIBUTACAO', 'Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1015', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Federal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1023', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Estadual ou do Distrito Federal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1031', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Municipal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1040', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Federal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1058', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Estadual ou do Distrito Federal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1066', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Municipal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1074', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Federal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1082', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Estadual', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1104', 'NATUREZA_JURIDICA', 'Autarquia Federal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1112', 'NATUREZA_JURIDICA', 'Autarquia Estadual ou do Distrito Federal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('1120', 'NATUREZA_JURIDICA', 'Autarquia Municipal', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0111301', 'CNAE', 'Cultivo de arroz', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0111302', 'CNAE', 'Cultivo de milho', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0111303', 'CNAE', 'Cultivo de trigo', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0111399', 'CNAE', 'Cultivo de outros cereais não especificados anteriormente', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0112101', 'CNAE', 'Cultivo de algodão herbáceo', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0112102', 'CNAE', 'Cultivo de juta', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0112199', 'CNAE', 'Cultivo de outras fibras de lavoura temporária não especificadas anteriormente', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0113000', 'CNAE', 'Cultivo de cana-de-açúcar', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0114800', 'CNAE', 'Cultivo de fumo', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0115600', 'CNAE', 'Cultivo de soja', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0116401', 'CNAE', 'Cultivo de amendoim', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('0116402', 'CNAE', 'Cultivo de girassol', 'ACTIVE', CURRENT_TIMESTAMP)
+    ('1', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('2', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('3', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('4', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('5', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('6', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('7', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('8', 'FORMA_TRIB_LUCRO_REAL', 'Imune de IRPJ', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('9', 'FORMA_TRIB_LUCRO_REAL', 'Isento do IRPJ', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('A', 'PERIODO_DE_APURACAO', 'Anual', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('T', 'PERIODO_DE_APURACAO', 'Trimestral', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('01', 'QUALIFICACAO_PESSOA_JURIDICA', 'PJ em Geral', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('02', 'QUALIFICACAO_PESSOA_JURIDICA', 'PJ Componente do Sistema Financeiro', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('03', 'QUALIFICACAO_PESSOA_JURIDICA', 'Sociedades Seguradoras, de Capitalização e Previdência', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de caixa', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('2', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de competência', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1', 'ESTIMATIVA_MENSAL', 'Receita Bruta e Acréscimos', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('2', 'ESTIMATIVA_MENSAL', 'Balanço/Balancete de Suspensão/Redução', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('P', 'FORMA_TRIBUTACAO', 'Presumido', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('R', 'FORMA_TRIBUTACAO', 'Real', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('A', 'FORMA_TRIBUTACAO', 'Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1015', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Federal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1023', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Estadual ou do Distrito Federal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1031', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Municipal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1040', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Federal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1058', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Estadual ou do Distrito Federal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1066', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Municipal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1074', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Federal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1082', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Estadual', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1104', 'NATUREZA_JURIDICA', 'Autarquia Federal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1112', 'NATUREZA_JURIDICA', 'Autarquia Estadual ou do Distrito Federal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('1120', 'NATUREZA_JURIDICA', 'Autarquia Municipal', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0111301', 'CNAE', 'Cultivo de arroz', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0111302', 'CNAE', 'Cultivo de milho', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0111303', 'CNAE', 'Cultivo de trigo', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0111399', 'CNAE', 'Cultivo de outros cereais não especificados anteriormente', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0112101', 'CNAE', 'Cultivo de algodão herbáceo', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0112102', 'CNAE', 'Cultivo de juta', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0112199', 'CNAE', 'Cultivo de outras fibras de lavoura temporária não especificadas anteriormente', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0113000', 'CNAE', 'Cultivo de cana-de-açúcar', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0114800', 'CNAE', 'Cultivo de fumo', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0115600', 'CNAE', 'Cultivo de soja', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0116401', 'CNAE', 'Cultivo de amendoim', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('0116402', 'CNAE', 'Cultivo de girassol', 'ACTIVE', CURRENT_TIMESTAMP, 1)
 ON CONFLICT (codigo, tipo) DO NOTHING;
 
 -- ============================================================================
 -- Valores Parametros Temporais - Seed Data
 -- ============================================================================
--- Inserir períodos temporais de exemplo (mensais e trimestrais) para
--- associações empresa-parâmetro existentes
-
--- Função auxiliar para inserir períodos mensais para um ano específico
-DO $$
-DECLARE
-    assoc_id BIGINT;
-    ano_base INTEGER := 2024;
-    mes_num INTEGER;
-    trimestre_num INTEGER;
-BEGIN
-    -- Para cada associação empresa-parâmetro existente
-    FOR assoc_id IN
-        SELECT id FROM tb_empresa_parametros_tributarios LIMIT 3
-    LOOP
-        -- Inserir 12 meses do ano base
-        FOR mes_num IN 1..12 LOOP
-            INSERT INTO tb_valores_parametros_temporais
-                (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
-            VALUES
-                (assoc_id, ano_base, mes_num, NULL, 'ACTIVE', CURRENT_TIMESTAMP, 1)
-            ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
-        END LOOP;
-
-        -- Inserir 4 trimestres do ano base
-        FOR trimestre_num IN 1..4 LOOP
-            INSERT INTO tb_valores_parametros_temporais
-                (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
-            VALUES
-                (assoc_id, ano_base, NULL, trimestre_num, 'ACTIVE', CURRENT_TIMESTAMP, 1)
-            ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
-        END LOOP;
-
-        RAISE NOTICE 'Períodos criados para associação ID % (12 meses + 4 trimestres)', assoc_id;
-    END LOOP;
-END $$;
+-- Nota: Seed data for tb_valores_parametros_temporais can be added manually
+-- or through application logic as needed. PL/pgSQL blocks in data.sql
+-- cause parsing issues with Spring Boot's script executor.
