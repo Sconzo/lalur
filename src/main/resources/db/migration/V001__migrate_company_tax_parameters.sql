@@ -21,16 +21,19 @@ CREATE TABLE IF NOT EXISTS tb_parametros_tributarios (
     id BIGSERIAL PRIMARY KEY,
 
     -- Identificação
-    codigo VARCHAR(100) NOT NULL UNIQUE,
+    codigo VARCHAR(100) NOT NULL,
     tipo VARCHAR(50) NOT NULL,
     descricao TEXT,
 
     -- Campos de auditoria
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
     criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    criado_por VARCHAR(255),
-    atualizado_por VARCHAR(255)
+    atualizado_em TIMESTAMP,
+    criado_por BIGINT NOT NULL DEFAULT 1,
+    atualizado_por BIGINT,
+
+    -- Composite unique constraint (codigo + tipo must be unique together)
+    CONSTRAINT uk_parametros_codigo_tipo UNIQUE (codigo, tipo)
 );
 
 CREATE INDEX IF NOT EXISTS idx_parametros_tributarios_tipo

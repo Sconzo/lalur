@@ -19,9 +19,9 @@ public class Company {
   private Status status;
   // CNAE, Qualificação PJ e Natureza Jurídica são gerenciados como
   // parâmetros tributários (ADR-001 v2.0)
-  private String createdBy;
+  private Long createdBy;
   private LocalDateTime createdAt;
-  private String updatedBy;
+  private Long updatedBy;
   private LocalDateTime updatedAt;
 
   /**
@@ -35,8 +35,8 @@ public class Company {
    */
   public Company(Long id, CNPJ cnpj, String razaoSocial,
                  LocalDate periodoContabil, Status status,
-                 String createdBy, LocalDateTime createdAt,
-                 String updatedBy, LocalDateTime updatedAt) {
+                 Long createdBy, LocalDateTime createdAt,
+                 Long updatedBy, LocalDateTime updatedAt) {
     this.id = id;
     this.cnpj = cnpj;
     this.razaoSocial = razaoSocial;
@@ -88,11 +88,11 @@ public class Company {
     this.status = status;
   }
 
-  public String getCreatedBy() {
+  public Long getCreatedBy() {
     return createdBy;
   }
 
-  public void setCreatedBy(String createdBy) {
+  public void setCreatedBy(Long createdBy) {
     this.createdBy = createdBy;
   }
 
@@ -104,11 +104,11 @@ public class Company {
     this.createdAt = createdAt;
   }
 
-  public String getUpdatedBy() {
+  public Long getUpdatedBy() {
     return updatedBy;
   }
 
-  public void setUpdatedBy(String updatedBy) {
+  public void setUpdatedBy(Long updatedBy) {
     this.updatedBy = updatedBy;
   }
 

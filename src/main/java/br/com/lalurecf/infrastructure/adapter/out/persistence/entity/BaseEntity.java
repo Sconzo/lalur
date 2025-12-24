@@ -61,11 +61,11 @@ public abstract class BaseEntity {
   protected LocalDateTime updatedAt;
 
   @CreatedBy
-  @Column(name = "criado_por", updatable = false)
-  protected String createdBy;
+  @Column(name = "criado_por", nullable = false, updatable = false)
+  protected Long createdBy;
 
   @LastModifiedBy
   @Column(name = "atualizado_por")
-  protected String updatedBy;
+  protected Long updatedBy;
 
 }

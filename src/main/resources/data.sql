@@ -8,6 +8,36 @@
 -- para evitar duplicação de dados em reinicializações.
 -- ============================================================================
 
+-- Criar usuário SYSTEM com ID fixo = 1 (usado para auditoria sem autenticação)
+-- Senha desabilitada (hash inválido) - usuário não pode fazer login
+INSERT INTO tb_usuario (
+    id,
+    primeiro_nome,
+    sobrenome,
+    email,
+    senha,
+    funcao,
+    status,
+    deve_mudar_senha,
+    criado_em,
+    criado_por
+) VALUES (
+    1,
+    'Sistema',
+    'Automático',
+    'system@lalurecf.com.br',
+    '$2a$12$disabled.password.hash.not.usable',
+    'ADMIN',
+    'ACTIVE',
+    false,
+    CURRENT_TIMESTAMP,
+    1
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Resetar sequence para não conflitar com ID fixo
+SELECT setval('tb_usuario_id_seq', (SELECT COALESCE(MAX(id), 1) FROM tb_usuario), true);
+
 -- Criar usuário ADMIN padrão se não existir
 -- Senha padrão: Admin@123 (hash BCrypt com strength 12)
 -- IMPORTANTE: Altere a senha após o primeiro login!
@@ -19,7 +49,8 @@ INSERT INTO tb_usuario (
     funcao,
     status,
     deve_mudar_senha,
-    criado_em
+    criado_em,
+    criado_por
 ) VALUES (
     'Admin',
     'Sistema',
@@ -28,7 +59,8 @@ INSERT INTO tb_usuario (
     'ADMIN',
     'ACTIVE',
     true,
-    CURRENT_TIMESTAMP
+    CURRENT_TIMESTAMP,
+    1
 )
 ON CONFLICT (email) DO NOTHING;
 
@@ -43,15 +75,15 @@ INSERT INTO tb_parametros_tributarios (
     status,
     criado_em
 ) VALUES
-    ('1', 'LUCRO_REAL', 'Lucro Real', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('2', 'LUCRO_REAL', 'Lucro Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('3', 'LUCRO_REAL', 'Lucro Presumido/Real', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('4', 'LUCRO_REAL', 'Lucro Presumido/Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('5', 'LUCRO_REAL', 'Lucro Presumido', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('6', 'LUCRO_REAL', 'Lucro Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('7', 'LUCRO_REAL', 'Lucro Presumido/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('8', 'LUCRO_REAL', 'Imune de IRPJ', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('9', 'LUCRO_REAL', 'Isento do IRPJ', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('1', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('2', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('3', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('4', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('5', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('6', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('7', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('8', 'FORMA_TRIB_LUCRO_REAL', 'Imune de IRPJ', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('9', 'FORMA_TRIB_LUCRO_REAL', 'Isento do IRPJ', 'ACTIVE', CURRENT_TIMESTAMP),
     ('A', 'PERIODO_DE_APURACAO', 'Anual', 'ACTIVE', CURRENT_TIMESTAMP),
     ('T', 'PERIODO_DE_APURACAO', 'Trimestral', 'ACTIVE', CURRENT_TIMESTAMP),
     ('01', 'QUALIFICACAO_PESSOA_JURIDICA', 'PJ em Geral', 'ACTIVE', CURRENT_TIMESTAMP),
@@ -61,9 +93,9 @@ INSERT INTO tb_parametros_tributarios (
     ('2', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de competência', 'ACTIVE', CURRENT_TIMESTAMP),
     ('1', 'ESTIMATIVA_MENSAL', 'Receita Bruta e Acréscimos', 'ACTIVE', CURRENT_TIMESTAMP),
     ('2', 'ESTIMATIVA_MENSAL', 'Balanço/Balancete de Suspensão/Redução', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('T', 'FORMA_TRIBUTACAO', 'Presumido', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('T', 'FORMA_TRIBUTACAO', 'Real', 'ACTIVE', CURRENT_TIMESTAMP),
-    ('T', 'FORMA_TRIBUTACAO', 'Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('P', 'FORMA_TRIBUTACAO', 'Presumido', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('R', 'FORMA_TRIBUTACAO', 'Real', 'ACTIVE', CURRENT_TIMESTAMP),
+    ('A', 'FORMA_TRIBUTACAO', 'Arbitrado', 'ACTIVE', CURRENT_TIMESTAMP),
     ('1015', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Federal', 'ACTIVE', CURRENT_TIMESTAMP),
     ('1023', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Estadual ou do Distrito Federal', 'ACTIVE', CURRENT_TIMESTAMP),
     ('1031', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Municipal', 'ACTIVE', CURRENT_TIMESTAMP),
@@ -88,3 +120,43 @@ INSERT INTO tb_parametros_tributarios (
     ('0116401', 'CNAE', 'Cultivo de amendoim', 'ACTIVE', CURRENT_TIMESTAMP),
     ('0116402', 'CNAE', 'Cultivo de girassol', 'ACTIVE', CURRENT_TIMESTAMP)
 ON CONFLICT (codigo, tipo) DO NOTHING;
+
+-- ============================================================================
+-- Valores Parametros Temporais - Seed Data
+-- ============================================================================
+-- Inserir períodos temporais de exemplo (mensais e trimestrais) para
+-- associações empresa-parâmetro existentes
+
+-- Função auxiliar para inserir períodos mensais para um ano específico
+DO $$
+DECLARE
+    assoc_id BIGINT;
+    ano_base INTEGER := 2024;
+    mes_num INTEGER;
+    trimestre_num INTEGER;
+BEGIN
+    -- Para cada associação empresa-parâmetro existente
+    FOR assoc_id IN
+        SELECT id FROM tb_empresa_parametros_tributarios LIMIT 3
+    LOOP
+        -- Inserir 12 meses do ano base
+        FOR mes_num IN 1..12 LOOP
+            INSERT INTO tb_valores_parametros_temporais
+                (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
+            VALUES
+                (assoc_id, ano_base, mes_num, NULL, 'ACTIVE', CURRENT_TIMESTAMP, 1)
+            ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+        END LOOP;
+
+        -- Inserir 4 trimestres do ano base
+        FOR trimestre_num IN 1..4 LOOP
+            INSERT INTO tb_valores_parametros_temporais
+                (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
+            VALUES
+                (assoc_id, ano_base, NULL, trimestre_num, 'ACTIVE', CURRENT_TIMESTAMP, 1)
+            ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+        END LOOP;
+
+        RAISE NOTICE 'Períodos criados para associação ID % (12 meses + 4 trimestres)', assoc_id;
+    END LOOP;
+END $$;
