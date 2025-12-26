@@ -4,6 +4,7 @@ import br.com.lalurecf.infrastructure.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * <p>Configura autenticação stateless usando JWT, BCrypt para hashing de senhas e autorização
  * baseada em roles.
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -56,17 +58,16 @@ public class SecurityConfig {
    */
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration configuration = new CorsConfiguration();
-
     // Origens permitidas (configurável via env var)
     List<String> origins = Arrays.asList(allowedOrigins.split(","));
 
     // Log para debug
-    System.out.println("=== CORS Configuration ===");
-    System.out.println("Allowed Origins from env: " + allowedOrigins);
-    System.out.println("Parsed Origins: " + origins);
-    System.out.println("==========================");
+    log.info("=== CORS Configuration ===");
+    log.info("Allowed Origins from env: {}", allowedOrigins);
+    log.info("Parsed Origins: {}", origins);
+    log.info("==========================");
 
+    CorsConfiguration configuration = new CorsConfiguration();
     configuration.setAllowedOrigins(origins);
 
     // Métodos HTTP permitidos
