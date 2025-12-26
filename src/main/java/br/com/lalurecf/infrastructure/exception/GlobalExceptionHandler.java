@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 public class GlobalExceptionHandler {
 
+  public static final String BAD_REQUEST = "Bad Request";
+
   /**
    * Handler para InvalidCredentialsException.
    *
@@ -48,7 +50,7 @@ public class GlobalExceptionHandler {
    * Handler para MustChangePasswordException.
    *
    * @param ex exceção lançada
-   * @return response 403 Forbidden
+   * @return response 400 Bad Request
    */
   @ExceptionHandler(MustChangePasswordException.class)
   public ResponseEntity<ErrorResponse> handleMustChangePassword(MustChangePasswordException ex) {
@@ -56,11 +58,11 @@ public class GlobalExceptionHandler {
     ErrorResponse error =
         ErrorResponse.builder()
             .timestamp(LocalDateTime.now())
-            .status(HttpStatus.FORBIDDEN.value())
-            .error("Forbidden")
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("Password Change Required")
             .message(ex.getMessage())
             .build();
-    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    return ResponseEntity.badRequest().body(error);
   }
 
   /**
@@ -106,7 +108,7 @@ public class GlobalExceptionHandler {
         ErrorResponse.builder()
             .timestamp(LocalDateTime.now())
             .status(HttpStatus.BAD_REQUEST.value())
-            .error("Bad Request")
+            .error(BAD_REQUEST)
             .message(ex.getMessage())
             .build();
     return ResponseEntity.badRequest().body(error);
@@ -126,7 +128,7 @@ public class GlobalExceptionHandler {
         ErrorResponse.builder()
             .timestamp(LocalDateTime.now())
             .status(HttpStatus.BAD_REQUEST.value())
-            .error("Bad Request")
+            .error(BAD_REQUEST)
             .message(ex.getMessage())
             .build();
     return ResponseEntity.badRequest().body(error);
@@ -184,7 +186,7 @@ public class GlobalExceptionHandler {
         ErrorResponse.builder()
             .timestamp(LocalDateTime.now())
             .status(HttpStatus.BAD_REQUEST.value())
-            .error("Bad Request")
+            .error(BAD_REQUEST)
             .message(ex.getMessage())
             .build();
     return ResponseEntity.badRequest().body(error);
