@@ -60,6 +60,13 @@ public class SecurityConfig {
 
     // Origens permitidas (configurável via env var)
     List<String> origins = Arrays.asList(allowedOrigins.split(","));
+
+    // Log para debug
+    System.out.println("=== CORS Configuration ===");
+    System.out.println("Allowed Origins from env: " + allowedOrigins);
+    System.out.println("Parsed Origins: " + origins);
+    System.out.println("==========================");
+
     configuration.setAllowedOrigins(origins);
 
     // Métodos HTTP permitidos
@@ -106,13 +113,11 @@ public class SecurityConfig {
                     }))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/auth/login", "/auth/change-password")
-                    .permitAll()
-                    .requestMatchers("/public/**")
-                    .permitAll()
-                    .requestMatchers("/actuator/health")
-                    .permitAll()
-                    .requestMatchers(
+                auth.requestMatchers(
+                        "/auth/login",
+                        "/auth/change-password",
+                        "/public/**",
+                        "/actuator/health",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/v3/api-docs/**",
