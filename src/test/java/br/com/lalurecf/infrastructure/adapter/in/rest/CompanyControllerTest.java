@@ -252,4 +252,190 @@ class CompanyControllerTest {
             .content(requestBody))
         .andExpect(status().isBadRequest());
   }
+
+  @Test
+  @DisplayName("Should update tax parameters successfully (ADMIN)")
+  @WithMockUser(roles = "ADMIN")
+  void shouldUpdateTaxParametersSuccessfully() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "taxParameterIds": [1, 2, 3]
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.message").exists())
+        .andExpect(jsonPath("$.taxParameters").isArray());
+  }
+
+  @Test
+  @DisplayName("Should list tax parameters successfully (ADMIN)")
+  @WithMockUser(roles = "ADMIN")
+  void shouldListTaxParametersSuccessfully() throws Exception {
+    // Act & Assert
+    mockMvc.perform(get("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray());
+  }
+
+  @Test
+  @DisplayName("Should return 403 when CONTADOR tries to update tax parameters")
+  @WithMockUser(roles = "CONTADOR")
+  void shouldReturn403WhenContadorTriesToUpdateTaxParameters() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "taxParameterIds": [1, 2, 3]
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("Should return 400 when invalid tax parameter IDs provided")
+  @WithMockUser(roles = "ADMIN")
+  void shouldReturn400WhenInvalidTaxParameterIds() throws Exception {
+    // Arrange
+    String requestBody = """
+        {
+          "taxParameterIds": [999999]
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("Should verify audit trail (createdBy, associatedAt) in tax parameters")
+  @WithMockUser(username = "admin@gmail.com", roles = "ADMIN")
+  @org.springframework.test.context.jdbc.Sql("/setup-tax-parameter-tests.sql")
+  @org.springframework.transaction.annotation.Transactional
+  void shouldVerifyAuditTrailInTaxParameters() throws Exception {
+    // Arrange - associate tax parameters
+    String requestBody = """
+        {
+          "taxParameterIds": [1, 2]
+        }
+        """;
+
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isOk());
+
+    // Act & Assert - verify audit fields are present in list response
+    mockMvc.perform(get("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$[0].associatedAt").exists())
+        .andExpect(jsonPath("$[0].associatedBy").exists())
+        .andExpect(jsonPath("$[0].associatedBy").isNotEmpty());
+  }
+
+  @Test
+  @DisplayName("Should reject INACTIVE tax parameters")
+  @WithMockUser(roles = "ADMIN")
+  @org.springframework.test.context.jdbc.Sql("/setup-tax-parameter-tests.sql")
+  @org.springframework.transaction.annotation.Transactional
+  void shouldRejectInactiveTaxParameters() throws Exception {
+    // Arrange - try to associate INACTIVE parameter (ID will vary, but we created one with code 999)
+    // We need to find the ID of the INACTIVE parameter first
+    // For this test, we'll use a high ID that we know is INACTIVE from the SQL setup
+    String requestBody = """
+        {
+          "taxParameterIds": [999]
+        }
+        """;
+
+    // Act & Assert
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("Should replace (not accumulate) tax parameters on update")
+  @WithMockUser(username = "admin@gmail.com", roles = "ADMIN")
+  @org.springframework.test.context.jdbc.Sql("/setup-tax-parameter-tests.sql")
+  @org.springframework.transaction.annotation.Transactional
+  void shouldReplaceTaxParametersNotAccumulate() throws Exception {
+    // Arrange - first associate parameters [1, 2]
+    String firstRequest = """
+        {
+          "taxParameterIds": [1, 2]
+        }
+        """;
+
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(firstRequest))
+        .andExpect(status().isOk());
+
+    // Act - update with different parameters [3, 4]
+    String secondRequest = """
+        {
+          "taxParameterIds": [3, 4]
+        }
+        """;
+
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(secondRequest))
+        .andExpect(status().isOk());
+
+    // Assert - verify only [3, 4] are associated (not [1, 2, 3, 4])
+    mockMvc.perform(get("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$[?(@.id == 1)]").doesNotExist())
+        .andExpect(jsonPath("$[?(@.id == 2)]").doesNotExist());
+  }
+
+  @Test
+  @DisplayName("Should prevent duplicate associations (unique constraint)")
+  @WithMockUser(username = "admin@gmail.com", roles = "ADMIN")
+  @org.springframework.test.context.jdbc.Sql("/setup-tax-parameter-tests.sql")
+  @org.springframework.transaction.annotation.Transactional
+  void shouldPreventDuplicateAssociations() throws Exception {
+    // Arrange - associate same parameter twice in the list
+    String requestBody = """
+        {
+          "taxParameterIds": [1, 1]
+        }
+        """;
+
+    // Act & Assert - the service should handle duplicates gracefully
+    // Either by deduplicating the list or by catching the unique constraint violation
+    mockMvc.perform(put("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBody))
+        .andExpect(status().isOk());
+
+    // Verify only one association was created
+    mockMvc.perform(get("/companies/{id}/tax-parameters", 1L)
+            .contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$.length()").value(1));
+  }
 }

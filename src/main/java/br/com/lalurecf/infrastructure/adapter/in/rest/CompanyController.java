@@ -1,10 +1,16 @@
 package br.com.lalurecf.infrastructure.adapter.in.rest;
 
 import br.com.lalurecf.application.port.in.company.CreateCompanyUseCase;
+import br.com.lalurecf.application.port.in.company.CreateTemporalValueUseCase;
+import br.com.lalurecf.application.port.in.company.DeleteTemporalValueUseCase;
+import br.com.lalurecf.application.port.in.company.GetCompanyTaxParametersTimelineUseCase;
 import br.com.lalurecf.application.port.in.company.GetCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ListCompaniesUseCase;
+import br.com.lalurecf.application.port.in.company.ListCompanyTaxParametersUseCase;
+import br.com.lalurecf.application.port.in.company.ListTemporalValuesUseCase;
 import br.com.lalurecf.application.port.in.company.SelectCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ToggleCompanyStatusUseCase;
+import br.com.lalurecf.application.port.in.company.UpdateCompanyTaxParametersUseCase;
 import br.com.lalurecf.application.port.in.company.UpdateCompanyUseCase;
 import br.com.lalurecf.application.port.out.CnpjData;
 import br.com.lalurecf.application.port.out.CnpjSearchPort;
@@ -16,15 +22,21 @@ import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyListItemResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.CreateCompanyRequest;
+import br.com.lalurecf.infrastructure.dto.company.CreateTemporalValueRequest;
 import br.com.lalurecf.infrastructure.dto.company.FilterOptionsResponse;
 import br.com.lalurecf.infrastructure.dto.company.PeriodoContabilAuditResponse;
 import br.com.lalurecf.infrastructure.dto.company.SelectCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.SelectCompanyResponse;
+import br.com.lalurecf.infrastructure.dto.company.TaxParameterSummary;
+import br.com.lalurecf.infrastructure.dto.company.TemporalValueResponse;
+import br.com.lalurecf.infrastructure.dto.company.TimelineResponse;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilResponse;
+import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersResponse;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -36,6 +48,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -79,6 +92,12 @@ public class CompanyController {
       updatePeriodoContabilUseCase;
   private final br.com.lalurecf.application.port.in.company.GetPeriodoContabilAuditUseCase
       getPeriodoContabilAuditUseCase;
+  private final UpdateCompanyTaxParametersUseCase updateCompanyTaxParametersUseCase;
+  private final ListCompanyTaxParametersUseCase listCompanyTaxParametersUseCase;
+  private final CreateTemporalValueUseCase createTemporalValueUseCase;
+  private final ListTemporalValuesUseCase listTemporalValuesUseCase;
+  private final DeleteTemporalValueUseCase deleteTemporalValueUseCase;
+  private final GetCompanyTaxParametersTimelineUseCase getCompanyTaxParametersTimelineUseCase;
 
   /**
    * Cria uma nova empresa.
@@ -414,6 +433,157 @@ public class CompanyController {
     log.info("GET /companies/{}/periodo-contabil/audit - Buscando histórico", id);
     List<PeriodoContabilAuditResponse> response =
         getPeriodoContabilAuditUseCase.getAuditHistory(id);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Atualiza a lista de parâmetros tributários associados a uma empresa.
+   *
+   * @param id ID da empresa
+   * @param request lista de IDs dos parâmetros tributários
+   * @return resposta com a lista atualizada
+   */
+  @PutMapping("/{id}/tax-parameters")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<UpdateTaxParametersResponse> updateTaxParameters(
+      @PathVariable Long id,
+      @Valid @RequestBody UpdateTaxParametersRequest request) {
+
+    log.info("PUT /companies/{}/tax-parameters - Atualizando parâmetros tributários", id);
+    UpdateTaxParametersResponse response =
+        updateCompanyTaxParametersUseCase.updateTaxParameters(id, request);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Lista os parâmetros tributários associados a uma empresa.
+   *
+   * @param id ID da empresa
+   * @return lista de parâmetros tributários
+   */
+  @GetMapping("/{id}/tax-parameters")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<List<TaxParameterSummary>> listTaxParameters(@PathVariable Long id) {
+
+    log.info("GET /companies/{}/tax-parameters - Listando parâmetros tributários", id);
+    List<TaxParameterSummary> response = listCompanyTaxParametersUseCase.listTaxParameters(id);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Cria um novo valor temporal para um parâmetro tributário da empresa.
+   *
+   * <p>Apenas ADMIN pode criar valores temporais.
+   * Validações:
+   * <ul>
+   *   <li>XOR constraint: exatamente UM campo (mes OU trimestre) deve estar preenchido
+   *   <li>mes deve estar entre 1-12
+   *   <li>trimestre deve estar entre 1-4
+   *   <li>Associação empresa-parâmetro deve existir
+   * </ul>
+   *
+   * @param companyId ID da empresa
+   * @param taxParameterId ID do parâmetro tributário
+   * @param request dados do valor temporal (ano, mes ou trimestre)
+   * @return valor temporal criado com status 201 CREATED
+   */
+  @PostMapping("/{companyId}/tax-parameters/{taxParameterId}/temporal-values")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<TemporalValueResponse> createTemporalValue(
+      @PathVariable Long companyId,
+      @PathVariable Long taxParameterId,
+      @Valid @RequestBody CreateTemporalValueRequest request) {
+
+    log.info(
+        "POST /companies/{}/tax-parameters/{}/temporal-values - Criando valor temporal",
+        companyId,
+        taxParameterId);
+
+    TemporalValueResponse response =
+        createTemporalValueUseCase.createTemporalValue(companyId, taxParameterId, request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  /**
+   * Lista valores temporais de um parâmetro tributário da empresa.
+   *
+   * <p>Apenas ADMIN pode listar valores temporais.
+   * Pode filtrar por ano específico.
+   *
+   * @param companyId ID da empresa
+   * @param taxParameterId ID do parâmetro tributário
+   * @param ano filtro opcional por ano
+   * @return lista de valores temporais
+   */
+  @GetMapping("/{companyId}/tax-parameters/{taxParameterId}/temporal-values")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<List<TemporalValueResponse>> listTemporalValues(
+      @PathVariable Long companyId,
+      @PathVariable Long taxParameterId,
+      @RequestParam(required = false) Integer ano) {
+
+    log.info(
+        "GET /companies/{}/tax-parameters/{}/temporal-values - "
+            + "Listando valores temporais (ano: {})",
+        companyId,
+        taxParameterId,
+        ano);
+
+    List<TemporalValueResponse> response =
+        listTemporalValuesUseCase.listTemporalValues(companyId, taxParameterId, ano);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Deleta um valor temporal específico.
+   *
+   * <p>Apenas ADMIN pode deletar valores temporais.
+   *
+   * @param companyId ID da empresa
+   * @param taxParameterId ID do parâmetro tributário
+   * @param valorId ID do valor temporal
+   * @return status 204 NO_CONTENT se deletado com sucesso
+   */
+  @DeleteMapping("/{companyId}/tax-parameters/{taxParameterId}/temporal-values/{valorId}")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<Void> deleteTemporalValue(
+      @PathVariable Long companyId,
+      @PathVariable Long taxParameterId,
+      @PathVariable Long valorId) {
+
+    log.info(
+        "DELETE /companies/{}/tax-parameters/{}/temporal-values/{} - Deletando valor temporal",
+        companyId,
+        taxParameterId,
+        valorId);
+
+    deleteTemporalValueUseCase.deleteTemporalValue(companyId, taxParameterId, valorId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Obtém timeline agregada de parâmetros tributários da empresa.
+   *
+   * <p>Apenas ADMIN pode acessar timeline.
+   * Agrupa parâmetros por tipo e mostra os períodos em que cada um está ativo.
+   *
+   * @param companyId ID da empresa
+   * @param ano ano fiscal para a timeline
+   * @return timeline agrupada por tipo de parâmetro
+   */
+  @GetMapping("/{companyId}/tax-parameters-timeline")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<TimelineResponse> getTaxParametersTimeline(
+      @PathVariable Long companyId,
+      @RequestParam Integer ano) {
+
+    log.info(
+        "GET /companies/{}/tax-parameters-timeline?ano={} - Obtendo timeline",
+        companyId,
+        ano);
+
+    TimelineResponse response =
+        getCompanyTaxParametersTimelineUseCase.getTimeline(companyId, ano);
     return ResponseEntity.ok(response);
   }
 

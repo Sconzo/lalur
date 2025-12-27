@@ -6,6 +6,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -60,4 +62,59 @@ public class ValorParametroTemporalEntity extends BaseEntity {
 
   @Column(name = "trimestre")
   private Integer trimestre;
+
+  /**
+   * Valida periodicidade antes de persistir ou atualizar.
+   *
+   * <p>Constraint XOR: Exatamente UM campo deve estar preenchido (mes OU trimestre).
+   *
+   * <p>Validações:
+   *
+   * <ul>
+   *   <li>mes: deve estar entre 1 e 12
+   *   <li>trimestre: deve estar entre 1 e 4
+   * </ul>
+   *
+   * @throws IllegalStateException se ambos ou nenhum campo estiverem preenchidos
+   * @throws IllegalArgumentException se valores estiverem fora do range permitido
+   */
+  @PrePersist
+  @PreUpdate
+  private void validatePeriodicity() {
+    boolean hasMonth = mes != null;
+    boolean hasQuarter = trimestre != null;
+
+    // XOR constraint: exatamente UM campo preenchido
+    if (hasMonth == hasQuarter) { // Ambos null ou ambos preenchidos
+      throw new IllegalStateException(
+          "Deve ter mes OU trimestre, nunca ambos ou nenhum");
+    }
+
+    // Validar range de mes (1-12)
+    if (mes != null && (mes < 1 || mes > 12)) {
+      throw new IllegalArgumentException("Mês deve estar entre 1 e 12");
+    }
+
+    // Validar range de trimestre (1-4)
+    if (trimestre != null && (trimestre < 1 || trimestre > 4)) {
+      throw new IllegalArgumentException("Trimestre deve estar entre 1 e 4");
+    }
+  }
+
+  /**
+   * Formata o período para exibição.
+   *
+   * @return String formatada como "Jan/2024" (mensal) ou "1º Tri/2024" (trimestral)
+   */
+  public String formatPeriodo() {
+    if (mes != null) {
+      String[] meses = {
+        "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+        "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+      };
+      return String.format("%s/%d", meses[mes - 1], ano);
+    } else {
+      return String.format("%dº Tri/%d", trimestre, ano);
+    }
+  }
 }

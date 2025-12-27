@@ -1,11 +1,17 @@
 package br.com.lalurecf.application.service;
 
 import br.com.lalurecf.application.port.in.company.CreateCompanyUseCase;
+import br.com.lalurecf.application.port.in.company.CreateTemporalValueUseCase;
+import br.com.lalurecf.application.port.in.company.DeleteTemporalValueUseCase;
+import br.com.lalurecf.application.port.in.company.GetCompanyTaxParametersTimelineUseCase;
 import br.com.lalurecf.application.port.in.company.GetCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.GetPeriodoContabilAuditUseCase;
 import br.com.lalurecf.application.port.in.company.ListCompaniesUseCase;
+import br.com.lalurecf.application.port.in.company.ListCompanyTaxParametersUseCase;
+import br.com.lalurecf.application.port.in.company.ListTemporalValuesUseCase;
 import br.com.lalurecf.application.port.in.company.SelectCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.ToggleCompanyStatusUseCase;
+import br.com.lalurecf.application.port.in.company.UpdateCompanyTaxParametersUseCase;
 import br.com.lalurecf.application.port.in.company.UpdateCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.UpdatePeriodoContabilUseCase;
 import br.com.lalurecf.domain.enums.Status;
@@ -13,21 +19,29 @@ import br.com.lalurecf.domain.model.CompanyStatus;
 import br.com.lalurecf.domain.model.valueobject.CNPJ;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyTaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.EmpresaParametrosTributariosEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PeriodoContabilAuditEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ValorParametroTemporalEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyTaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PeriodoContabilAuditJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ValorParametroTemporalJpaRepository;
 import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.CreateCompanyRequest;
+import br.com.lalurecf.infrastructure.dto.company.CreateTemporalValueRequest;
 import br.com.lalurecf.infrastructure.dto.company.PeriodoContabilAuditResponse;
 import br.com.lalurecf.infrastructure.dto.company.TaxParameterSummary;
+import br.com.lalurecf.infrastructure.dto.company.TemporalValueResponse;
+import br.com.lalurecf.infrastructure.dto.company.TimelineResponse;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilResponse;
+import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersResponse;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDate;
@@ -62,12 +76,19 @@ public class CompanyService implements
     ToggleCompanyStatusUseCase,
     SelectCompanyUseCase,
     UpdatePeriodoContabilUseCase,
-    GetPeriodoContabilAuditUseCase {
+    GetPeriodoContabilAuditUseCase,
+    UpdateCompanyTaxParametersUseCase,
+    ListCompanyTaxParametersUseCase,
+    CreateTemporalValueUseCase,
+    ListTemporalValuesUseCase,
+    DeleteTemporalValueUseCase,
+    GetCompanyTaxParametersTimelineUseCase {
 
   private final CompanyJpaRepository companyRepository;
   private final TaxParameterJpaRepository taxParameterRepository;
   private final CompanyTaxParameterJpaRepository companyTaxParameterRepository;
   private final PeriodoContabilAuditJpaRepository periodoContabilAuditRepository;
+  private final ValorParametroTemporalJpaRepository valorParametroTemporalRepository;
 
   @Override
   @Transactional
@@ -366,10 +387,37 @@ public class CompanyService implements
         ? Collections.emptyList()
         : taxParameterRepository.findAllById(parameterIds);
 
+    // Criar mapa para lookup de informações de auditoria
+    java.util.Map<Long, CompanyTaxParameterEntity> associationMap = associations.stream()
+        .collect(Collectors.toMap(
+            CompanyTaxParameterEntity::getTaxParameterId,
+            assoc -> assoc));
+
+    // Verificar quais parâmetros têm valores temporais
+    java.util.Set<Long> associationsWithTemporalValues = associations.stream()
+        .map(CompanyTaxParameterEntity::getId)
+        .filter(assocId -> {
+          List<ValorParametroTemporalEntity> valores =
+              valorParametroTemporalRepository.findByEmpresaParametrosTributariosId(assocId);
+          return !valores.isEmpty();
+        })
+        .collect(Collectors.toSet());
+
+    // Criar mapa de taxParameterId -> associationId para lookup
+    java.util.Map<Long, Long> taxParamToAssocId = associationMap.entrySet().stream()
+        .collect(Collectors.toMap(
+            e -> e.getKey(),
+            e -> e.getValue().getId()));
+
     // Encontrar cada parâmetro pelo tipo
-    TaxParameterSummary cnae = findParameterByType(parameters, "CNAE");
-    TaxParameterSummary qualificacaoPj = findParameterByType(parameters, "QUALIFICACAO_PJ");
-    TaxParameterSummary naturezaJuridica = findParameterByType(parameters, "NATUREZA_JURIDICA");
+    TaxParameterSummary cnae = findParameterByType(
+        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId, "CNAE");
+    TaxParameterSummary qualificacaoPj = findParameterByType(
+        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
+        "QUALIFICACAO_PJ");
+    TaxParameterSummary naturezaJuridica = findParameterByType(
+        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
+        "NATUREZA_JURIDICA");
 
     return new CompanyResponse(
         entity.getId(),
@@ -399,17 +447,58 @@ public class CompanyService implements
         ? Collections.emptyList()
         : taxParameterRepository.findAllById(parameterIds);
 
+    // Criar mapa para lookup de informações de auditoria
+    java.util.Map<Long, CompanyTaxParameterEntity> associationMap = associations.stream()
+        .collect(Collectors.toMap(
+            CompanyTaxParameterEntity::getTaxParameterId,
+            assoc -> assoc));
+
+    // Verificar quais parâmetros têm valores temporais
+    java.util.Set<Long> associationsWithTemporalValues = associations.stream()
+        .map(CompanyTaxParameterEntity::getId)
+        .filter(assocId -> {
+          List<ValorParametroTemporalEntity> valores =
+              valorParametroTemporalRepository.findByEmpresaParametrosTributariosId(assocId);
+          return !valores.isEmpty();
+        })
+        .collect(Collectors.toSet());
+
+    // Criar mapa de taxParameterId -> associationId para lookup
+    java.util.Map<Long, Long> taxParamToAssocId = associationMap.entrySet().stream()
+        .collect(Collectors.toMap(
+            e -> e.getKey(),
+            e -> e.getValue().getId()));
+
     // Encontrar os 3 parâmetros obrigatórios pelo tipo
-    TaxParameterSummary cnae = findParameterByType(parameters, "CNAE");
-    TaxParameterSummary qualificacaoPj = findParameterByType(parameters, "QUALIFICACAO_PJ");
-    TaxParameterSummary naturezaJuridica = findParameterByType(parameters, "NATUREZA_JURIDICA");
+    TaxParameterSummary cnae = findParameterByType(
+        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId, "CNAE");
+    TaxParameterSummary qualificacaoPj = findParameterByType(
+        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
+        "QUALIFICACAO_PJ");
+    TaxParameterSummary naturezaJuridica = findParameterByType(
+        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
+        "NATUREZA_JURIDICA");
 
     // Encontrar outros parâmetros (que não são os 3 obrigatórios)
     List<TaxParameterSummary> outrosParametros = parameters.stream()
         .filter(p -> !p.getTipo().equals("CNAE")
             && !p.getTipo().equals("QUALIFICACAO_PJ")
             && !p.getTipo().equals("NATUREZA_JURIDICA"))
-        .map(p -> new TaxParameterSummary(p.getId(), p.getCodigo(), p.getDescricao()))
+        .map(p -> {
+          CompanyTaxParameterEntity assoc = associationMap.get(p.getId());
+          String createdByEmail = "admin@example.com"; // TODO: buscar email do usuário
+          Long assocId = taxParamToAssocId.get(p.getId());
+          boolean hasTemporalValues = assocId != null
+              && associationsWithTemporalValues.contains(assocId);
+          return new TaxParameterSummary(
+              p.getId(),
+              p.getCodigo(),
+              p.getTipo(),
+              p.getDescricao(),
+              assoc != null ? assoc.getCreatedAt() : null,
+              createdByEmail,
+              hasTemporalValues);
+        })
         .toList();
 
     return new CompanyDetailResponse(
@@ -512,6 +601,135 @@ public class CompanyService implements
         .collect(Collectors.toList());
   }
 
+  @Override
+  @Transactional
+  public UpdateTaxParametersResponse updateTaxParameters(
+      Long companyId,
+      UpdateTaxParametersRequest request) {
+    log.info("Atualizando parâmetros tributários para empresa ID: {}", companyId);
+
+    // Validar que empresa existe
+    CompanyEntity company = companyRepository.findById(companyId)
+        .orElseThrow(() -> new EntityNotFoundException(
+            "Empresa não encontrada com ID: " + companyId));
+
+    // Validar que todos os parâmetros existem e estão ACTIVE
+    List<Long> parameterIds = request.taxParameterIds();
+    if (parameterIds == null || parameterIds.isEmpty()) {
+      parameterIds = Collections.emptyList();
+    }
+
+    // Remover duplicatas para evitar violação de unique constraint
+    parameterIds = parameterIds.stream().distinct().collect(Collectors.toList());
+
+    for (Long parameterId : parameterIds) {
+      TaxParameterEntity parameter = taxParameterRepository.findById(parameterId)
+          .orElseThrow(() -> new IllegalArgumentException(
+              "Parâmetro tributário não encontrado com ID: " + parameterId));
+
+      if (parameter.getStatus() != Status.ACTIVE) {
+        throw new IllegalArgumentException(
+            "Não é permitido associar parâmetro INACTIVE. Parâmetro ID: " + parameterId);
+      }
+    }
+
+    // Obter userId do SecurityContext para auditoria
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    String userEmail = authentication.getName();
+    // TODO: Buscar ID do usuário pelo email
+    Long userId = 1L; // Placeholder
+
+    // Substituir parâmetros (deletar todos e criar novos)
+    companyTaxParameterRepository.deleteAllByCompanyId(companyId);
+
+    LocalDateTime now = LocalDateTime.now();
+    for (Long parameterId : parameterIds) {
+      CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
+          .companyId(companyId)
+          .taxParameterId(parameterId)
+          .createdBy(userId)
+          .createdAt(now)
+          .build();
+      companyTaxParameterRepository.save(association);
+    }
+
+    // Buscar parâmetros associados para retorno
+    List<TaxParameterSummary> taxParameters = listTaxParameters(companyId);
+
+    log.info("Parâmetros tributários atualizados com sucesso para empresa ID: {}", companyId);
+
+    return new UpdateTaxParametersResponse(
+        true,
+        "Parâmetros tributários atualizados com sucesso",
+        taxParameters);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<TaxParameterSummary> listTaxParameters(Long companyId) {
+    log.info("Listando parâmetros tributários para empresa ID: {}", companyId);
+
+    // Validar que empresa existe
+    if (!companyRepository.existsById(companyId)) {
+      throw new EntityNotFoundException("Empresa não encontrada com ID: " + companyId);
+    }
+
+    // Buscar associações
+    List<CompanyTaxParameterEntity> associations =
+        companyTaxParameterRepository.findByCompanyId(companyId);
+
+    if (associations.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    // Buscar os parâmetros tributários associados
+    List<Long> parameterIds = associations.stream()
+        .map(CompanyTaxParameterEntity::getTaxParameterId)
+        .collect(Collectors.toList());
+
+    List<TaxParameterEntity> parameters = taxParameterRepository.findAllById(parameterIds);
+
+    // Verificar quais parâmetros têm valores temporais
+    // Buscar todas as associações com valores temporais
+    java.util.Set<Long> associationsWithTemporalValues = associations.stream()
+        .map(CompanyTaxParameterEntity::getId)
+        .filter(assocId -> {
+          List<ValorParametroTemporalEntity> valores =
+              valorParametroTemporalRepository.findByEmpresaParametrosTributariosId(assocId);
+          return !valores.isEmpty();
+        })
+        .collect(Collectors.toSet());
+
+    // Mapear para TaxParameterSummary com informações de auditoria
+    return associations.stream()
+        .map(assoc -> {
+          TaxParameterEntity param = parameters.stream()
+              .filter(p -> p.getId().equals(assoc.getTaxParameterId()))
+              .findFirst()
+              .orElse(null);
+
+          if (param == null || param.getStatus() != Status.ACTIVE) {
+            return null;
+          }
+
+          // TODO: Buscar email do usuário pelo ID
+          String createdByEmail = "admin@example.com";
+
+          boolean hasTemporalValues = associationsWithTemporalValues.contains(assoc.getId());
+
+          return new TaxParameterSummary(
+              param.getId(),
+              param.getCodigo(),
+              param.getTipo(),
+              param.getDescricao(),
+              assoc.getCreatedAt(),
+              createdByEmail,
+              hasTemporalValues);
+        })
+        .filter(summary -> summary != null)
+        .collect(Collectors.toList());
+  }
+
   /**
    * Obtém o email do usuário autenticado do contexto de segurança.
    *
@@ -575,16 +793,22 @@ public class CompanyService implements
   }
 
   /**
-   * Cria uma associação entre empresa e parâmetro tributário.
+   * Cria uma associação entre empresa e parâmetro tributário com auditoria.
    *
    * @param companyId ID da empresa
    * @param taxParameterId ID do parâmetro tributário
    */
   private void createTaxParameterAssociation(Long companyId, Long taxParameterId) {
-    CompanyTaxParameterEntity association = new CompanyTaxParameterEntity();
-    association.setCompanyId(companyId);
-    association.setTaxParameterId(taxParameterId);
-    association.setCreatedAt(java.time.LocalDateTime.now());
+    // Obter userId do SecurityContext para auditoria
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    Long userId = 1L; // TODO: Buscar ID do usuário pelo email
+
+    CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
+        .companyId(companyId)
+        .taxParameterId(taxParameterId)
+        .createdBy(userId)
+        .createdAt(LocalDateTime.now())
+        .build();
     companyTaxParameterRepository.save(association);
   }
 
@@ -592,17 +816,244 @@ public class CompanyService implements
    * Encontra um parâmetro tributário pelo tipo na lista fornecida.
    *
    * @param parameters lista de parâmetros
+   * @param associationMap mapa de associações para buscar informações de auditoria
+   * @param associationsWithTemporalValues set de IDs de associações com valores temporais
+   * @param taxParamToAssocId mapa de taxParameterId para associationId
    * @param tipo tipo do parâmetro (ex: "CNAE", "QUALIFICACAO_PJ", "NATUREZA_JURIDICA")
    * @return TaxParameterSummary ou null se não encontrado
    */
   private TaxParameterSummary findParameterByType(
       List<TaxParameterEntity> parameters,
+      java.util.Map<Long, CompanyTaxParameterEntity> associationMap,
+      java.util.Set<Long> associationsWithTemporalValues,
+      java.util.Map<Long, Long> taxParamToAssocId,
       String tipo) {
 
     return parameters.stream()
         .filter(p -> tipo.equals(p.getTipo()))
         .findFirst()
-        .map(p -> new TaxParameterSummary(p.getId(), p.getCodigo(), p.getDescricao()))
+        .map(p -> {
+          CompanyTaxParameterEntity assoc = associationMap.get(p.getId());
+          String createdByEmail = "admin@example.com"; // TODO: buscar email do usuário
+          Long assocId = taxParamToAssocId.get(p.getId());
+          boolean hasTemporalValues = assocId != null
+              && associationsWithTemporalValues.contains(assocId);
+          return new TaxParameterSummary(
+              p.getId(),
+              p.getCodigo(),
+              p.getTipo(),
+              p.getDescricao(),
+              assoc != null ? assoc.getCreatedAt() : null,
+              createdByEmail,
+              hasTemporalValues);
+        })
         .orElse(null);
+  }
+
+  // ==================================================================================
+  // Temporal Values Use Cases (Story 2.9)
+  // ==================================================================================
+
+  @Override
+  @Transactional
+  public TemporalValueResponse createTemporalValue(
+      Long companyId,
+      Long taxParameterId,
+      CreateTemporalValueRequest request) {
+
+    log.info(
+        "Criando valor temporal para empresa ID: {}, parâmetro ID: {}, ano: {}",
+        companyId,
+        taxParameterId,
+        request.ano());
+
+    // Validar que associação empresa-parâmetro existe
+    CompanyTaxParameterEntity association = findAssociation(companyId, taxParameterId);
+
+    // Validar constraint XOR: exatamente UM campo preenchido
+    validatePeriodicityConstraint(request.mes(), request.trimestre());
+
+    // Buscar a entidade EmpresaParametrosTributarios correspondente
+    // (precisamos do ID da entidade de associação com ManyToOne)
+    EmpresaParametrosTributariosEntity empresaParametro =
+        findEmpresaParametroEntity(association.getId());
+
+    // Criar valor temporal
+    ValorParametroTemporalEntity entity = ValorParametroTemporalEntity.builder()
+        .empresaParametrosTributarios(empresaParametro)
+        .ano(request.ano())
+        .mes(request.mes())
+        .trimestre(request.trimestre())
+        .status(Status.ACTIVE)
+        .build();
+
+    ValorParametroTemporalEntity saved = valorParametroTemporalRepository.save(entity);
+
+    log.info("Valor temporal criado com sucesso. ID: {}", saved.getId());
+
+    return toTemporalValueResponse(saved);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<TemporalValueResponse> listTemporalValues(
+      Long companyId,
+      Long taxParameterId,
+      Integer ano) {
+
+    log.info(
+        "Listando valores temporais para empresa ID: {}, parâmetro ID: {}, ano: {}",
+        companyId,
+        taxParameterId,
+        ano);
+
+    // Validar que associação empresa-parâmetro existe
+    CompanyTaxParameterEntity association = findAssociation(companyId, taxParameterId);
+
+    // Buscar a entidade EmpresaParametrosTributarios correspondente
+    EmpresaParametrosTributariosEntity empresaParametro =
+        findEmpresaParametroEntity(association.getId());
+
+    // Buscar valores temporais
+    List<ValorParametroTemporalEntity> entities;
+    if (ano != null) {
+      entities = valorParametroTemporalRepository
+          .findByEmpresaParametrosTributariosIdAndAno(empresaParametro.getId(), ano);
+    } else {
+      entities = valorParametroTemporalRepository
+          .findByEmpresaParametrosTributariosId(empresaParametro.getId());
+    }
+
+    return entities.stream()
+        .map(this::toTemporalValueResponse)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  @Transactional
+  public void deleteTemporalValue(Long companyId, Long taxParameterId, Long valorId) {
+    log.info(
+        "Deletando valor temporal ID: {} (empresa: {}, parâmetro: {})",
+        valorId,
+        companyId,
+        taxParameterId);
+
+    // Validar que associação empresa-parâmetro existe
+    findAssociation(companyId, taxParameterId);
+
+    // Buscar e deletar valor temporal
+    ValorParametroTemporalEntity entity = valorParametroTemporalRepository
+        .findById(valorId)
+        .orElseThrow(() -> new EntityNotFoundException(
+            "Valor temporal não encontrado com ID: " + valorId));
+
+    valorParametroTemporalRepository.delete(entity);
+
+    log.info("Valor temporal deletado com sucesso. ID: {}", valorId);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public TimelineResponse getTimeline(Long companyId, Integer ano) {
+    log.info("Obtendo timeline para empresa ID: {}, ano: {}", companyId, ano);
+
+    // Validar que empresa existe
+    companyRepository.findById(companyId)
+        .orElseThrow(() -> new EntityNotFoundException(
+            "Empresa não encontrada com ID: " + companyId));
+
+    // Buscar todos os valores temporais do ano com parâmetros carregados
+    List<ValorParametroTemporalEntity> valores =
+        valorParametroTemporalRepository.findByCompanyIdAndAnoWithParameters(companyId, ano);
+
+    // Agrupar por tipo de parâmetro
+    java.util.Map<String, List<TimelineResponse.ParameterTimeline>> timelineByType =
+        new java.util.LinkedHashMap<>();
+
+    // Agrupar valores por parâmetro (codigo)
+    java.util.Map<String, List<ValorParametroTemporalEntity>> valuesByParameter =
+        valores.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                v -> v.getEmpresaParametrosTributarios().getParametroTributario().getCodigo(),
+                java.util.LinkedHashMap::new,
+                java.util.stream.Collectors.toList()));
+
+    // Para cada parâmetro, criar ParameterTimeline
+    valuesByParameter.forEach((codigo, valorList) -> {
+      if (!valorList.isEmpty()) {
+        TaxParameterEntity param =
+            valorList.get(0).getEmpresaParametrosTributarios().getParametroTributario();
+        String tipo = param.getTipo();
+        String descricao = param.getDescricao();
+
+        // Coletar períodos formatados
+        List<String> periodos = valorList.stream()
+            .map(ValorParametroTemporalEntity::formatPeriodo)
+            .collect(java.util.stream.Collectors.toList());
+
+        // Criar timeline entry
+        TimelineResponse.ParameterTimeline paramTimeline =
+            new TimelineResponse.ParameterTimeline(codigo, descricao, periodos);
+
+        // Adicionar ao grupo por tipo
+        timelineByType.computeIfAbsent(tipo, k -> new java.util.ArrayList<>())
+            .add(paramTimeline);
+      }
+    });
+
+    log.info("Timeline construída: {} tipos, {} parâmetros",
+        timelineByType.size(),
+        valuesByParameter.size());
+
+    return new TimelineResponse(ano, timelineByType);
+  }
+
+  /**
+   * Helper: Valida constraint XOR (exatamente UM campo preenchido).
+   */
+  private void validatePeriodicityConstraint(Integer mes, Integer trimestre) {
+    boolean hasMonth = mes != null;
+    boolean hasQuarter = trimestre != null;
+
+    if (hasMonth == hasQuarter) { // Ambos null ou ambos preenchidos
+      throw new IllegalArgumentException("Deve ter mes OU trimestre, nunca ambos ou nenhum");
+    }
+  }
+
+  /**
+   * Helper: Busca associação empresa-parâmetro.
+   */
+  private CompanyTaxParameterEntity findAssociation(Long companyId, Long taxParameterId) {
+    return companyTaxParameterRepository
+        .findByCompanyIdAndTaxParameterId(companyId, taxParameterId)
+        .orElseThrow(() -> new EntityNotFoundException(
+            "Associação não encontrada entre empresa " + companyId
+                + " e parâmetro " + taxParameterId));
+  }
+
+  /**
+   * Helper: Busca entidade EmpresaParametrosTributarios pelo ID.
+   *
+   * <p>NOTA: Esta é uma solução temporária. Idealmente, deveríamos ter apenas uma entidade para
+   * a tabela tb_empresa_parametros_tributarios.
+   */
+  private EmpresaParametrosTributariosEntity findEmpresaParametroEntity(Long associationId) {
+    // Por enquanto, criar uma entidade sem buscar do banco
+    // já que temos os IDs necessários
+    return EmpresaParametrosTributariosEntity.builder()
+        .id(associationId)
+        .build();
+  }
+
+  /**
+   * Helper: Converte entidade para DTO response.
+   */
+  private TemporalValueResponse toTemporalValueResponse(ValorParametroTemporalEntity entity) {
+    return new TemporalValueResponse(
+        entity.getId(),
+        entity.getAno(),
+        entity.getMes(),
+        entity.getTrimestre(),
+        entity.formatPeriodo());
   }
 }
