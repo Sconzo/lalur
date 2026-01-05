@@ -661,9 +661,9 @@ public class CompanyService implements
     }
 
     // Obter userId do SecurityContext para auditoria
+    // IMPORTANTE: principal agora é Long (userId) configurado em JwtAuthenticationFilter
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    String userEmail = authentication.getName();
-    Long userId = 1L; // TODO: Buscar ID do usuário pelo email
+    Long userId = (Long) authentication.getPrincipal();
 
     // Remover todas as associações existentes (incluindo valores temporais em cascata)
     companyTaxParameterRepository.deleteAllByCompanyId(companyId);
@@ -809,7 +809,10 @@ public class CompanyService implements
     if (authentication == null || !authentication.isAuthenticated()) {
       return "SYSTEM";
     }
-    return authentication.getName();
+
+    // Principal agora é userId (Long), retornar formatado
+    Long userId = (Long) authentication.getPrincipal();
+    return "user-" + userId; // Formato simplificado para logging
   }
 
   /**
@@ -841,7 +844,7 @@ public class CompanyService implements
         .orElseThrow(() -> new IllegalArgumentException(
             "Parâmetro Qualificação PJ não encontrado com ID: " + qualificacaoPjId));
 
-    if (!"QUALIFICACAO_PJ".equals(qualificacaoPj.getTipo())) {
+    if (!"QUALIFICACAO_PESSOA_JURIDICA".equals(qualificacaoPj.getTipo())) {
       throw new IllegalArgumentException(
           "Parâmetro com ID " + qualificacaoPjId
               + " não é do tipo QUALIFICACAO_PJ (tipo atual: "

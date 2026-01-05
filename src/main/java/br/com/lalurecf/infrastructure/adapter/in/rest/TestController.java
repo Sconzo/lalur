@@ -19,12 +19,13 @@ public class TestController {
    * Endpoint protegido que requer autenticação.
    *
    * @param authentication contexto de autenticação Spring Security
-   * @return mensagem com email do usuário autenticado
+   * @return mensagem com userId do usuário autenticado
    */
   @GetMapping("/protected")
   @PreAuthorize("isAuthenticated()")
   public String protectedEndpoint(Authentication authentication) {
-    return "Access granted for user: " + authentication.getName();
+    Long userId = (Long) authentication.getPrincipal();
+    return "Access granted for userId: " + userId;
   }
 
   /**
@@ -36,6 +37,7 @@ public class TestController {
   @GetMapping("/admin")
   @PreAuthorize("hasRole('ADMIN')")
   public String adminEndpoint(Authentication authentication) {
-    return "Admin access granted for: " + authentication.getName();
+    Long userId = (Long) authentication.getPrincipal();
+    return "Admin access granted for userId: " + userId;
   }
 }
