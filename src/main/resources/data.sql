@@ -18,9 +18,7 @@ INSERT INTO tb_usuario (
     senha,
     funcao,
     status,
-    deve_mudar_senha,
-    criado_em,
-    atualizado_em
+    deve_mudar_senha
 ) VALUES (
     1,
     'Sistema',
@@ -29,9 +27,7 @@ INSERT INTO tb_usuario (
     '$2a$12$disabled.password.hash.not.usable',
     'ADMIN',
     'ACTIVE',
-    false,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
+    false
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -48,9 +44,7 @@ INSERT INTO tb_usuario (
     senha,
     funcao,
     status,
-    deve_mudar_senha,
-    criado_em,
-    atualizado_em
+    deve_mudar_senha
 ) VALUES (
     'Admin',
     'Sistema',
@@ -58,9 +52,7 @@ INSERT INTO tb_usuario (
     '$2a$12$wVByGsG.Ko94ePxBn/dTt.sTzh7RRXYkRH.P2TYKEo.8HjhyvOI9.',
     'ADMIN',
     'ACTIVE',
-    true,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
+    true
 )
 ON CONFLICT (email) DO NOTHING;
 
