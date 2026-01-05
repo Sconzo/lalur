@@ -35,7 +35,7 @@ import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilResponse;
-import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersRequestV2;
 import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersResponse;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
@@ -437,17 +437,41 @@ public class CompanyController {
   }
 
   /**
-   * Atualiza a lista de parâmetros tributários associados a uma empresa.
+   * Atualiza parâmetros tributários de uma empresa (suporta periódicos e globais).
+   *
+   * <p>Suporta dois tipos de parâmetros tributários:
+   * <ul>
+   *   <li><b>Globais:</b> Aplicam-se ao ano inteiro (ex: CNAE, Qualificação PJ)
+   *   <li><b>Periódicos:</b> Precisam de mês/trimestre específico (mudam durante o ano)
+   * </ul>
+   *
+   * <p>Operação atômica: substitui completamente os parâmetros anteriores.
+   *
+   * <p>Exemplo de request:
+   * <pre>{@code
+   * {
+   *   "globalParameterIds": [1, 2, 3],
+   *   "periodicParameters": [
+   *     {
+   *       "taxParameterId": 4,
+   *       "temporalValues": [
+   *         {"ano": 2024, "mes": 1},
+   *         {"ano": 2024, "mes": 2}
+   *       ]
+   *     }
+   *   ]
+   * }
+   * }</pre>
    *
    * @param id ID da empresa
-   * @param request lista de IDs dos parâmetros tributários
-   * @return resposta com a lista atualizada
+   * @param request request contendo parâmetros globais e periódicos
+   * @return resposta com lista atualizada de parâmetros
    */
   @PutMapping("/{id}/tax-parameters")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<UpdateTaxParametersResponse> updateTaxParameters(
       @PathVariable Long id,
-      @Valid @RequestBody UpdateTaxParametersRequest request) {
+      @Valid @RequestBody UpdateTaxParametersRequestV2 request) {
 
     log.info("PUT /companies/{}/tax-parameters - Atualizando parâmetros tributários", id);
     UpdateTaxParametersResponse response =

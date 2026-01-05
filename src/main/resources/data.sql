@@ -130,6 +130,161 @@ ON CONFLICT (codigo, tipo) DO NOTHING;
 -- ============================================================================
 -- Valores Parametros Temporais - Seed Data
 -- ============================================================================
--- Nota: Seed data for tb_valores_parametros_temporais can be added manually
--- or through application logic as needed. PL/pgSQL blocks in data.sql
--- cause parsing issues with Spring Boot's script executor.
+-- Popula tb_valores_parametros_temporais com dados iniciais para empresa exemplo
+-- Inclui períodos mensais para ESTIMATIVA_MENSAL e trimestrais para FORMA_TRIBUTACAO
+
+-- Criar empresa exemplo se não existir
+INSERT INTO tb_empresa (
+    razao_social,
+    cnpj,
+    periodo_contabil,
+    status,
+    criado_em,
+    criado_por,
+    atualizado_em
+) VALUES (
+    'Empresa Exemplo LTDA',
+    '12345678000199',
+    '2024-01-01',
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    1,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (cnpj) DO NOTHING;
+
+-- Associar parâmetros ESTIMATIVA_MENSAL à empresa exemplo
+INSERT INTO tb_empresa_parametros_tributarios (empresa_id, parametro_tributario_id, criado_por, criado_em)
+SELECT
+    e.id,
+    p.id,
+    1,
+    CURRENT_TIMESTAMP
+FROM tb_empresa e
+CROSS JOIN tb_parametros_tributarios p
+WHERE e.cnpj = '12345678000199'
+  AND p.tipo = 'ESTIMATIVA_MENSAL'
+  AND p.codigo IN ('1', '2')
+ON CONFLICT (empresa_id, parametro_tributario_id) DO NOTHING;
+
+-- Associar parâmetros FORMA_TRIBUTACAO à empresa exemplo
+INSERT INTO tb_empresa_parametros_tributarios (empresa_id, parametro_tributario_id, criado_por, criado_em)
+SELECT
+    e.id,
+    p.id,
+    1,
+    CURRENT_TIMESTAMP
+FROM tb_empresa e
+CROSS JOIN tb_parametros_tributarios p
+WHERE e.cnpj = '12345678000199'
+  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND p.codigo IN ('P', 'R', 'A')
+ON CONFLICT (empresa_id, parametro_tributario_id) DO NOTHING;
+
+-- Valores temporais MENSAIS para ESTIMATIVA_MENSAL (código 1) - Ano 2024
+INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
+SELECT
+    ept.id,
+    2024,
+    m.mes,
+    NULL,
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    1
+FROM tb_empresa_parametros_tributarios ept
+JOIN tb_empresa e ON ept.empresa_id = e.id
+JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+CROSS JOIN (
+    SELECT 1 AS mes UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL
+    SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL
+    SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
+    SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+) m
+WHERE e.cnpj = '12345678000199'
+  AND p.tipo = 'ESTIMATIVA_MENSAL'
+  AND p.codigo = '1'
+ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+
+-- Valores temporais MENSAIS para ESTIMATIVA_MENSAL (código 2) - Ano 2024
+INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
+SELECT
+    ept.id,
+    2024,
+    m.mes,
+    NULL,
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    1
+FROM tb_empresa_parametros_tributarios ept
+JOIN tb_empresa e ON ept.empresa_id = e.id
+JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+CROSS JOIN (
+    SELECT 1 AS mes UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL
+    SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL
+    SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
+    SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
+) m
+WHERE e.cnpj = '12345678000199'
+  AND p.tipo = 'ESTIMATIVA_MENSAL'
+  AND p.codigo = '2'
+ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+
+-- Valores temporais TRIMESTRAIS para FORMA_TRIBUTACAO (Presumido) - Anos 2023-2025
+INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
+SELECT
+    ept.id,
+    y.ano,
+    NULL,
+    t.trimestre,
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    1
+FROM tb_empresa_parametros_tributarios ept
+JOIN tb_empresa e ON ept.empresa_id = e.id
+JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
+CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
+WHERE e.cnpj = '12345678000199'
+  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND p.codigo = 'P'
+ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+
+-- Valores temporais TRIMESTRAIS para FORMA_TRIBUTACAO (Real) - Anos 2023-2025
+INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
+SELECT
+    ept.id,
+    y.ano,
+    NULL,
+    t.trimestre,
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    1
+FROM tb_empresa_parametros_tributarios ept
+JOIN tb_empresa e ON ept.empresa_id = e.id
+JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
+CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
+WHERE e.cnpj = '12345678000199'
+  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND p.codigo = 'R'
+ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+
+-- Valores temporais TRIMESTRAIS para FORMA_TRIBUTACAO (Arbitrado) - Anos 2023-2025
+INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
+SELECT
+    ept.id,
+    y.ano,
+    NULL,
+    t.trimestre,
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    1
+FROM tb_empresa_parametros_tributarios ept
+JOIN tb_empresa e ON ept.empresa_id = e.id
+JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
+CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
+WHERE e.cnpj = '12345678000199'
+  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND p.codigo = 'A'
+ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;

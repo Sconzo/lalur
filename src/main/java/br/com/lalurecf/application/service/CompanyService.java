@@ -32,15 +32,17 @@ import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
 import br.com.lalurecf.infrastructure.dto.company.CreateCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.CreateTemporalValueRequest;
+import br.com.lalurecf.infrastructure.dto.company.PeriodicParameterRequest;
 import br.com.lalurecf.infrastructure.dto.company.PeriodoContabilAuditResponse;
 import br.com.lalurecf.infrastructure.dto.company.TaxParameterSummary;
+import br.com.lalurecf.infrastructure.dto.company.TemporalValueInput;
 import br.com.lalurecf.infrastructure.dto.company.TemporalValueResponse;
 import br.com.lalurecf.infrastructure.dto.company.TimelineResponse;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.company.UpdateCompanyRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilRequest;
 import br.com.lalurecf.infrastructure.dto.company.UpdatePeriodoContabilResponse;
-import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersRequest;
+import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersRequestV2;
 import br.com.lalurecf.infrastructure.dto.company.UpdateTaxParametersResponse;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
@@ -601,11 +603,27 @@ public class CompanyService implements
         .collect(Collectors.toList());
   }
 
+  /**
+   * Atualiza parâmetros tributários de uma empresa (suporta periódicos e globais).
+   *
+   * <p>Suporta dois tipos de parâmetros:
+   * <ul>
+   *   <li><b>Globais:</b> Aplicam-se ao ano inteiro
+   *   <li><b>Periódicos:</b> Requerem valores temporais (mês/trimestre específico)
+   * </ul>
+   *
+   * <p>Operação atômica: remove todas as associações existentes e cria novas.
+   *
+   * @param companyId ID da empresa
+   * @param request request contendo parâmetros globais e periódicos
+   * @return response com lista atualizada de parâmetros
+   */
   @Override
   @Transactional
   public UpdateTaxParametersResponse updateTaxParameters(
       Long companyId,
-      UpdateTaxParametersRequest request) {
+      UpdateTaxParametersRequestV2 request) {
+
     log.info("Atualizando parâmetros tributários para empresa ID: {}", companyId);
 
     // Validar que empresa existe
@@ -613,16 +631,25 @@ public class CompanyService implements
         .orElseThrow(() -> new EntityNotFoundException(
             "Empresa não encontrada com ID: " + companyId));
 
+    // Coletar todos os IDs de parâmetros (globais + periódicos)
+    List<Long> globalIds = request.globalParameterIds() != null
+        ? request.globalParameterIds()
+        : Collections.emptyList();
+
+    List<Long> periodicIds = request.periodicParameters() != null
+        ? request.periodicParameters().stream()
+            .map(PeriodicParameterRequest::taxParameterId)
+            .collect(Collectors.toList())
+        : Collections.emptyList();
+
+    // Combinar e remover duplicatas
+    List<Long> allParameterIds = new java.util.ArrayList<>();
+    allParameterIds.addAll(globalIds);
+    allParameterIds.addAll(periodicIds);
+    allParameterIds = allParameterIds.stream().distinct().collect(Collectors.toList());
+
     // Validar que todos os parâmetros existem e estão ACTIVE
-    List<Long> parameterIds = request.taxParameterIds();
-    if (parameterIds == null || parameterIds.isEmpty()) {
-      parameterIds = Collections.emptyList();
-    }
-
-    // Remover duplicatas para evitar violação de unique constraint
-    parameterIds = parameterIds.stream().distinct().collect(Collectors.toList());
-
-    for (Long parameterId : parameterIds) {
+    for (Long parameterId : allParameterIds) {
       TaxParameterEntity parameter = taxParameterRepository.findById(parameterId)
           .orElseThrow(() -> new IllegalArgumentException(
               "Parâmetro tributário não encontrado com ID: " + parameterId));
@@ -636,14 +663,15 @@ public class CompanyService implements
     // Obter userId do SecurityContext para auditoria
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     String userEmail = authentication.getName();
-    // TODO: Buscar ID do usuário pelo email
-    Long userId = 1L; // Placeholder
+    Long userId = 1L; // TODO: Buscar ID do usuário pelo email
 
-    // Substituir parâmetros (deletar todos e criar novos)
+    // Remover todas as associações existentes (incluindo valores temporais em cascata)
     companyTaxParameterRepository.deleteAllByCompanyId(companyId);
 
     LocalDateTime now = LocalDateTime.now();
-    for (Long parameterId : parameterIds) {
+
+    // Criar associações para parâmetros GLOBAIS (sem valores temporais)
+    for (Long parameterId : globalIds) {
       CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
           .companyId(companyId)
           .taxParameterId(parameterId)
@@ -651,6 +679,47 @@ public class CompanyService implements
           .createdAt(now)
           .build();
       companyTaxParameterRepository.save(association);
+      log.debug("Parâmetro global associado: parameterId={}", parameterId);
+    }
+
+    // Criar associações para parâmetros PERIÓDICOS (com valores temporais)
+    if (request.periodicParameters() != null) {
+      for (PeriodicParameterRequest periodicParam : request.periodicParameters()) {
+        Long parameterId = periodicParam.taxParameterId();
+
+        // Criar associação empresa-parâmetro
+        CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
+            .companyId(companyId)
+            .taxParameterId(parameterId)
+            .createdBy(userId)
+            .createdAt(now)
+            .build();
+        CompanyTaxParameterEntity savedAssociation =
+            companyTaxParameterRepository.save(association);
+
+        log.debug("Parâmetro periódico associado: parameterId={}", parameterId);
+
+        // Criar valores temporais
+        EmpresaParametrosTributariosEntity empresaParametro =
+            findEmpresaParametroEntity(savedAssociation.getId());
+
+        for (TemporalValueInput temporalInput : periodicParam.temporalValues()) {
+          // Validar constraint XOR
+          validatePeriodicityConstraint(temporalInput.mes(), temporalInput.trimestre());
+
+          ValorParametroTemporalEntity temporalValue = ValorParametroTemporalEntity.builder()
+              .empresaParametrosTributarios(empresaParametro)
+              .ano(temporalInput.ano())
+              .mes(temporalInput.mes())
+              .trimestre(temporalInput.trimestre())
+              .status(Status.ACTIVE)
+              .build();
+
+          valorParametroTemporalRepository.save(temporalValue);
+          log.debug("Valor temporal criado: parameterId={}, ano={}, mes={}, trimestre={}",
+              parameterId, temporalInput.ano(), temporalInput.mes(), temporalInput.trimestre());
+        }
+      }
     }
 
     // Buscar parâmetros associados para retorno

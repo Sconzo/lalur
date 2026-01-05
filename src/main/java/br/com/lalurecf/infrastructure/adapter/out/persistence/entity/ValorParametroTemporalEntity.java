@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 /**
  * JPA Entity para Valores de Parâmetros Temporais.
@@ -52,6 +54,7 @@ public class ValorParametroTemporalEntity extends BaseEntity {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "empresa_parametros_tributarios_id", nullable = false)
+  @OnDelete(action = OnDeleteAction.CASCADE)
   private EmpresaParametrosTributariosEntity empresaParametrosTributarios;
 
   @Column(name = "ano", nullable = false)
