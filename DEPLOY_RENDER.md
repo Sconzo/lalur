@@ -40,25 +40,29 @@
 
 Na seção **"Environment Variables"**, adicione:
 
-### 3.1. Database (URL Completa)
+### 3.1. Database URL (SIMPLIFICADO)
+
+**Opção 1 - Automática (Recomendado)**: Cole a Internal Database URL diretamente
 
 ```
-SPRING_DATASOURCE_URL = jdbc:postgresql://dpg-xxxxx-a.oregon-postgres.render.com:5432/lalur_ecf
+SPRING_DATASOURCE_URL = postgres://lalur_ecf_user:kASkCCeC9YYZCnLDOdRrZCxLefrl17H2@dpg-d4rim8e3jp1c7391naog-a.oregon-postgres.render.com/lalur_ecf
 ```
 
-**IMPORTANTE**:
-- Copie a **Internal Database URL** do passo 1
-- Converta de formato PostgreSQL para JDBC:
-  - De: `postgres://user:password@host:5432/dbname`
-  - Para: `jdbc:postgresql://host:5432/dbname`
-- Use o hostname INTERNO (dpg-xxxxx.oregon-postgres.render.com)
+✅ **A aplicação converte automaticamente** de `postgres://` para `jdbc:postgresql://`
 
-### 3.2. Database (Credenciais)
+**Opção 2 - Manual**: Converta você mesmo para formato JDBC
 
 ```
-SPRING_DATASOURCE_USERNAME = [copie do database info]
-SPRING_DATASOURCE_PASSWORD = [copie do database info]
+SPRING_DATASOURCE_URL = jdbc:postgresql://dpg-d4rim8e3jp1c7391naog-a.oregon-postgres.render.com:5432/lalur_ecf
 ```
+
+E adicione separadamente:
+```
+SPRING_DATASOURCE_USERNAME = lalur_ecf_user
+SPRING_DATASOURCE_PASSWORD = kASkCCeC9YYZCnLDOdRrZCxLefrl17H2
+```
+
+**💡 Dica**: Use a Opção 1 (mais simples) - apenas cole a URL completa!
 
 ### 3.3. JWT Secret
 
@@ -78,6 +82,41 @@ JWT_SECRET = [cole a chave gerada]
 ```
 SPRING_PROFILES_ACTIVE = prod
 ```
+
+---
+
+## Resumo das Variáveis de Ambiente
+
+**Configuração MÍNIMA (3 variáveis)**:
+
+```
+SPRING_DATASOURCE_URL = postgresql://lalur_ecf_user:kASkCCeC9YYZCnLDOdRrZCxLefrl17H2@dpg-d4rim8e3jp1c7391naog-a/lalur_ecf
+JWT_SECRET = dCacsw1jL8BPJ80kkghLh5nC7+k9Cljjj1V21k0yYYQ/HJGfirJWDl8JyYm2rfVXyHIuvHoQaO9mskF3fg2hEQ==
+SPRING_JPA_HIBERNATE_DDL_AUTO = update
+```
+
+✅ A aplicação extrai automaticamente username e password da URL!
+
+### Sobre SPRING_JPA_HIBERNATE_DDL_AUTO:
+
+**Para o primeiro deploy**:
+```
+SPRING_JPA_HIBERNATE_DDL_AUTO = update
+```
+✅ Cria todas as tabelas automaticamente
+
+**Depois que as tabelas estiverem criadas** (opcional - mais seguro):
+```
+SPRING_JPA_HIBERNATE_DDL_AUTO = validate
+```
+✅ Apenas valida o schema, não altera o banco
+
+**Opções disponíveis**:
+- `update` - Cria/atualiza tabelas (recomendado para primeiro deploy)
+- `validate` - Apenas valida (recomendado após primeiro deploy)
+- `create` - Recria tabelas do zero (CUIDADO: apaga dados!)
+- `create-drop` - Cria e apaga ao fechar (apenas para testes)
+- `none` - Desabilita gerenciamento de schema
 
 ## Passo 4: Deploy
 
