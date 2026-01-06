@@ -47,7 +47,7 @@ public class AuthService implements AuthenticateUserUseCase {
     if (user.getMustChangePassword()) {
       log.warn("Tentativa de login com mustChangePassword=true: {}", request.getEmail());
       throw new MustChangePasswordException(
-          "Você deve trocar sua senha temporária antes de fazer login. ");
+          "Você deve trocar sua senha temporária antes de fazer login.");
     }
 
     String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getRole());

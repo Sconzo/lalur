@@ -60,7 +60,9 @@
 
 **Relacionamentos:**
 - One-to-Many com ChartOfAccount
-- One-to-Many com AccountingData
+- One-to-Many com LancamentoContabil (substitui AccountingData)
+- One-to-Many com ContaParteB
+- One-to-Many com LancamentoParteB
 - One-to-Many com FiscalMovement
 - One-to-Many com TaxCalculationResult
 - One-to-Many com EcfFile
@@ -73,56 +75,135 @@
 
 ---
 
-### ChartOfAccount (Plano de Contas)
+### ChartOfAccount (Plano de Contas Contábil)
 
-**Propósito:** Plano de contas contábil por empresa (estrutura flat, sem hierarquia parent/child para simplicidade).
+**Tabela DB:** `tb_plano_conta_contabil`
+
+**Propósito:** Plano de contas contábil por empresa (estrutura flat, sem hierarquia parent/child para simplicidade), vinculado obrigatoriamente a Contas Referenciais RFB para compliance com estrutura oficial ECF.
 
 **Atributos Principais:**
-- `id`: Long - PK
-- `companyId`: Long - FK para Company
-- `code`: String - Código da conta (ex: "1.01.01.001")
-- `name`: String - Nome da conta (ex: "Caixa")
-- `accountType`: AccountType enum - ATIVO, PASSIVO, PATRIMONIO_LIQUIDO, RECEITA, DESPESA, CUSTO, RESULTADO, COMPENSACAO, ATIVO_RETIFICADORA, PASSIVO_RETIFICADORA (REFINAMENTO v1.0 - expandido)
-- `status`: Status enum
+
+| Campo Java | Coluna DB | Tipo | Descrição |
+|------------|-----------|------|-----------|
+| `id` | `id` | Long | PK, auto-increment |
+| `companyId` | `empresa_id` | Long | FK → tb_empresa (NOT NULL) |
+| `contaReferencialId` | `conta_referencial_id` | Long | FK → tb_conta_referencial (NOT NULL) |
+| `code` | `codigo` | String | Código da conta (ex: "1.01.01.001") |
+| `name` | `nome` | String | Nome da conta (ex: "Caixa") |
+| `accountType` | `tipo` | String | ATIVO, PASSIVO, PATRIMONIO_LIQUIDO, RECEITA, DESPESA, CUSTO, RESULTADO, COMPENSACAO, ATIVO_RETIFICADORA, PASSIVO_RETIFICADORA |
+| `classe` | `classe` | String | Classe contábil ECF (ex: "ATIVO_CIRCULANTE", "RECEITA_BRUTA") |
+| `nivel` | `nivel` | Integer | Nível hierárquico (1-5) para estruturação ECF |
+| `natureza` | `natureza` | String | Natureza da conta: "DEVEDORA" ou "CREDORA" |
+| `afetaResultado` | `afeta_resultado` | Boolean | Indica se conta afeta DRE/resultado |
+| `dedutivel` | `dedutivel` | Boolean | Indica se despesa é dedutível fiscalmente |
+| `fiscalYear` | `ano_fiscal` | Integer | Ano fiscal da conta (para versionamento anual) |
+| `status` | `status` | String | 'ACTIVE' ou 'INACTIVE' |
+| `createdAt` | `criado_em` | Timestamp | Auditoria |
+| `updatedAt` | `atualizado_em` | Timestamp | Auditoria |
+| `createdBy` | `criado_por` | Long | Auditoria (FK User) |
+| `updatedBy` | `atualizado_por` | Long | Auditoria (FK User) |
 
 **Relacionamentos:**
 - Many-to-One com Company
-- One-to-Many com AccountingData
+- **Many-to-One com ContaReferencial (obrigatório)**
+- One-to-Many com LancamentoContabil (como contaDebito e contaCredito)
+- One-to-Many com LancamentoParteB (opcional)
 
 **Constraints:**
-- Unique constraint (companyId + code) - códigos únicos por empresa
+- `UNIQUE (empresa_id, codigo, ano_fiscal)` - códigos únicos por empresa por ano
+- `FK empresa_id REFERENCES tb_empresa(id) ON DELETE CASCADE`
+- `FK conta_referencial_id REFERENCES tb_conta_referencial(id) ON DELETE RESTRICT`
 
 **Decisões de Design:**
-- Estrutura flat (sem parent/child) para simplicidade
-- AccountType expandido no refinamento v1.0 para cobrir todos casos contábeis
+- **Estrutura flat** (sem parent/child) para simplicidade de queries
+- **Vínculo obrigatório com ContaReferencial** garante compliance com layout ECF oficial RFB
+- **Campos ECF-specific** (classe, nivel, natureza, afetaResultado, dedutivel) necessários para geração correta da Parte M
+- **Versionamento anual** via fiscalYear permite plano de contas diferente por ano
+- **AccountType** permanece como categorização interna (não substituído por classe)
+- **ON DELETE RESTRICT** em conta_referencial previne exclusão acidental de contas mestras em uso
 
 ---
 
-### AccountingData (Dados Contábeis)
+### ContaReferencial (Conta Referencial RFB)
 
-**Propósito:** Dados mensais de balancete por conta contábil (importados via CSV).
+**Tabela DB:** `tb_conta_referencial`
+
+**Propósito:** Tabela mestra de Contas Referenciais da Receita Federal Brasil (RFB) - estrutura oficial ECF. Gerenciada exclusivamente por usuários ADMIN. Garante que plano de contas contábil esteja em compliance com layout oficial SPED.
 
 **Atributos Principais:**
-- `id`: Long - PK
-- `companyId`: Long - FK Company
-- `chartOfAccountId`: Long - FK ChartOfAccount
-- `competencia`: YearMonth - Competência (YYYY-MM)
-- `saldoInicial`: BigDecimal - Saldo inicial
-- `debito`: BigDecimal - Total de débitos
-- `credito`: BigDecimal - Total de créditos
-- `saldoFinal`: BigDecimal - Saldo final
-- `status`: Status enum
+
+| Campo Java | Coluna DB | Tipo | Descrição |
+|------------|-----------|------|-----------|
+| `id` | `id` | Long | PK, auto-increment |
+| `codigoRfb` | `codigo_rfb` | String (unique) | Código oficial RFB (ex: "1.01.01", "3.01") |
+| `descricao` | `descricao` | String | Descrição oficial da conta referencial |
+| `anoValidade` | `ano_validade` | Integer (nullable) | Ano de validade (null = válido para todos anos) |
+| `status` | `status` | String | 'ACTIVE' ou 'INACTIVE' |
+| `createdAt` | `criado_em` | Timestamp | Auditoria |
+| `updatedAt` | `atualizado_em` | Timestamp | Auditoria |
+| `createdBy` | `criado_por` | Long | Auditoria (FK User - ADMIN only) |
+| `updatedBy` | `atualizado_por` | Long | Auditoria (FK User - ADMIN only) |
+
+**Relacionamentos:**
+- One-to-Many com ChartOfAccount (conta contábil deve referenciar uma conta oficial)
+
+**Constraints:**
+- `UNIQUE (codigo_rfb, ano_validade)` - código RFB único por ano (suporta mudanças anuais no layout ECF)
+
+**Decisões de Design:**
+- **Tabela mestra global** - não vinculada a empresas específicas (todas empresas usam mesma referência RFB)
+- **CRUD restrito a ADMIN** - apenas administradores podem adicionar/editar contas oficiais
+- **anoValidade opcional** - permite versionamento quando RFB altera estrutura de contas entre anos fiscais
+- **ON DELETE RESTRICT** implícito via ChartOfAccount FK - não pode deletar conta referencial se em uso
+
+---
+
+### LancamentoContabil (Lançamento Contábil)
+
+**Tabela DB:** `tb_lancamentos_contabeis`
+
+**Propósito:** Lançamentos contábeis com método de partidas dobradas (débito/crédito). Substitui AccountingData para permitir CRUD manual completo além de importação CSV. Cada lançamento representa uma transação contábil com conta de débito, conta de crédito e valor.
+
+**Atributos Principais:**
+
+| Campo Java | Coluna DB | Tipo | Descrição |
+|------------|-----------|------|-----------|
+| `id` | `id` | Long | PK, auto-increment |
+| `companyId` | `empresa_id` | Long | FK → tb_empresa (NOT NULL) |
+| `contaDebitoId` | `conta_debito_id` | Long | FK → tb_plano_conta_contabil (NOT NULL) |
+| `contaCreditoId` | `conta_credito_id` | Long | FK → tb_plano_conta_contabil (NOT NULL) |
+| `data` | `data` | Date | Data do lançamento |
+| `valor` | `valor` | Decimal(19,2) | Valor da transação (sempre positivo) |
+| `historico` | `historico` | Text | Descrição/histórico do lançamento |
+| `numeroDocumento` | `numero_documento` | String (nullable) | Número do documento (NF, recibo, etc.) |
+| `fiscalYear` | `ano_fiscal` | Integer | Ano fiscal do lançamento |
+| `status` | `status` | String | 'ACTIVE' ou 'INACTIVE' |
+| `createdAt` | `criado_em` | Timestamp | Auditoria |
+| `updatedAt` | `atualizado_em` | Timestamp | Auditoria |
+| `createdBy` | `criado_por` | Long | Auditoria (FK User) |
+| `updatedBy` | `atualizado_por` | Long | Auditoria (FK User) |
 
 **Relacionamentos:**
 - Many-to-One com Company
-- Many-to-One com ChartOfAccount
+- Many-to-One com ChartOfAccount (contaDebito - cada lançamento referencia 2 contas)
+- Many-to-One com ChartOfAccount (contaCredito - cada lançamento referencia 2 contas)
 
 **Constraints:**
-- **CRITICAL Unique constraint (companyId + chartOfAccountId + competencia)** - REFINAMENTO v1.0 - previne duplicatas em importações CSV, permite UPSERT
+- `FK empresa_id REFERENCES tb_empresa(id) ON DELETE CASCADE`
+- `FK conta_debito_id REFERENCES tb_plano_conta_contabil(id) ON DELETE RESTRICT`
+- `FK conta_credito_id REFERENCES tb_plano_conta_contabil(id) ON DELETE RESTRICT`
+- `CHECK (valor > 0)` - valores sempre positivos
+- `CHECK (conta_debito_id <> conta_credito_id)` - débito e crédito devem ser contas diferentes
+- Index em `(empresa_id, data, ano_fiscal)` para queries de período
 
 **Decisões de Design:**
-- Constraint única garante idempotência em importações (mesmo CSV 2x = resultado igual)
-- BigDecimal para precisão monetária (nunca Float/Double)
+- **Partidas dobradas puras** - cada lançamento tem exatamente 1 débito e 1 crédito (simplicidade)
+- **Valor sempre positivo** - natureza (débito/crédito) determinada pelas FKs, não por sinais +/-
+- **CRUD completo habilitado** - permite lançamentos manuais além de importação CSV
+- **Validação de Período Contábil** - data do lançamento deve respeitar período contábil da empresa
+- **Aggregation para saldos** - saldos de contas calculados via SUM de lançamentos (não armazenados)
+- **ON DELETE RESTRICT** em contas - previne exclusão de conta se tiver lançamentos associados
+- **historico obrigatório** - rastreabilidade e auditoria fiscal
 
 ---
 
@@ -277,6 +358,112 @@ WHERE e.id = 123
   AND vpt.ano = 2024
 ORDER BY vpt.ano, COALESCE(vpt.mes, vpt.trimestre * 3);
 ```
+
+---
+
+### ContaParteB (Conta da Parte B - e-Lalur/e-Lacs)
+
+**Tabela DB:** `tb_contas_parte_b`
+
+**Propósito:** Contas específicas da Parte B (e-Lalur para IRPJ e e-Lacs para CSLL). Estas contas são usadas para lançamentos de ajustes fiscais que não fazem parte do plano de contas contábil regular, mas são necessárias para apuração de IRPJ/CSLL conforme legislação fiscal.
+
+**Atributos Principais:**
+
+| Campo Java | Coluna DB | Tipo | Descrição |
+|------------|-----------|------|-----------|
+| `id` | `id` | Long | PK, auto-increment |
+| `companyId` | `empresa_id` | Long | FK → tb_empresa (NOT NULL) |
+| `codigoConta` | `codigo_conta` | String | Código da conta Parte B (ex: "4.01.01") |
+| `descricao` | `descricao` | String | Descrição da conta |
+| `anoBase` | `ano_base` | Integer | Ano base de criação/referência |
+| `dataVigenciaInicio` | `data_vigencia_inicio` | Date | Data início de vigência |
+| `dataVigenciaFim` | `data_vigencia_fim` | Date (nullable) | Data fim de vigência (null = vigente) |
+| `tipoTributo` | `tipo_tributo` | String | "IRPJ", "CSLL" ou "AMBOS" |
+| `saldoInicial` | `saldo_inicial` | Decimal(19,2) | Saldo inicial da conta |
+| `tipoSaldo` | `tipo_saldo` | String | "DEVEDOR" ou "CREDOR" |
+| `status` | `status` | String | 'ACTIVE' ou 'INACTIVE' |
+| `createdAt` | `criado_em` | Timestamp | Auditoria |
+| `updatedAt` | `atualizado_em` | Timestamp | Auditoria |
+| `createdBy` | `criado_por` | Long | Auditoria (FK User) |
+| `updatedBy` | `atualizado_por` | Long | Auditoria (FK User) |
+
+**Relacionamentos:**
+- Many-to-One com Company
+- One-to-Many com LancamentoParteB
+
+**Constraints:**
+- `UNIQUE (empresa_id, codigo_conta, ano_base)` - código único por empresa por ano
+- `FK empresa_id REFERENCES tb_empresa(id) ON DELETE CASCADE`
+- `CHECK (tipo_tributo IN ('IRPJ', 'CSLL', 'AMBOS'))`
+- `CHECK (tipo_saldo IN ('DEVEDOR', 'CREDOR'))`
+
+**Decisões de Design:**
+- **Separação clara entre contas contábeis e fiscais** - ContaParteB não está no plano de contas contábil
+- **Vigência temporal** - contas podem ter período de validade (comum em legislação fiscal)
+- **Tipo tributo flexível** - conta pode ser específica de IRPJ, CSLL ou aplicável a ambos
+- **Saldo inicial configurável** - importante para carry-forward de exercícios anteriores
+- **Versionamento anual** - permite estrutura diferente por ano fiscal
+
+---
+
+### LancamentoParteB (Lançamento da Parte B)
+
+**Tabela DB:** `tb_lancamentos_parte_b`
+
+**Propósito:** Lançamentos de ajustes fiscais na Parte B (e-Lalur/e-Lacs). Registra adições, exclusões e outras movimentações fiscais vinculadas a contas contábeis, contas da Parte B ou ambas, referenciando parâmetros tributários que fundamentam cada ajuste.
+
+**Atributos Principais:**
+
+| Campo Java | Coluna DB | Tipo | Descrição |
+|------------|-----------|------|-----------|
+| `id` | `id` | Long | PK, auto-increment |
+| `companyId` | `empresa_id` | Long | FK → tb_empresa (NOT NULL) |
+| `mesReferencia` | `mes_referencia` | Integer | Mês de referência (1-12) |
+| `anoReferencia` | `ano_referencia` | Integer | Ano de referência |
+| `tipoApuracao` | `tipo_apuracao` | String | "IRPJ" ou "CSLL" |
+| `tipoRelacionamento` | `tipo_relacionamento` | String | "CONTA_CONTABIL", "CONTA_PARTE_B", "AMBOS" |
+| `contaContabilId` | `conta_contabil_id` | Long (nullable) | FK → tb_plano_conta_contabil |
+| `contaParteBId` | `conta_parte_b_id` | Long (nullable) | FK → tb_contas_parte_b |
+| `parametroTributarioId` | `parametro_tributario_id` | Long | FK → tb_parametros_tributarios (NOT NULL) |
+| `tipoAjuste` | `tipo_ajuste` | String | "ADICAO" ou "EXCLUSAO" |
+| `descricao` | `descricao` | Text | Descrição do ajuste fiscal |
+| `valor` | `valor` | Decimal(19,2) | Valor do ajuste (sempre positivo) |
+| `status` | `status` | String | 'ACTIVE' ou 'INACTIVE' |
+| `createdAt` | `criado_em` | Timestamp | Auditoria |
+| `updatedAt` | `atualizado_em` | Timestamp | Auditoria |
+| `createdBy` | `criado_por` | Long | Auditoria (FK User) |
+| `updatedBy` | `atualizado_por` | Long | Auditoria (FK User) |
+
+**Relacionamentos:**
+- Many-to-One com Company
+- Many-to-One com ChartOfAccount (opcional, conforme tipoRelacionamento)
+- Many-to-One com ContaParteB (opcional, conforme tipoRelacionamento)
+- Many-to-One com TaxParameter (obrigatório)
+
+**Constraints:**
+- `FK empresa_id REFERENCES tb_empresa(id) ON DELETE CASCADE`
+- `FK conta_contabil_id REFERENCES tb_plano_conta_contabil(id) ON DELETE RESTRICT`
+- `FK conta_parte_b_id REFERENCES tb_contas_parte_b(id) ON DELETE RESTRICT`
+- `FK parametro_tributario_id REFERENCES tb_parametros_tributarios(id) ON DELETE RESTRICT`
+- `CHECK (tipo_apuracao IN ('IRPJ', 'CSLL'))`
+- `CHECK (tipo_relacionamento IN ('CONTA_CONTABIL', 'CONTA_PARTE_B', 'AMBOS'))`
+- `CHECK (tipo_ajuste IN ('ADICAO', 'EXCLUSAO'))`
+- `CHECK (valor > 0)` - valores sempre positivos
+- **Validação condicional de FKs:**
+  - Se `tipo_relacionamento = 'CONTA_CONTABIL'` então `conta_contabil_id NOT NULL` e `conta_parte_b_id IS NULL`
+  - Se `tipo_relacionamento = 'CONTA_PARTE_B'` então `conta_parte_b_id NOT NULL` e `conta_contabil_id IS NULL`
+  - Se `tipo_relacionamento = 'AMBOS'` então `conta_contabil_id NOT NULL` e `conta_parte_b_id NOT NULL`
+- Index em `(empresa_id, ano_referencia, tipo_apuracao)` para queries de apuração
+
+**Decisões de Design:**
+- **Flexibilidade de vinculação** - lançamento pode estar vinculado a conta contábil, conta Parte B ou ambas
+- **Fundamentação via parâmetro tributário** - cada ajuste deve referenciar base legal/fiscal (obrigatório)
+- **Tipo apuracao separado** - permite apurações IRPJ e CSLL independentes
+- **Validação condicional via CHECK constraints** - garante integridade referencial baseada em tipo de relacionamento
+- **Valor sempre positivo** - natureza (adição/exclusão) determinada pelo campo tipoAjuste
+- **Mesma estrutura de auditoria** - rastreabilidade completa de quem criou/modificou ajustes fiscais
+- **ON DELETE RESTRICT** em contas/parâmetros - previne exclusão se houver lançamentos associados
+- **Complementa FiscalMovement** - LancamentoParteB é estruturado para ECF, FiscalMovement permanece para adições/exclusões genéricas Lalur/Lacs
 
 ---
 

@@ -54,9 +54,9 @@ Este PRD define um sistema de **API REST backend-only** que automatiza todo o fl
 
 **FR11:** O sistema deve implementar soft delete universal - todas entidades possuem campo status (ACTIVE/INACTIVE) e nunca são deletadas fisicamente.
 
-**FR12:** O sistema deve permitir cadastro manual de contas contábeis com estrutura plana (não hierárquica).
+**FR12:** O sistema deve permitir cadastro manual de contas contábeis com estrutura plana (não hierárquica), incluindo campos: código, nome, tipo, classe contábil, nível hierárquico, natureza (devedora/credora), se afeta resultado, se é dedutível, e vínculo obrigatório com Conta Referencial RFB.
 
-**FR13:** O sistema deve permitir importação de plano de contas via arquivos CSV/TXT.
+**FR13:** O sistema deve permitir importação de plano de contas via arquivos CSV/TXT com campos obrigatórios: accountCode, accountName, accountType, classe, nivel, natureza, resultado, dedutivel, contaReferencialCodigo (código RFB para lookup automático).
 
 **FR14:** O sistema deve garantir que exista apenas uma conta contábil por empresa por ano (constraint: company_id + account_code + fiscal_year = único).
 
@@ -64,57 +64,59 @@ Este PRD define um sistema de **API REST backend-only** que automatiza todo o fl
 
 **FR16:** O sistema deve suportar hierarquia de parâmetros tributários com relacionamento pai/filho (self-referential).
 
-**FR17:** O sistema deve permitir importação de dados contábeis exclusivamente via arquivos CSV/TXT (sem cadastro manual de lançamentos).
+**FR17:** O sistema deve permitir importação E cadastro manual de lançamentos contábeis via CRUD completo, com validação de partidas dobradas (conta débito, conta crédito, valor, data) e integração com Período Contábil.
 
 **FR18:** O sistema deve permitir exportação de dados contábeis para arquivos CSV/TXT.
 
-**FR19:** Uma conta contábil deve possuir N dados contábeis relacionados (relacionamento One-to-Many).
+**FR19:** Uma conta contábil pode ser utilizada em N lançamentos contábeis tanto como conta débito quanto como conta crédito (relacionamento One-to-Many bidirecional).
 
-**FR20:** O sistema deve permitir CRUD completo de Códigos de Enquadramento LALUR (campos: Código de Enquadramento, Histórico).
+**FR20:** O sistema deve manter tabela mestra de Contas Referenciais RFB com campos: código oficial, descrição, ano de validade (opcional), permitindo CRUD completo apenas por usuário ADMIN.
 
-**FR21:** O sistema deve permitir CRUD completo de Linhas de Lucro Presumido (campos: Código numeral, Descrição texto, Conteúdo como lista de Contas Contábeis).
+**FR21:** O sistema deve vincular obrigatoriamente cada conta do plano de contas contábil a uma Conta Referencial RFB válida para garantir compliance com estrutura oficial ECF.
 
-**FR22:** O sistema deve permitir preenchimento de registros da Parte A da ECF (0000, J100, J150, J800).
+**FR22:** O sistema deve permitir CRUD completo de Contas da Parte B (e-Lalur/e-Lacs) com campos: código conta, descrição, ano-base, data vigência (início/fim), tipo tributo (IRPJ/CSLL/Ambos), saldo inicial e tipo saldo (Devedor/Credor).
 
-**FR23:** O sistema deve carregar automaticamente saldos dos dados contábeis para registros J100 (Balanço) e J150 (DRE).
+**FR23:** O sistema deve permitir CRUD completo de Lançamentos da Parte B com campos: mês/ano referência, tipo apuração (IRPJ/CSLL), tipo relacionamento (Conta Contábil/Conta Parte B/Ambos), código parâmetro tributário, tipo ajuste (Adição/Exclusão), descrição, valor, e vinculações opcionais a conta contábil e/ou conta Parte B conforme tipo relacionamento.
 
-**FR24:** O sistema deve permitir CRUD completo de Lançamentos para Conta da Parte B com soft delete.
+**FR24:** O sistema deve validar obrigatoriedade de FKs em Lançamentos da Parte B baseado em tipo relacionamento: se "Conta Contábil" então contaContabilId obrigatório; se "Conta Parte B" então contaParteBId obrigatório; se "Ambos" então ambos obrigatórios.
 
-**FR25:** O sistema deve permitir CRUD completo de Lançamentos Contábeis Manuais com validação de partidas dobradas (débito = crédito) e soft delete.
+**FR25:** O sistema deve permitir preenchimento de registros da Parte A da ECF (0000, J100, J150, J800).
 
-**FR26:** O sistema deve permitir CRUD completo de Adições, Exclusões e Compensações Lalur/Lacs com campos: tipo, valor, descrição, natureza (permanente/temporário), vinculação a conta contábil, código de enquadramento LALUR e justificativa legal.
+**FR26:** O sistema deve carregar automaticamente saldos dos lançamentos contábeis para registros J100 (Balanço) e J150 (DRE).
 
-**FR27:** O sistema deve calcular IRPJ sob demanda via trigger/botão "Calcular IRPJ" aplicando fórmula: Base = Lucro Líquido + Adições - Exclusões - Compensações; IRPJ = 15% + adicional 10% sobre base que exceder R$ 20k/mês.
+**FR27:** O sistema deve permitir CRUD completo de Adições, Exclusões e Compensações Lalur/Lacs com campos: tipo, valor, descrição, natureza (permanente/temporário), vinculação a conta contábil e justificativa legal.
 
-**FR28:** O sistema deve calcular CSLL sob demanda via trigger/botão "Calcular CSLL" aplicando alíquota de 9% sobre a base de cálculo.
+**FR28:** O sistema deve calcular IRPJ sob demanda via trigger/botão "Calcular IRPJ" aplicando fórmula: Base = Lucro Líquido + Adições - Exclusões - Compensações; IRPJ = 15% + adicional 10% sobre base que exceder R$ 20k/mês.
 
-**FR29:** O sistema deve fornecer botão "Recalcular Tudo" que reprocessa todos os cálculos de IRPJ e CSLL.
+**FR29:** O sistema deve calcular CSLL sob demanda via trigger/botão "Calcular CSLL" aplicando alíquota de 9% sobre a base de cálculo.
 
-**FR30:** O sistema deve exibir indicação visual quando dados foram alterados após último cálculo (cálculo desatualizado).
+**FR30:** O sistema deve fornecer botão "Recalcular Tudo" que reprocessa todos os cálculos de IRPJ e CSLL.
 
-**FR31:** O sistema deve gerar memória de cálculo detalhada mostrando passo a passo dos cálculos de IRPJ/CSLL.
+**FR31:** O sistema deve exibir indicação visual quando dados foram alterados após último cálculo (cálculo desatualizado).
 
-**FR32:** O sistema deve gerar a Parte M completa (arquivo M inteiro) conforme layout oficial RFB incluindo registros: M300 (Lalur Parte A), M350 (Lalur Parte B), M400 (Lacs) e demais registros M pertinentes.
+**FR32:** O sistema deve gerar memória de cálculo detalhada mostrando passo a passo dos cálculos de IRPJ/CSLL.
 
-**FR33:** O sistema deve validar campos obrigatórios dos registros M conforme layout oficial antes da exportação.
+**FR33:** O sistema deve gerar a Parte M completa (arquivo M inteiro) conforme layout oficial RFB incluindo registros: M300 (Lalur Parte A), M350 (Lalur Parte B), M400 (Lacs) e demais registros M pertinentes.
 
-**FR34:** O sistema deve gerar arquivo .txt formatado da Parte M para download.
+**FR34:** O sistema deve validar campos obrigatórios dos registros M conforme layout oficial antes da exportação.
 
-**FR35:** O sistema deve permitir upload e parsing de arquivo ECF existente (opcional).
+**FR35:** O sistema deve gerar arquivo .txt formatado da Parte M para download.
 
-**FR36:** O sistema deve identificar automaticamente Parte A no arquivo ECF importado.
+**FR36:** O sistema deve permitir upload e parsing de arquivo ECF existente (opcional).
 
-**FR37:** O sistema deve realizar merge do arquivo ECF importado com a Parte M completa gerada no sistema.
+**FR37:** O sistema deve identificar automaticamente Parte A no arquivo ECF importado.
 
-**FR38:** O sistema deve exportar arquivo ECF completo (Parte A + Parte M completa integrada) em formato .txt pronto para transmissão SPED.
+**FR38:** O sistema deve realizar merge do arquivo ECF importado com a Parte M completa gerada no sistema.
 
-**FR39:** O sistema deve exibir dashboard com lista de empresas cadastradas e status (pendente, em andamento, concluída).
+**FR39:** O sistema deve exportar arquivo ECF completo (Parte A + Parte M completa integrada) em formato .txt pronto para transmissão SPED.
 
-**FR40:** O sistema deve exibir indicadores de completude (% de dados preenchidos) por empresa no dashboard.
+**FR40:** O sistema deve exibir dashboard com lista de empresas cadastradas e status (pendente, em andamento, concluída).
 
-**FR41:** O sistema deve gerar alertas de prazos e pendências no dashboard.
+**FR41:** O sistema deve exibir indicadores de completude (% de dados preenchidos) por empresa no dashboard.
 
-**FR42:** O sistema deve permitir filtros em todas listagens para exibir apenas registros ativos ou incluir inativos.
+**FR42:** O sistema deve gerar alertas de prazos e pendências no dashboard.
+
+**FR43:** O sistema deve permitir filtros em todas listagens para exibir apenas registros ativos ou incluir inativos.
 
 ### Requisitos Não-Funcionais
 
@@ -546,7 +548,7 @@ Estabelecer infraestrutura base do projeto (Spring Boot, PostgreSQL, Docker), im
 Criar CRUD de empresas com integração CNPJ gov.br, implementar seleção de empresa para CONTADOR (header X-Company-Id), Período Contábil e gestão de parâmetros tributários hierárquicos globais (apenas ADMIN).
 
 **Epic 3: Plano de Contas & Dados Contábeis**
-Implementar cadastro e importação de plano de contas (estrutura plana), importação/exportação de dados contábeis via CSV, validações de unicidade, e cadastro de estruturas auxiliares fiscais (Conta da Parte B, Código de Enquadramento LALUR, Linhas de Lucro Presumido).
+Implementar cadastro e importação de plano de contas contábeis (estrutura plana vinculada a Contas Referenciais RFB), importação/exportação e CRUD completo de lançamentos contábeis via CSV e interface, validações de unicidade e partidas dobradas, gestão de tabela mestra de Contas Referenciais RFB, cadastro de Contas da Parte B (e-Lalur/e-Lacs), e CRUD completo de Lançamentos da Parte B com ajustes fiscais.
 
 **Epic 4: Movimentações Lalur/Lacs & Motor de Cálculo**
 Implementar CRUD de movimentações fiscais (adições, exclusões, compensações) para Lalur e Lacs, motor de cálculo IRPJ/CSLL sob demanda com compensações automáticas (limite 30%) e adicional de 10% no IRPJ, memória de cálculo detalhada em JSON, validação de pré-requisitos antes de calcular e invalidação automática de resultados quando dados são modificados.
@@ -609,7 +611,7 @@ Este PRD foi desenvolvido seguindo rigorosamente os critérios de qualidade esta
 - **Lista de Épicos:** 7 épicos claramente descritos com escopo preciso:
   - **Epic 1:** Fundação & Autenticação (infraestrutura, Spring Boot, PostgreSQL, Docker, JWT, roles ADMIN/CONTADOR, gestão usuários, troca senha obrigatória) - **11 stories**
   - **Epic 2:** Gestão Empresas & Parâmetros (CRUD empresas, integração CNPJ gov.br, seleção contexto X-Company-Id, Período Contábil com auditoria, parâmetros tributários hierárquicos ADMIN-only) - **8 stories**
-  - **Epic 3:** Plano Contas & Dados Contábeis (ChartOfAccount estrutura plana, importação/exportação CSV, AccountingData, estruturas auxiliares fiscais: ContaDaParteB, CodigoEnquadramentoLalur, LinhaLucroPresumido com CRUD manual) - **14 stories**
+  - **Epic 3:** Plano Contas & Dados Contábeis (ChartOfAccount estrutura plana vinculada a ContaReferencial RFB, importação/exportação CSV plano de contas, LancamentoContabil com CRUD completo e validação partidas dobradas, importação/exportação CSV lançamentos, estruturas auxiliares fiscais: ContaReferencial RFB mestra, ContaParteB e-Lalur/e-Lacs, LancamentoParteB com ajustes fiscais) - **14 stories**
   - **Epic 4:** Movimentações Lalur/Lacs & Motor Cálculo (CRUD movimentações adições/exclusões/compensações, motor cálculo IRPJ com adicional 10% e compensações 30%, motor cálculo CSLL, memória cálculo JSON, validação pré-requisitos, invalidação automática) - **11 stories**
   - **Epic 5:** Geração ECF & Exportação (gerador Parte M completo M001/M300/M350/M400/M410/M990, parser customizado Parte A, merge Parte A + Parte M, validação campos obrigatórios SPED, exportação .txt, histórico arquivos, finalização) - **14 stories**
   - **Epic 6:** Dashboard & Indicadores (dashboard empresas, completude 8 etapas, alertas inteligentes críticos/warnings/info, status cálculos com detecção desatualização, indicador prazo entrega ECF, resumo executivo ADMIN, filtros avançados, exportação CSV, audit log) - **11 stories**
@@ -716,9 +718,9 @@ Este PRD foi desenvolvido seguindo rigorosamente os critérios de qualidade esta
    - **Milestone:** M2 - Company Management Ready
 
 5. **Epic 3: Plano Contas & Dados Contábeis (Semana 8-11, ~4 semanas)**
-   - **Objetivo:** Importação CSV de plano de contas e dados contábeis funcionando
-   - **Stories prioritárias:** 3.1-3.3 (ChartOfAccount + CSV import), 3.10-3.13 (AccountingData + CSV import/export), 3.5-3.7 (estruturas auxiliares ContaDaParteB, CodigoEnquadramentoLalur), 3.8-3.9 (LinhaLucroPresumido)
-   - **Entrega:** CONTADOR importa CSV com 10k linhas em <30s, exporta dados, cadastra estruturas fiscais auxiliares
+   - **Objetivo:** Importação CSV de plano de contas e lançamentos contábeis funcionando com CRUD completo
+   - **Stories prioritárias:** 3.1-3.3 (ChartOfAccount + CSV import vinculado a ContaReferencial), 3.4-3.5 (ContaReferencial RFB mestra), 3.6-3.7 (ContaParteB e-Lalur/e-Lacs), 3.8-3.9 (LancamentoParteB ajustes fiscais), 3.10-3.13 (LancamentoContabil + CSV import/export + CRUD manual)
+   - **Entrega:** CONTADOR importa CSV de plano de contas vinculado a contas referenciais RFB, importa/exporta lançamentos contábeis com validação de partidas dobradas, cadastra contas da Parte B e lançamentos da Parte B com ajustes fiscais (adições/exclusões)
    - **Milestone:** M3 - Data Foundation Ready
 
 6. **Epic 4: Movimentações Lalur/Lacs & Motor Cálculo (Semana 12-16, ~5 semanas) - CRÍTICO**
