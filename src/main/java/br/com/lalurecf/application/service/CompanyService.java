@@ -844,7 +844,7 @@ public class CompanyService implements
         .orElseThrow(() -> new IllegalArgumentException(
             "Parâmetro Qualificação PJ não encontrado com ID: " + qualificacaoPjId));
 
-    if (!"QUALIFICACAO_PESSOA_JURIDICA".equals(qualificacaoPj.getTipo())) {
+    if (!"QUALIFICACAO_PJ".equals(qualificacaoPj.getTipo())) {
       throw new IllegalArgumentException(
           "Parâmetro com ID " + qualificacaoPjId
               + " não é do tipo QUALIFICACAO_PJ (tipo atual: "
