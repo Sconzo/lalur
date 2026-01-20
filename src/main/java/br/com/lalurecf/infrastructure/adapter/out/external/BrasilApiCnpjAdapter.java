@@ -100,16 +100,47 @@ public class BrasilApiCnpjAdapter implements CnpjSearchPort {
   /**
    * Converte BrasilApiCnpjResponse para CnpjData.
    *
+   * <p>Garante que o CNAE fiscal sempre tenha 7 dígitos com padding de zeros à esquerda,
+   * pois a BrasilAPI pode retornar sem os zeros (ex: "111301" ao invés de "0111301").
+   *
    * @param response resposta da BrasilAPI
    * @return dados convertidos
    */
   private CnpjData mapToCnpjData(BrasilApiCnpjResponse response) {
+    // CNAE fiscal brasileiro sempre tem 7 dígitos - adiciona zeros à esquerda se necessário
+    String cnaeFormatted = formatCnae(response.cnaeFiscal());
+
     return new CnpjData(
         response.cnpj(),
         response.razaoSocial(),
-        response.cnaeFiscal(),
+        cnaeFormatted,
         response.qualificacaoResponsavel(),
         response.naturezaJuridica()
     );
+  }
+
+  /**
+   * Formata CNAE fiscal garantindo 7 dígitos com padding de zeros à esquerda.
+   *
+   * <p>Exemplos:
+   * <ul>
+   *   <li>"111301" → "0111301"
+   *   <li>"6421200" → "6421200"
+   *   <li>null → null
+   * </ul>
+   *
+   * @param cnae CNAE fiscal retornado pela API
+   * @return CNAE com 7 dígitos ou null se entrada for null
+   */
+  private String formatCnae(String cnae) {
+    if (cnae == null || cnae.isBlank()) {
+      return null;
+    }
+
+    // Remove caracteres não numéricos (caso existam)
+    String onlyNumbers = cnae.replaceAll("\\D", "");
+
+    // Adiciona zeros à esquerda até completar 7 dígitos
+    return String.format("%07d", Long.parseLong(onlyNumbers));
   }
 }

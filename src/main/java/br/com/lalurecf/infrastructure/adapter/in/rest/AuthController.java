@@ -20,7 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Controller para endpoints de autenticação.
  *
- * <p>Endpoints para login, troca de senha e refresh de tokens.
+ * <p>Endpoints para login e troca de senha. Access tokens têm validade de 7 dias,
+ * não sendo necessário refresh (login semanal para conveniência em sistema corporativo).
  */
 @RestController
 @RequestMapping("/auth")

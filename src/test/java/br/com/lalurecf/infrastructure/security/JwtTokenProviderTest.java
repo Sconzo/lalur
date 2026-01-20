@@ -19,8 +19,8 @@ class JwtTokenProviderTest {
     jwtTokenProvider = new JwtTokenProvider();
     ReflectionTestUtils.setField(
         jwtTokenProvider, "secret", "test-secret-key-minimum-256-bits-required-for-hmac256");
-    ReflectionTestUtils.setField(jwtTokenProvider, "accessTokenExpiration", 900000L); // 15 min
-    ReflectionTestUtils.setField(jwtTokenProvider, "refreshTokenExpiration", 604800000L); // 7 days
+    ReflectionTestUtils.setField(jwtTokenProvider, "accessTokenExpiration", 604800000L); // 7 days
+    ReflectionTestUtils.setField(jwtTokenProvider, "refreshTokenExpiration", 604800000L); // 7 days (mantido por compatibilidade)
   }
 
   @Test

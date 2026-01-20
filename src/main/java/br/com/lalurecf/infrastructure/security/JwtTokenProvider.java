@@ -12,8 +12,9 @@ import org.springframework.stereotype.Component;
 /**
  * Provedor de tokens JWT para autenticação stateless.
  *
- * <p>Gera e valida tokens JWT usando HMAC256. Tokens contêm email (subject) e role (claim). Access
- * tokens expiram em 15 minutos, refresh tokens em 7 dias.
+ * <p>Gera e valida tokens JWT usando HMAC256. Tokens contêm email (subject) e role (claim).
+ * Access tokens expiram em 7 dias para conveniência do usuário (sistema corporativo interno).
+ * Refresh tokens mantidos por compatibilidade mas não são mais usados.
  */
 @Component
 public class JwtTokenProvider {

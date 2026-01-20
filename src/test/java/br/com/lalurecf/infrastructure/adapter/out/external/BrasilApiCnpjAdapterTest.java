@@ -165,4 +165,62 @@ class BrasilApiCnpjAdapterTest {
     // Assert
     assertFalse(result.isPresent());
   }
+
+  @Test
+  @DisplayName("Should format CNAE with 7 digits padding zeros to the left")
+  void shouldFormatCnaeWith7Digits() {
+    // Arrange - CNPJ real que retorna CNAE sem zero à esquerda
+    String cnpj = "09377436000179";
+    String responseBody = """
+        {
+          "cnpj": "09377436000179",
+          "razao_social": "EMPRESA TESTE",
+          "cnae_fiscal": "111301",
+          "qualificacao_do_responsavel": "Sócio-Administrador",
+          "natureza_juridica": "206-2"
+        }
+        """;
+
+    mockWebServer.enqueue(new MockResponse()
+        .setResponseCode(200)
+        .setBody(responseBody)
+        .addHeader("Content-Type", "application/json"));
+
+    // Act
+    Optional<CnpjData> result = adapter.searchByCnpj(cnpj);
+
+    // Assert
+    assertTrue(result.isPresent());
+    assertEquals("0111301", result.get().cnae(),
+        "CNAE deve ter 7 dígitos com zeros à esquerda (111301 → 0111301)");
+  }
+
+  @Test
+  @DisplayName("Should keep CNAE with 7 digits unchanged")
+  void shouldKeepCnaeWith7DigitsUnchanged() {
+    // Arrange - CNAE já com 7 dígitos
+    String cnpj = "00000000000191";
+    String responseBody = """
+        {
+          "cnpj": "00000000000191",
+          "razao_social": "BANCO DO BRASIL S.A.",
+          "cnae_fiscal": "6421200",
+          "qualificacao_do_responsavel": "Diretor",
+          "natureza_juridica": "205-1"
+        }
+        """;
+
+    mockWebServer.enqueue(new MockResponse()
+        .setResponseCode(200)
+        .setBody(responseBody)
+        .addHeader("Content-Type", "application/json"));
+
+    // Act
+    Optional<CnpjData> result = adapter.searchByCnpj(cnpj);
+
+    // Assert
+    assertTrue(result.isPresent());
+    assertEquals("6421200", result.get().cnae(),
+        "CNAE com 7 dígitos deve permanecer inalterado");
+  }
 }

@@ -19,8 +19,8 @@ spring:
 
 jwt:
   secret: dev-secret-key-change-in-production-minimum-256-bits
-  access-token-expiration: 900000  # 15 minutes
-  refresh-token-expiration: 604800000  # 7 days
+  access-token-expiration: 604800000  # 7 days (604800000ms = 7 * 24 * 60 * 60 * 1000)
+  refresh-token-expiration: 604800000  # Mantido por compatibilidade, mas não usado (login direto com access token de 7 dias)
 
 cors:
   allowed-origins: http://localhost:5173,http://localhost:3000

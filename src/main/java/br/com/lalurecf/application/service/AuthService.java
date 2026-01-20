@@ -51,6 +51,8 @@ public class AuthService implements AuthenticateUserUseCase {
     }
 
     String accessToken = jwtTokenProvider.generateAccessToken(user.getEmail(), user.getRole());
+    // RefreshToken gerado por compatibilidade com frontend, mas não é mais necessário
+    // (accessToken tem validade de 7 dias - login semanal)
     String refreshToken = jwtTokenProvider.generateRefreshToken(user.getEmail());
 
     log.info("Login bem-sucedido: {} (role: {})", user.getEmail(), user.getRole());
