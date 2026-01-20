@@ -2,6 +2,7 @@ package br.com.lalurecf.infrastructure.adapter.in.rest;
 
 import br.com.lalurecf.application.port.in.chartofaccount.CreateChartOfAccountUseCase;
 import br.com.lalurecf.application.port.in.chartofaccount.GetChartOfAccountUseCase;
+import br.com.lalurecf.application.port.in.chartofaccount.ImportChartOfAccountUseCase;
 import br.com.lalurecf.application.port.in.chartofaccount.ListChartOfAccountsUseCase;
 import br.com.lalurecf.application.port.in.chartofaccount.ToggleChartOfAccountStatusUseCase;
 import br.com.lalurecf.application.port.in.chartofaccount.UpdateChartOfAccountUseCase;
@@ -10,9 +11,11 @@ import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.infrastructure.dto.chartofaccount.ChartOfAccountResponse;
 import br.com.lalurecf.infrastructure.dto.chartofaccount.CreateChartOfAccountRequest;
+import br.com.lalurecf.infrastructure.dto.chartofaccount.ImportChartOfAccountResponse;
 import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.chartofaccount.UpdateChartOfAccountRequest;
+import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * REST Controller para gerenciamento de Plano de Contas (ChartOfAccount).
@@ -52,6 +57,7 @@ public class ChartOfAccountController {
   private final GetChartOfAccountUseCase getChartOfAccountUseCase;
   private final UpdateChartOfAccountUseCase updateChartOfAccountUseCase;
   private final ToggleChartOfAccountStatusUseCase toggleChartOfAccountStatusUseCase;
+  private final ImportChartOfAccountUseCase importChartOfAccountUseCase;
 
   /**
    * Cria uma nova conta contábil.
@@ -66,6 +72,59 @@ public class ChartOfAccountController {
     log.info("POST /api/v1/chart-of-accounts - Creating chart of account");
     ChartOfAccountResponse response = createChartOfAccountUseCase.execute(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  /**
+   * Importa plano de contas via arquivo CSV/TXT.
+   *
+   * <p>Formato esperado:
+   * code;name;accountType;contaReferencialCodigo;classe;nivel;natureza;afetaResultado;dedutivel
+   *
+   * <p>Separador: ; ou , (detectado automaticamente)
+   *
+   * <p>Validações:
+   *
+   * <ul>
+   *   <li>contaReferencialCodigo deve existir e estar ACTIVE
+   *   <li>nivel deve estar entre 1 e 5
+   *   <li>Combinação (company + code + fiscalYear) deve ser única
+   * </ul>
+   *
+   * @param file arquivo CSV/TXT (max 10MB)
+   * @param fiscalYear ano fiscal das contas (obrigatório)
+   * @param dryRun se true, apenas retorna preview sem persistir (default: false)
+   * @return relatório da importação
+   */
+  @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<ImportChartOfAccountResponse> importChartOfAccounts(
+      @RequestParam("file") MultipartFile file,
+      @RequestParam("fiscalYear") Integer fiscalYear,
+      @RequestParam(value = "dryRun", required = false, defaultValue = "false") boolean dryRun) {
+
+    log.info(
+        "POST /api/v1/chart-of-accounts/import - fiscalYear: {}, dryRun: {}, file: {}",
+        fiscalYear,
+        dryRun,
+        file.getOriginalFilename());
+
+    // Obter empresa do contexto
+    Long companyId = CompanyContext.getCurrentCompanyId();
+    if (companyId == null) {
+      throw new IllegalArgumentException(
+          "Company context is required (header X-Company-Id missing)");
+    }
+
+    // Validar fiscal year
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException("Fiscal year is required");
+    }
+
+    // Executar importação
+    ImportChartOfAccountResponse response =
+        importChartOfAccountUseCase.importChartOfAccounts(file, companyId, fiscalYear, dryRun);
+
+    return ResponseEntity.status(HttpStatus.OK).body(response);
   }
 
   /**

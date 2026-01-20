@@ -29,6 +29,16 @@ public interface ContaReferencialJpaRepository
   Optional<ContaReferencialEntity> findByCodigoRfb(String codigoRfb);
 
   /**
+   * Busca conta referencial por código RFB e ano de validade (chave única).
+   *
+   * @param codigoRfb código oficial RFB
+   * @param anoValidade ano de validade (nullable)
+   * @return Optional com entity se encontrada
+   */
+  Optional<ContaReferencialEntity> findByCodigoRfbAndAnoValidade(
+      String codigoRfb, Integer anoValidade);
+
+  /**
    * Busca todas contas por ano de validade.
    *
    * @param anoValidade ano de validade

@@ -76,7 +76,7 @@ public class ChartOfAccountService
             .findById(request.getContaReferencialId())
             .orElseThrow(
                 () ->
-                    new ResourceNotFoundException(
+                    new IllegalArgumentException(
                         "ContaReferencial not found with id: " + request.getContaReferencialId()));
 
     if (contaReferencial.getStatus() != Status.ACTIVE) {
@@ -260,7 +260,7 @@ public class ChartOfAccountService
             .findById(request.getContaReferencialId())
             .orElseThrow(
                 () ->
-                    new ResourceNotFoundException(
+                    new IllegalArgumentException(
                         "ContaReferencial not found with id: " + request.getContaReferencialId()));
 
     if (contaReferencial.getStatus() != Status.ACTIVE) {

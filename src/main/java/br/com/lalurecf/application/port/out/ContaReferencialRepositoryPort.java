@@ -39,6 +39,16 @@ public interface ContaReferencialRepositoryPort {
   Optional<ContaReferencial> findByCodigoRfb(String codigoRfb);
 
   /**
+   * Busca conta referencial por código RFB e ano de validade (chave única).
+   *
+   * @param codigoRfb código oficial RFB
+   * @param anoValidade ano de validade (nullable)
+   * @return Optional com conta se encontrada
+   */
+  Optional<ContaReferencial> findByCodigoRfbAndAnoValidade(
+      String codigoRfb, Integer anoValidade);
+
+  /**
    * Busca todas contas referenciais por ano de validade.
    *
    * @param anoValidade ano de validade

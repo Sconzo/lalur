@@ -3,6 +3,7 @@ package br.com.lalurecf.infrastructure.adapter.in.rest;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -494,5 +496,327 @@ class ContaReferencialControllerTest extends IntegrationTestBase {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].id").value(contaId))
         .andExpect(jsonPath("$.content[0].status").value("INACTIVE"));
+  }
+
+  // ==================== TESTES DE IMPORTAÇÃO CSV ====================
+
+  @Test
+  @DisplayName("ADMIN deve conseguir importar contas referenciais via CSV")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldImportContasReferenciaisViaCsv() throws Exception {
+    // Arrange - criar arquivo CSV
+    String csvContent =
+        """
+        codigoRfb;descricao;anoValidade
+        CSV.01.01;Receita de Vendas CSV;2024
+        CSV.01.02;Custo de Mercadorias CSV;2024
+        CSV.01.03;Despesas Operacionais CSV;
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.totalLines").value(3))
+        .andExpect(jsonPath("$.processedLines").value(3))
+        .andExpect(jsonPath("$.skippedLines").value(0))
+        .andExpect(jsonPath("$.errors").isEmpty())
+        .andExpect(jsonPath("$.preview").doesNotExist());
+
+    // Assert - verificar que contas foram criadas
+    mockMvc
+        .perform(get("/api/v1/conta-referencial?search=CSV.01.01"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].codigoRfb").value("CSV.01.01"))
+        .andExpect(jsonPath("$.content[0].descricao").value("Receita de Vendas CSV"));
+  }
+
+  @Test
+  @DisplayName("ADMIN deve conseguir fazer dry-run de importação CSV")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldDryRunImportContasReferenciais() throws Exception {
+    // Arrange - criar arquivo CSV
+    String csvContent =
+        """
+        codigoRfb;descricao;anoValidade
+        DRY.01.01;Conta Dry Run 1;2024
+        DRY.01.02;Conta Dry Run 2;2025
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "true"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.totalLines").value(2))
+        .andExpect(jsonPath("$.processedLines").value(2))
+        .andExpect(jsonPath("$.skippedLines").value(0))
+        .andExpect(jsonPath("$.preview").isArray())
+        .andExpect(jsonPath("$.preview[0].codigoRfb").value("DRY.01.01"))
+        .andExpect(jsonPath("$.preview[0].descricao").value("Conta Dry Run 1"))
+        .andExpect(jsonPath("$.preview[0].anoValidade").value(2024))
+        .andExpect(jsonPath("$.preview[1].codigoRfb").value("DRY.01.02"));
+
+    // Assert - verificar que contas NÃO foram criadas (dry-run)
+    mockMvc
+        .perform(get("/api/v1/conta-referencial?search=DRY.01.01"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content").isEmpty());
+  }
+
+  @Test
+  @DisplayName("Importação deve detectar duplicatas no arquivo CSV")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldDetectDuplicatesInCsvFile() throws Exception {
+    // Arrange - criar arquivo CSV com duplicatas
+    String csvContent =
+        """
+        codigoRfb;descricao;anoValidade
+        DUP.01.01;Conta Original;2024
+        DUP.01.02;Conta Diferente;2024
+        DUP.01.01;Conta Duplicada;2024
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.totalLines").value(3))
+        .andExpect(jsonPath("$.processedLines").value(2))
+        .andExpect(jsonPath("$.skippedLines").value(1))
+        .andExpect(jsonPath("$.errors").isArray())
+        .andExpect(jsonPath("$.errors[0].lineNumber").value(4))
+        .andExpect(jsonPath("$.errors[0].error").value(org.hamcrest.Matchers.containsString("Duplicate entry")));
+  }
+
+  @Test
+  @DisplayName("Importação deve detectar duplicatas no banco de dados")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldDetectDuplicatesInDatabase() throws Exception {
+    // Arrange - criar conta existente
+    String createRequest =
+        """
+        {
+          "codigoRfb": "EXIST.01.01",
+          "descricao": "Conta Existente",
+          "anoValidade": 2024
+        }
+        """;
+
+    mockMvc
+        .perform(
+            post("/api/v1/conta-referencial")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createRequest))
+        .andExpect(status().isCreated());
+
+    // Arrange - criar arquivo CSV tentando criar a mesma conta
+    String csvContent =
+        """
+        codigoRfb;descricao;anoValidade
+        EXIST.01.01;Tentativa de Duplicata;2024
+        EXIST.01.02;Conta Nova;2024
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.totalLines").value(2))
+        .andExpect(jsonPath("$.processedLines").value(1))
+        .andExpect(jsonPath("$.skippedLines").value(1))
+        .andExpect(jsonPath("$.errors").isArray())
+        .andExpect(jsonPath("$.errors[0].lineNumber").value(2))
+        .andExpect(
+            jsonPath("$.errors[0].error")
+                .value(org.hamcrest.Matchers.containsString("already exists")));
+  }
+
+  @Test
+  @DisplayName("Importação deve validar campos obrigatórios")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldValidateRequiredFieldsOnImport() throws Exception {
+    // Arrange - criar arquivo CSV com campos faltando
+    String csvContent =
+        """
+        codigoRfb;descricao;anoValidade
+        VAL.01.01;;2024
+        ;Descrição sem código;2024
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.totalLines").value(2))
+        .andExpect(jsonPath("$.processedLines").value(0))
+        .andExpect(jsonPath("$.skippedLines").value(2))
+        .andExpect(jsonPath("$.errors").isArray())
+        .andExpect(jsonPath("$.errors[0].lineNumber").value(2))
+        .andExpect(jsonPath("$.errors[1].lineNumber").value(3));
+  }
+
+  @Test
+  @DisplayName("Importação deve validar anoValidade")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldValidateAnoValidadeOnImport() throws Exception {
+    // Arrange - criar arquivo CSV com ano inválido
+    String csvContent =
+        """
+        codigoRfb;descricao;anoValidade
+        ANO.01.01;Ano Inválido;1999
+        ANO.01.02;Ano Válido;2024
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalLines").value(2))
+        .andExpect(jsonPath("$.processedLines").value(1))
+        .andExpect(jsonPath("$.skippedLines").value(1))
+        .andExpect(jsonPath("$.errors").isArray())
+        .andExpect(jsonPath("$.errors[0].lineNumber").value(2))
+        .andExpect(
+            jsonPath("$.errors[0].error").value(org.hamcrest.Matchers.containsString("anoValidade")));
+  }
+
+  @Test
+  @DisplayName("Importação deve suportar separador vírgula")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldSupportCommaSeparator() throws Exception {
+    // Arrange - criar arquivo CSV com vírgula como separador
+    String csvContent =
+        """
+        codigoRfb,descricao,anoValidade
+        COMMA.01.01,Receita com Vírgula,2024
+        COMMA.01.02,Custo com Vírgula,2025
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.totalLines").value(2))
+        .andExpect(jsonPath("$.processedLines").value(2));
+
+    // Assert - verificar que conta foi criada
+    mockMvc
+        .perform(get("/api/v1/conta-referencial?search=COMMA.01.01"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].descricao").value("Receita com Vírgula"));
+  }
+
+  @Test
+  @DisplayName("CONTADOR deve receber 403 ao tentar importar CSV")
+  @WithMockUser(username = "contador@test.com", roles = "CONTADOR")
+  void shouldReturn403WhenContadorTriesToImport() throws Exception {
+    // Arrange - criar arquivo CSV
+    String csvContent =
+        """
+        codigoRfb;descricao;anoValidade
+        FORBIDDEN.01.01;Tentativa do Contador;2024
+        """;
+
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "contas-referenciais.csv", "text/csv", csvContent.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @DisplayName("Importação deve rejeitar arquivo vazio")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldRejectEmptyFile() throws Exception {
+    // Arrange - criar arquivo vazio
+    MockMultipartFile file =
+        new MockMultipartFile("file", "empty.csv", "text/csv", new byte[0]);
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  @DisplayName("Importação deve rejeitar formato de arquivo inválido")
+  @WithMockUser(username = "admin@test.com", roles = "ADMIN")
+  void shouldRejectInvalidFileFormat() throws Exception {
+    // Arrange - criar arquivo com extensão inválida
+    String content = "conteúdo qualquer";
+    MockMultipartFile file =
+        new MockMultipartFile("file", "invalid.pdf", "application/pdf", content.getBytes());
+
+    // Act & Assert
+    mockMvc
+        .perform(
+            multipart("/api/v1/conta-referencial/import")
+                .file(file)
+                .param("dryRun", "false"))
+        .andExpect(status().isBadRequest());
   }
 }

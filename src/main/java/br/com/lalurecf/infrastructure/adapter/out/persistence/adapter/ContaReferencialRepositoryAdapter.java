@@ -67,6 +67,14 @@ public class ContaReferencialRepositoryAdapter implements ContaReferencialReposi
   }
 
   @Override
+  public Optional<ContaReferencial> findByCodigoRfbAndAnoValidade(
+      String codigoRfb, Integer anoValidade) {
+    return jpaRepository
+        .findByCodigoRfbAndAnoValidade(codigoRfb, anoValidade)
+        .map(mapper::toDomain);
+  }
+
+  @Override
   public List<ContaReferencial> findByAnoValidade(Integer anoValidade) {
     return jpaRepository.findByAnoValidade(anoValidade).stream()
         .map(mapper::toDomain)

@@ -2,11 +2,13 @@ package br.com.lalurecf.infrastructure.adapter.in.rest;
 
 import br.com.lalurecf.application.port.in.contareferencial.CreateContaReferencialUseCase;
 import br.com.lalurecf.application.port.in.contareferencial.GetContaReferencialUseCase;
+import br.com.lalurecf.application.port.in.contareferencial.ImportContaReferencialUseCase;
 import br.com.lalurecf.application.port.in.contareferencial.ListContaReferencialUseCase;
 import br.com.lalurecf.application.port.in.contareferencial.ToggleContaReferencialStatusUseCase;
 import br.com.lalurecf.application.port.in.contareferencial.UpdateContaReferencialUseCase;
 import br.com.lalurecf.infrastructure.dto.contareferencial.ContaReferencialResponse;
 import br.com.lalurecf.infrastructure.dto.contareferencial.CreateContaReferencialRequest;
+import br.com.lalurecf.infrastructure.dto.contareferencial.ImportContaReferencialResponse;
 import br.com.lalurecf.infrastructure.dto.contareferencial.UpdateContaReferencialRequest;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusResponse;
@@ -14,11 +16,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Controller para gerenciamento de contas referenciais RFB.
@@ -40,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/conta-referencial")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(
     name = "Contas Referenciais RFB",
     description = "Gerenciamento de contas referenciais da tabela mestra RFB")
@@ -50,6 +56,7 @@ public class ContaReferencialController {
   private final GetContaReferencialUseCase getContaReferencialUseCase;
   private final UpdateContaReferencialUseCase updateContaReferencialUseCase;
   private final ToggleContaReferencialStatusUseCase toggleContaReferencialStatusUseCase;
+  private final ImportContaReferencialUseCase importContaReferencialUseCase;
 
   /**
    * Cria uma nova conta referencial RFB.
@@ -67,6 +74,66 @@ public class ContaReferencialController {
     ContaReferencialResponse response =
         createContaReferencialUseCase.createContaReferencial(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  /**
+   * Importa contas referenciais via arquivo CSV/TXT.
+   *
+   * <p>Formato esperado: codigoRfb;descricao;anoValidade
+   *
+   * <p>Separador: ; ou , (detectado automaticamente)
+   *
+   * <p>Campos:
+   *
+   * <ul>
+   *   <li>codigoRfb: código oficial RFB (obrigatório)
+   *   <li>descricao: descrição da conta (obrigatório, max 1000 chars)
+   *   <li>anoValidade: ano de validade (opcional, entre 2000 e ano atual + 5)
+   * </ul>
+   *
+   * <p>Validações:
+   *
+   * <ul>
+   *   <li>Combinação (codigoRfb + anoValidade) deve ser única
+   *   <li>Arquivo máximo: 10MB
+   *   <li>Detecta duplicatas no arquivo e no banco
+   * </ul>
+   *
+   * @param file arquivo CSV/TXT
+   * @param dryRun se true, apenas retorna preview sem persistir
+   * @return relatório detalhado da importação
+   */
+  @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Importar contas referenciais via CSV",
+      description =
+          "Importa múltiplas contas referenciais via arquivo CSV/TXT (ADMIN apenas). "
+              + "Formato: codigoRfb;descricao;anoValidade")
+  public ResponseEntity<ImportContaReferencialResponse> importContasReferenciais(
+      @RequestParam("file") MultipartFile file,
+      @RequestParam(value = "dryRun", required = false, defaultValue = "false") boolean dryRun) {
+
+    log.info("Importing contas referenciais (dryRun: {})", dryRun);
+
+    if (file.isEmpty()) {
+      throw new IllegalArgumentException("File cannot be empty");
+    }
+
+    String originalFilename = file.getOriginalFilename();
+    if (originalFilename == null || originalFilename.isBlank()) {
+      throw new IllegalArgumentException("File name cannot be empty");
+    }
+
+    if (!originalFilename.toLowerCase().endsWith(".csv")
+        && !originalFilename.toLowerCase().endsWith(".txt")) {
+      throw new IllegalArgumentException("File must be CSV or TXT format");
+    }
+
+    ImportContaReferencialResponse response =
+        importContaReferencialUseCase.importContasReferenciais(file, dryRun);
+
+    return ResponseEntity.status(HttpStatus.OK).body(response);
   }
 
   /**
