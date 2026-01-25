@@ -16,7 +16,6 @@ import br.com.lalurecf.infrastructure.dto.taxparameter.CreateTaxParameterRequest
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.UpdateTaxParameterRequest;
 import jakarta.validation.Valid;
-
 import java.util.HashMap;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -178,10 +177,12 @@ public class TaxParameterController {
    */
   @GetMapping("/company-creation")
   @PreAuthorize("hasRole('ADMIN')")
-  public ResponseEntity<HashMap<String, List<FilterDropdown>>> getTaxParametersForCompanyCreation() {
+  public ResponseEntity<HashMap<String, List<FilterDropdown>>>
+      getTaxParametersForCompanyCreation() {
 
     log.debug("GET /tax-parameters/company-creation");
-    HashMap<String, List<FilterDropdown>> response = getTaxParameterTypesUseCase.getTaxParametersForCompanyCreation();
+    HashMap<String, List<FilterDropdown>> response =
+        getTaxParameterTypesUseCase.getTaxParametersForCompanyCreation();
     return ResponseEntity.ok(response);
   }
 }

@@ -1155,6 +1155,7 @@ public class CompanyService implements
               "Parâmetro de natureza QUARTERLY não aceita campo 'mes'");
         }
       }
+      default -> throw new IllegalArgumentException("Natureza desconhecida: " + nature);
     }
   }
 

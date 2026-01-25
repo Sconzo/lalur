@@ -83,10 +83,11 @@ public class TaxParameterService implements
       boolean includeInactive,
       Pageable pageable) {
 
-    log.info("Listando parâmetros tributários. Type: {}, Nature: {}, Search: {}, IncludeInactive: {}",
-        type, nature, search, includeInactive);
+    log.info("Listando parâmetros tributários. Type: {}, Nature: {}, Search: {}",
+        type, nature, search);
 
-    Specification<TaxParameterEntity> spec = buildSpecification(type, nature, search, includeInactive);
+    Specification<TaxParameterEntity> spec =
+        buildSpecification(type, nature, search, includeInactive);
     Page<TaxParameter> page = taxParameterRepository.findAll(spec, pageable);
 
     return page.map(this::toResponse);
