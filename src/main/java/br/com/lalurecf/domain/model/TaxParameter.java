@@ -1,5 +1,6 @@
 package br.com.lalurecf.domain.model;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -25,6 +26,7 @@ public class TaxParameter {
   private String code;
   private String type;
   private String description;
+  private ParameterNature nature;
   private Status status;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;

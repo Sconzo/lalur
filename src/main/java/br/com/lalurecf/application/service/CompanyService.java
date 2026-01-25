@@ -14,6 +14,7 @@ import br.com.lalurecf.application.port.in.company.ToggleCompanyStatusUseCase;
 import br.com.lalurecf.application.port.in.company.UpdateCompanyTaxParametersUseCase;
 import br.com.lalurecf.application.port.in.company.UpdateCompanyUseCase;
 import br.com.lalurecf.application.port.in.company.UpdatePeriodoContabilUseCase;
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.CompanyStatus;
 import br.com.lalurecf.domain.model.valueobject.CNPJ;
@@ -687,6 +688,11 @@ public class CompanyService implements
       for (PeriodicParameterRequest periodicParam : request.periodicParameters()) {
         Long parameterId = periodicParam.taxParameterId();
 
+        // Buscar parâmetro para validar natureza
+        TaxParameterEntity parameter = taxParameterRepository.findById(parameterId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Parâmetro tributário não encontrado com ID: " + parameterId));
+
         // Criar associação empresa-parâmetro
         CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
             .companyId(companyId)
@@ -704,6 +710,12 @@ public class CompanyService implements
             findEmpresaParametroEntity(savedAssociation.getId());
 
         for (TemporalValueInput temporalInput : periodicParam.temporalValues()) {
+          // Validar natureza do parâmetro para valores temporais
+          validateNatureForTemporalValue(
+              parameter.getNatureza(),
+              temporalInput.mes(),
+              temporalInput.trimestre());
+
           // Validar constraint XOR
           validatePeriodicityConstraint(temporalInput.mes(), temporalInput.trimestre());
 
@@ -942,6 +954,14 @@ public class CompanyService implements
     // Validar que associação empresa-parâmetro existe
     CompanyTaxParameterEntity association = findAssociation(companyId, taxParameterId);
 
+    // Buscar parâmetro para validar natureza
+    TaxParameterEntity parameter = taxParameterRepository.findById(taxParameterId)
+        .orElseThrow(() -> new EntityNotFoundException(
+            "Parâmetro tributário não encontrado com ID: " + taxParameterId));
+
+    // Validar natureza do parâmetro
+    validateNatureForTemporalValue(parameter.getNatureza(), request.mes(), request.trimestre());
+
     // Validar constraint XOR: exatamente UM campo preenchido
     validatePeriodicityConstraint(request.mes(), request.trimestre());
 
@@ -1089,6 +1109,52 @@ public class CompanyService implements
 
     if (hasMonth == hasQuarter) { // Ambos null ou ambos preenchidos
       throw new IllegalArgumentException("Deve ter mes OU trimestre, nunca ambos ou nenhum");
+    }
+  }
+
+  /**
+   * Helper: Valida se a natureza do parâmetro permite valores temporais.
+   *
+   * <p>Regras:
+   * <ul>
+   *   <li>GLOBAL: não permite valores temporais
+   *   <li>MONTHLY: exige campo 'mes' preenchido
+   *   <li>QUARTERLY: exige campo 'trimestre' preenchido
+   * </ul>
+   */
+  private void validateNatureForTemporalValue(
+      ParameterNature nature,
+      Integer mes,
+      Integer trimestre) {
+
+    if (nature == null) {
+      // Parâmetros existentes sem natureza definida são tratados como GLOBAL
+      nature = ParameterNature.GLOBAL;
+    }
+
+    switch (nature) {
+      case GLOBAL -> throw new IllegalArgumentException(
+          "Parâmetro de natureza GLOBAL não aceita valores temporais");
+      case MONTHLY -> {
+        if (mes == null) {
+          throw new IllegalArgumentException(
+              "Parâmetro de natureza MONTHLY requer o campo 'mes' preenchido");
+        }
+        if (trimestre != null) {
+          throw new IllegalArgumentException(
+              "Parâmetro de natureza MONTHLY não aceita campo 'trimestre'");
+        }
+      }
+      case QUARTERLY -> {
+        if (trimestre == null) {
+          throw new IllegalArgumentException(
+              "Parâmetro de natureza QUARTERLY requer o campo 'trimestre' preenchido");
+        }
+        if (mes != null) {
+          throw new IllegalArgumentException(
+              "Parâmetro de natureza QUARTERLY não aceita campo 'mes'");
+        }
+      }
     }
   }
 

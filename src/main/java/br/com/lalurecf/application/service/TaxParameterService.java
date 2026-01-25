@@ -7,9 +7,11 @@ import br.com.lalurecf.application.port.in.taxparameter.ListTaxParametersUseCase
 import br.com.lalurecf.application.port.in.taxparameter.ToggleTaxParameterStatusUseCase;
 import br.com.lalurecf.application.port.in.taxparameter.UpdateTaxParameterUseCase;
 import br.com.lalurecf.application.port.out.TaxParameterRepositoryPort;
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.TaxParameter;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
+import br.com.lalurecf.infrastructure.dto.FilterDropdown;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.CreateTaxParameterRequest;
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterResponse;
@@ -17,6 +19,7 @@ import br.com.lalurecf.infrastructure.dto.taxparameter.UpdateTaxParameterRequest
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +63,7 @@ public class TaxParameterService implements
         .code(request.code())
         .type(request.type())
         .description(request.description())
+        .nature(request.nature())
         .status(Status.ACTIVE)
         .build();
 
@@ -74,14 +78,15 @@ public class TaxParameterService implements
   @Transactional(readOnly = true)
   public Page<TaxParameterResponse> list(
       String type,
+      ParameterNature nature,
       String search,
       boolean includeInactive,
       Pageable pageable) {
 
-    log.info("Listando parâmetros tributários. Type: {}, Search: {}, IncludeInactive: {}",
-        type, search, includeInactive);
+    log.info("Listando parâmetros tributários. Type: {}, Nature: {}, Search: {}, IncludeInactive: {}",
+        type, nature, search, includeInactive);
 
-    Specification<TaxParameterEntity> spec = buildSpecification(type, search, includeInactive);
+    Specification<TaxParameterEntity> spec = buildSpecification(type, nature, search, includeInactive);
     Page<TaxParameter> page = taxParameterRepository.findAll(spec, pageable);
 
     return page.map(this::toResponse);
@@ -127,6 +132,7 @@ public class TaxParameterService implements
         .code(request.code())
         .type(request.type())
         .description(request.description())
+        .nature(request.nature())
         .build();
 
     TaxParameter saved = taxParameterRepository.save(updated);
@@ -183,11 +189,25 @@ public class TaxParameterService implements
     return types;
   }
 
+  @Override
+  public HashMap<String, List<FilterDropdown>> getTaxParametersForCompanyCreation() {
+
+    List<TaxParameter> allParameters = taxParameterRepository.findAll();
+
+    for (TaxParameter parameter : allParameters) {
+      FilterDropdown key = new FilterDropdown(parameter.getId(), parameter.getDescription());
+
+    }
+
+    return null;
+  }
+
   /**
    * Constrói Specification para filtros dinâmicos.
    */
   private Specification<TaxParameterEntity> buildSpecification(
       String type,
+      ParameterNature nature,
       String search,
       boolean includeInactive) {
 
@@ -197,6 +217,11 @@ public class TaxParameterService implements
       // Filtro por tipo (categoria)
       if (type != null && !type.isBlank()) {
         predicates.add(criteriaBuilder.equal(root.get("tipo"), type));
+      }
+
+      // Filtro por natureza
+      if (nature != null) {
+        predicates.add(criteriaBuilder.equal(root.get("natureza"), nature));
       }
 
       // Busca em código e descrição
@@ -227,6 +252,7 @@ public class TaxParameterService implements
         taxParameter.getCode(),
         taxParameter.getType(),
         taxParameter.getDescription(),
+        taxParameter.getNature(),
         taxParameter.getStatus(),
         taxParameter.getCreatedAt(),
         taxParameter.getUpdatedAt()

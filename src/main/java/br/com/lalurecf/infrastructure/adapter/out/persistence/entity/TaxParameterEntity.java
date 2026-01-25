@@ -1,10 +1,14 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.entity;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -38,5 +42,10 @@ public class TaxParameterEntity extends BaseEntity {
 
   @Column(name = "descricao", columnDefinition = "TEXT")
   private String descricao;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "natureza", nullable = false, length = 20)
+  @Builder.Default
+  private ParameterNature natureza = ParameterNature.GLOBAL;
 
 }

@@ -1,6 +1,8 @@
 package br.com.lalurecf.infrastructure.dto.taxparameter;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 /**
@@ -9,6 +11,7 @@ import jakarta.validation.constraints.Pattern;
  * @param code código único do parâmetro (alfanumérico com hífens)
  * @param type tipo/categoria do parâmetro
  * @param description descrição detalhada (opcional)
+ * @param nature natureza do parâmetro (GLOBAL, MONTHLY, QUARTERLY)
  */
 public record UpdateTaxParameterRequest(
     @NotBlank(message = "Código é obrigatório")
@@ -21,5 +24,8 @@ public record UpdateTaxParameterRequest(
     String type,
 
     @NotBlank(message = "Description é obrigatório")
-    String description
+    String description,
+
+    @NotNull(message = "Natureza é obrigatória")
+    ParameterNature nature
 ) {}

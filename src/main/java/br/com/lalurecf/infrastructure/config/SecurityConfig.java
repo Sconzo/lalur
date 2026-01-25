@@ -96,14 +96,30 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(
             exceptions ->
-                exceptions.authenticationEntryPoint(
-                    (request, response, authException) -> {
-                      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                      response.setContentType("application/json");
-                      String errorJson =
-                          "{\"error\": \"Unauthorized\", \"message\": \"Authentication required\"}";
-                      response.getWriter().write(errorJson);
-                    }))
+                exceptions
+                    .authenticationEntryPoint(
+                        (request, response, authException) -> {
+                          response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                          response.setContentType("application/json");
+                          String errorJson =
+                              "{"
+                                  + "\"error\": \"Unauthorized\", "
+                                  + "\"message\": \"Authentication required\""
+                                  + "}";
+                          response.getWriter().write(errorJson);
+                        })
+                    .accessDeniedHandler(
+                        (request, response, accessDeniedException) -> {
+                          response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                          response.setContentType("application/json");
+                          String errorJson =
+                              "{"
+                                  + "\"error\": \"Forbidden\", "
+                                  + "\"message\": \"Acesso negado: você não tem permissão "
+                                  + "para acessar este recurso\""
+                                  + "}";
+                          response.getWriter().write(errorJson);
+                        }))
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(

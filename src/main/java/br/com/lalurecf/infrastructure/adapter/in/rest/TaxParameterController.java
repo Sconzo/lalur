@@ -6,7 +6,9 @@ import br.com.lalurecf.application.port.in.taxparameter.GetTaxParameterUseCase;
 import br.com.lalurecf.application.port.in.taxparameter.ListTaxParametersUseCase;
 import br.com.lalurecf.application.port.in.taxparameter.ToggleTaxParameterStatusUseCase;
 import br.com.lalurecf.application.port.in.taxparameter.UpdateTaxParameterUseCase;
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
+import br.com.lalurecf.infrastructure.dto.FilterDropdown;
 import br.com.lalurecf.infrastructure.dto.company.FilterOptionsResponse;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
@@ -14,6 +16,8 @@ import br.com.lalurecf.infrastructure.dto.taxparameter.CreateTaxParameterRequest
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.UpdateTaxParameterRequest;
 import jakarta.validation.Valid;
+
+import java.util.HashMap;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +82,7 @@ public class TaxParameterController {
    * Lista parâmetros tributários com filtros e paginação.
    *
    * @param type filtro por tipo (categoria) - opcional
+   * @param nature filtro por natureza (GLOBAL, MONTHLY, QUARTERLY) - opcional
    * @param search busca em código e descrição - opcional
    * @param includeInactive incluir parâmetros inativos
    * @param pageable configuração de paginação
@@ -87,13 +92,14 @@ public class TaxParameterController {
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Page<TaxParameterResponse>> list(
       @RequestParam(required = false) String type,
+      @RequestParam(required = false) ParameterNature nature,
       @RequestParam(required = false) String search,
       @RequestParam(defaultValue = "false") boolean includeInactive,
       @PageableDefault(size = 50, sort = "codigo") Pageable pageable) {
 
-    log.info("GET /tax-parameters - Listando parâmetros");
+    log.info("GET /tax-parameters - Listando parâmetros. Nature: {}", nature);
     Page<TaxParameterResponse> response =
-        listTaxParametersUseCase.list(type, search, includeInactive, pageable);
+        listTaxParametersUseCase.list(type, nature, search, includeInactive, pageable);
     return ResponseEntity.ok(response);
   }
 
@@ -162,5 +168,20 @@ public class TaxParameterController {
     log.debug("GET /tax-parameters/filter-options/types - search: {}", search);
     List<String> types = getTaxParameterTypesUseCase.getTypes(search);
     return ResponseEntity.ok(new FilterOptionsResponse(types));
+  }
+
+
+  /**
+   * Retorna parâmetros tributários organizados por tipo para criação de empresa.
+   *
+   * @return mapa de tipo -> lista de parâmetros
+   */
+  @GetMapping("/company-creation")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<HashMap<String, List<FilterDropdown>>> getTaxParametersForCompanyCreation() {
+
+    log.debug("GET /tax-parameters/company-creation");
+    HashMap<String, List<FilterDropdown>> response = getTaxParameterTypesUseCase.getTaxParametersForCompanyCreation();
+    return ResponseEntity.ok(response);
   }
 }
