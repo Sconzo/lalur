@@ -79,4 +79,12 @@ public interface TaxParameterRepositoryPort {
    * @return lista de tipos únicos ordenados
    */
   List<String> findDistinctTypes();
+
+
+  /**
+   * Busca tipos/categorias distintos de parâmetros tributários.
+   *
+   * @return lista de tipos únicos ordenados
+   */
+  List<TaxParameter> findTaxParametersOrderByType();
 }

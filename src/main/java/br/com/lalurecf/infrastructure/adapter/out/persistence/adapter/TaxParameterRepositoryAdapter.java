@@ -76,4 +76,11 @@ public class TaxParameterRepositoryAdapter implements TaxParameterRepositoryPort
   public List<String> findDistinctTypes() {
     return jpaRepository.findDistinctTipos();
   }
+
+  @Override
+  public List<TaxParameter> findTaxParametersOrderByType() {
+    return jpaRepository.findTaxParametersOrderByType().stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
 }

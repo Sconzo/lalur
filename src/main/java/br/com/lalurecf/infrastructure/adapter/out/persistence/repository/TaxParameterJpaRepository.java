@@ -57,4 +57,13 @@ public interface TaxParameterJpaRepository
   @Query("SELECT DISTINCT t.tipo FROM TaxParameterEntity t ORDER BY t.tipo")
   List<String> findDistinctTipos();
 
+  /**
+   * Busca todos os parâmetros tributários ordenados por tipo e descrição.
+   * Útil para agrupar parâmetros por tipo.
+   *
+   * @return lista de parâmetros ordenados
+   */
+  @Query("SELECT t FROM TaxParameterEntity t ORDER BY t.tipo, t.descricao")
+  List<TaxParameterEntity> findTaxParametersOrderByType();
+
 }

@@ -21,6 +21,7 @@ import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -193,14 +194,29 @@ public class TaxParameterService implements
   @Override
   public HashMap<String, List<FilterDropdown>> getTaxParametersForCompanyCreation() {
 
-    List<TaxParameter> allParameters = taxParameterRepository.findAll();
+    List<TaxParameter> allParameters = taxParameterRepository.findTaxParametersOrderByType();
+
+    HashMap<String, List<FilterDropdown>> map = new HashMap<>();
+    String key = null;
+    List<FilterDropdown> valueList = new ArrayList<>();
+    String type = allParameters.stream().map(TaxParameter::getType).findFirst().orElse("");
 
     for (TaxParameter parameter : allParameters) {
-      FilterDropdown key = new FilterDropdown(parameter.getId(), parameter.getDescription());
-
+      if (!Objects.equals(parameter.getType(), type) && Objects.nonNull(key)) {
+        map.put(key, valueList);
+        valueList = new ArrayList<>();
+        type = parameter.getType();
+      }
+      key = parameter.getType();
+      valueList.add(new FilterDropdown(parameter.getId(), parameter.getDescription()));
     }
 
-    return null;
+    // Salvar último grupo
+    if (key != null) {
+      map.put(key, valueList);
+    }
+
+    return map;
   }
 
   /**
