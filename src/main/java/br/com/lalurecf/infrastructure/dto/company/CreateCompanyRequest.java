@@ -1,7 +1,9 @@
 package br.com.lalurecf.infrastructure.dto.company;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
@@ -13,6 +15,14 @@ import java.util.List;
  * DTO para criação de empresa.
  *
  * <p>Contém todos os campos obrigatórios para cadastro de uma nova empresa no sistema.
+ *
+ * <p>Parâmetros tributários:
+ * <ul>
+ *   <li><b>globalParameterIds:</b> IDs de parâmetros globais (aplicam-se ao ano todo).
+ *       Deve conter pelo menos um parâmetro de cada tipo obrigatório: CNAE, QUALIFICACAO_PJ,
+ *       NATUREZA_JURIDICA.
+ *   <li><b>periodicParameters:</b> Parâmetros periódicos com valores temporais (mês/trimestre).
+ * </ul>
  */
 public record CreateCompanyRequest(
 
@@ -29,15 +39,10 @@ public record CreateCompanyRequest(
     @JsonFormat(pattern = "yyyy-MM-dd")
     LocalDate periodoContabil,
 
-    @NotNull(message = "CNAE é obrigatório")
-    Long cnaeParametroId,
+    @NotEmpty(message = "Lista de parâmetros globais é obrigatória")
+    List<Long> globalParameterIds,
 
-    @NotNull(message = "Qualificação da Pessoa Jurídica é obrigatória")
-    Long qualificacaoPjParametroId,
-
-    @NotNull(message = "Natureza Jurídica é obrigatória")
-    Long naturezaJuridicaParametroId,
-
-    List<Long> outrosParametrosIds
+    @Valid
+    List<PeriodicParameterRequest> periodicParameters
 ) {
 }

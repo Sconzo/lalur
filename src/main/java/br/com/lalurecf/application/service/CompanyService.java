@@ -109,12 +109,19 @@ public class CompanyService implements
               "Já existe uma empresa ativa com o CNPJ: " + cnpj.format());
         });
 
-    // Validar os 3 parâmetros tributários obrigatórios
-    validateRequiredTaxParameters(
-        request.cnaeParametroId(),
-        request.qualificacaoPjParametroId(),
-        request.naturezaJuridicaParametroId()
-    );
+    // Validar que os 3 tipos obrigatórios estão presentes nos parâmetros globais
+    validateRequiredParameterTypes(request.globalParameterIds());
+
+    // Validar que todos os parâmetros globais existem e estão ACTIVE
+    validateParametersExistAndActive(request.globalParameterIds());
+
+    // Validar parâmetros periódicos se fornecidos
+    List<Long> periodicIds = request.periodicParameters() != null
+        ? request.periodicParameters().stream()
+            .map(PeriodicParameterRequest::taxParameterId)
+            .collect(Collectors.toList())
+        : Collections.emptyList();
+    validateParametersExistAndActive(periodicIds);
 
     // Criar entidade
     CompanyEntity entity = new CompanyEntity();
@@ -126,15 +133,71 @@ public class CompanyService implements
     CompanyEntity saved = companyRepository.save(entity);
     log.info("Empresa criada com sucesso. ID: {}, CNPJ: {}", saved.getId(), cnpj.getValue());
 
-    // Criar associações com os 3 parâmetros obrigatórios
-    createTaxParameterAssociation(saved.getId(), request.cnaeParametroId());
-    createTaxParameterAssociation(saved.getId(), request.qualificacaoPjParametroId());
-    createTaxParameterAssociation(saved.getId(), request.naturezaJuridicaParametroId());
+    // Obter userId do SecurityContext para auditoria
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    Long userId = (Long) authentication.getPrincipal();
+    LocalDateTime now = LocalDateTime.now();
 
-    // Criar associações com outros parâmetros opcionais
-    if (request.outrosParametrosIds() != null) {
-      for (Long parametroId : request.outrosParametrosIds()) {
-        createTaxParameterAssociation(saved.getId(), parametroId);
+    // Criar associações para parâmetros GLOBAIS
+    for (Long parameterId : request.globalParameterIds()) {
+      CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
+          .companyId(saved.getId())
+          .taxParameterId(parameterId)
+          .createdBy(userId)
+          .createdAt(now)
+          .build();
+      companyTaxParameterRepository.save(association);
+      log.debug("Parâmetro global associado: parameterId={}", parameterId);
+    }
+
+    // Criar associações para parâmetros PERIÓDICOS (com valores temporais)
+    if (request.periodicParameters() != null) {
+      for (PeriodicParameterRequest periodicParam : request.periodicParameters()) {
+        Long parameterId = periodicParam.taxParameterId();
+
+        // Buscar parâmetro para validar natureza
+        TaxParameterEntity parameter = taxParameterRepository.findById(parameterId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Parâmetro tributário não encontrado com ID: " + parameterId));
+
+        // Criar associação empresa-parâmetro
+        CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
+            .companyId(saved.getId())
+            .taxParameterId(parameterId)
+            .createdBy(userId)
+            .createdAt(now)
+            .build();
+        CompanyTaxParameterEntity savedAssociation =
+            companyTaxParameterRepository.save(association);
+
+        log.debug("Parâmetro periódico associado: parameterId={}", parameterId);
+
+        // Criar valores temporais
+        EmpresaParametrosTributariosEntity empresaParametro =
+            findEmpresaParametroEntity(savedAssociation.getId());
+
+        for (TemporalValueInput temporalInput : periodicParam.temporalValues()) {
+          // Validar natureza do parâmetro para valores temporais
+          validateNatureForTemporalValue(
+              parameter.getNatureza(),
+              temporalInput.mes(),
+              temporalInput.trimestre());
+
+          // Validar constraint XOR
+          validatePeriodicityConstraint(temporalInput.mes(), temporalInput.trimestre());
+
+          ValorParametroTemporalEntity temporalValue = ValorParametroTemporalEntity.builder()
+              .empresaParametrosTributarios(empresaParametro)
+              .ano(temporalInput.ano())
+              .mes(temporalInput.mes())
+              .trimestre(temporalInput.trimestre())
+              .status(Status.ACTIVE)
+              .build();
+
+          valorParametroTemporalRepository.save(temporalValue);
+          log.debug("Valor temporal criado: parameterId={}, ano={}, mes={}, trimestre={}",
+              parameterId, temporalInput.ano(), temporalInput.mes(), temporalInput.trimestre());
+        }
       }
     }
 
@@ -181,35 +244,99 @@ public class CompanyService implements
   public CompanyDetailResponse update(Long id, UpdateCompanyRequest request) {
     log.info("Atualizando empresa ID: {}", id);
 
+    // Validar que os 3 tipos obrigatórios estão presentes nos parâmetros globais
+    validateRequiredParameterTypes(request.globalParameterIds());
+
+    // Validar que todos os parâmetros globais existem e estão ACTIVE
+    validateParametersExistAndActive(request.globalParameterIds());
+
+    // Validar parâmetros periódicos se fornecidos
+    List<Long> periodicIds = request.periodicParameters() != null
+        ? request.periodicParameters().stream()
+            .map(PeriodicParameterRequest::taxParameterId)
+            .collect(Collectors.toList())
+        : Collections.emptyList();
+    validateParametersExistAndActive(periodicIds);
+
+    // Buscar empresa existente
     CompanyEntity entity = companyRepository.findById(id)
         .orElseThrow(() -> {
           log.warn("Tentativa de atualizar empresa inexistente. ID: {}", id);
           return new EntityNotFoundException("Empresa não encontrada com ID: " + id);
         });
 
-    // Validar os 3 parâmetros tributários obrigatórios
-    validateRequiredTaxParameters(
-        request.cnaeParametroId(),
-        request.qualificacaoPjParametroId(),
-        request.naturezaJuridicaParametroId()
-    );
-
     // Atualizar campos (CNPJ é imutável)
     entity.setRazaoSocial(request.razaoSocial());
     entity.setPeriodoContabil(request.periodoContabil());
 
-    // Remover todas as associações existentes
+    // Remover todas as associações existentes (incluindo valores temporais em cascata)
     companyTaxParameterRepository.deleteAllByCompanyId(id);
 
-    // Criar associações com os 3 parâmetros obrigatórios
-    createTaxParameterAssociation(id, request.cnaeParametroId());
-    createTaxParameterAssociation(id, request.qualificacaoPjParametroId());
-    createTaxParameterAssociation(id, request.naturezaJuridicaParametroId());
+    // Obter userId do SecurityContext para auditoria
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    Long userId = (Long) authentication.getPrincipal();
+    LocalDateTime now = LocalDateTime.now();
 
-    // Criar associações com outros parâmetros opcionais
-    if (request.outrosParametrosIds() != null) {
-      for (Long parametroId : request.outrosParametrosIds()) {
-        createTaxParameterAssociation(id, parametroId);
+    // Criar associações para parâmetros GLOBAIS
+    for (Long parameterId : request.globalParameterIds()) {
+      CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
+          .companyId(id)
+          .taxParameterId(parameterId)
+          .createdBy(userId)
+          .createdAt(now)
+          .build();
+      companyTaxParameterRepository.save(association);
+      log.debug("Parâmetro global associado: parameterId={}", parameterId);
+    }
+
+    // Criar associações para parâmetros PERIÓDICOS (com valores temporais)
+    if (request.periodicParameters() != null) {
+      for (PeriodicParameterRequest periodicParam : request.periodicParameters()) {
+        Long parameterId = periodicParam.taxParameterId();
+
+        // Buscar parâmetro para validar natureza
+        TaxParameterEntity parameter = taxParameterRepository.findById(parameterId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Parâmetro tributário não encontrado com ID: " + parameterId));
+
+        // Criar associação empresa-parâmetro
+        CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
+            .companyId(id)
+            .taxParameterId(parameterId)
+            .createdBy(userId)
+            .createdAt(now)
+            .build();
+        CompanyTaxParameterEntity savedAssociation =
+            companyTaxParameterRepository.save(association);
+
+        log.debug("Parâmetro periódico associado: parameterId={}", parameterId);
+
+        // Criar valores temporais
+        EmpresaParametrosTributariosEntity empresaParametro =
+            findEmpresaParametroEntity(savedAssociation.getId());
+
+        for (TemporalValueInput temporalInput : periodicParam.temporalValues()) {
+          // Validar natureza do parâmetro para valores temporais
+          validateNatureForTemporalValue(
+              parameter.getNatureza(),
+              temporalInput.mes(),
+              temporalInput.trimestre());
+
+          // Validar constraint XOR
+          validatePeriodicityConstraint(temporalInput.mes(), temporalInput.trimestre());
+
+          ValorParametroTemporalEntity temporalValue = ValorParametroTemporalEntity.builder()
+              .empresaParametrosTributarios(empresaParametro)
+              .ano(temporalInput.ano())
+              .mes(temporalInput.mes())
+              .trimestre(temporalInput.trimestre())
+              .status(Status.ACTIVE)
+              .build();
+
+          valorParametroTemporalRepository.save(temporalValue);
+          log.debug("Valor temporal criado: parameterId={}, ano={}, mes={}, trimestre={}",
+              parameterId, temporalInput.ano(), temporalInput.mes(), temporalInput.trimestre());
+        }
       }
     }
 
@@ -828,72 +955,59 @@ public class CompanyService implements
   }
 
   /**
-   * Valida se os 3 parâmetros tributários obrigatórios existem e são dos tipos corretos.
+   * Valida que os 3 tipos obrigatórios (CNAE, QUALIFICACAO_PJ, NATUREZA_JURIDICA)
+   * estão presentes na lista de IDs de parâmetros globais.
    *
-   * @param cnaeId ID do parâmetro CNAE
-   * @param qualificacaoPjId ID do parâmetro Qualificação PJ
-   * @param naturezaJuridicaId ID do parâmetro Natureza Jurídica
-   * @throws IllegalArgumentException se algum parâmetro não existe ou não é do tipo correto
+   * @param globalParameterIds lista de IDs de parâmetros globais
+   * @throws IllegalArgumentException se algum tipo obrigatório está ausente
    */
-  private void validateRequiredTaxParameters(
-      Long cnaeId,
-      Long qualificacaoPjId,
-      Long naturezaJuridicaId) {
-
-    // Validar CNAE
-    TaxParameterEntity cnae = taxParameterRepository.findById(cnaeId)
-        .orElseThrow(() -> new IllegalArgumentException(
-            "Parâmetro CNAE não encontrado com ID: " + cnaeId));
-
-    if (!"CNAE".equals(cnae.getTipo())) {
+  private void validateRequiredParameterTypes(List<Long> globalParameterIds) {
+    if (globalParameterIds == null || globalParameterIds.isEmpty()) {
       throw new IllegalArgumentException(
-          "Parâmetro com ID " + cnaeId + " não é do tipo CNAE (tipo atual: "
-              + cnae.getTipo() + ")");
+          "Lista de parâmetros globais não pode ser vazia");
     }
 
-    // Validar Qualificação PJ
-    TaxParameterEntity qualificacaoPj = taxParameterRepository.findById(qualificacaoPjId)
-        .orElseThrow(() -> new IllegalArgumentException(
-            "Parâmetro Qualificação PJ não encontrado com ID: " + qualificacaoPjId));
+    // Buscar todos os parâmetros da lista
+    List<TaxParameterEntity> parameters = taxParameterRepository.findAllById(globalParameterIds);
 
-    if (!"QUALIFICACAO_PJ".equals(qualificacaoPj.getTipo())) {
+    // Extrair os tipos presentes
+    java.util.Set<String> presentTypes = parameters.stream()
+        .map(TaxParameterEntity::getTipo)
+        .collect(Collectors.toSet());
+
+    // Verificar tipos obrigatórios
+    List<String> requiredTypes = List.of("CNAE", "QUALIFICACAO_PJ", "NATUREZA_JURIDICA");
+    List<String> missingTypes = requiredTypes.stream()
+        .filter(type -> !presentTypes.contains(type))
+        .collect(Collectors.toList());
+
+    if (!missingTypes.isEmpty()) {
       throw new IllegalArgumentException(
-          "Parâmetro com ID " + qualificacaoPjId
-              + " não é do tipo QUALIFICACAO_PJ (tipo atual: "
-              + qualificacaoPj.getTipo() + ")");
-    }
-
-    // Validar Natureza Jurídica
-    TaxParameterEntity naturezaJuridica = taxParameterRepository.findById(naturezaJuridicaId)
-        .orElseThrow(() -> new IllegalArgumentException(
-            "Parâmetro Natureza Jurídica não encontrado com ID: " + naturezaJuridicaId));
-
-    if (!"NATUREZA_JURIDICA".equals(naturezaJuridica.getTipo())) {
-      throw new IllegalArgumentException(
-          "Parâmetro com ID " + naturezaJuridicaId
-              + " não é do tipo NATUREZA_JURIDICA (tipo atual: "
-              + naturezaJuridica.getTipo() + ")");
+          "Parâmetros obrigatórios ausentes. Tipos faltando: " + String.join(", ", missingTypes));
     }
   }
 
   /**
-   * Cria uma associação entre empresa e parâmetro tributário com auditoria.
+   * Valida que todos os parâmetros da lista existem e estão ACTIVE.
    *
-   * @param companyId ID da empresa
-   * @param taxParameterId ID do parâmetro tributário
+   * @param parameterIds lista de IDs de parâmetros
+   * @throws IllegalArgumentException se algum parâmetro não existe ou está INACTIVE
    */
-  private void createTaxParameterAssociation(Long companyId, Long taxParameterId) {
-    // Obter userId do SecurityContext para auditoria
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    Long userId = 1L; // TODO: Buscar ID do usuário pelo email
+  private void validateParametersExistAndActive(List<Long> parameterIds) {
+    if (parameterIds == null || parameterIds.isEmpty()) {
+      return;
+    }
 
-    CompanyTaxParameterEntity association = CompanyTaxParameterEntity.builder()
-        .companyId(companyId)
-        .taxParameterId(taxParameterId)
-        .createdBy(userId)
-        .createdAt(LocalDateTime.now())
-        .build();
-    companyTaxParameterRepository.save(association);
+    for (Long parameterId : parameterIds) {
+      TaxParameterEntity parameter = taxParameterRepository.findById(parameterId)
+          .orElseThrow(() -> new IllegalArgumentException(
+              "Parâmetro tributário não encontrado com ID: " + parameterId));
+
+      if (parameter.getStatus() != Status.ACTIVE) {
+        throw new IllegalArgumentException(
+            "Não é permitido associar parâmetro INACTIVE. Parâmetro ID: " + parameterId);
+      }
+    }
   }
 
   /**
