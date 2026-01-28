@@ -8,12 +8,12 @@ import br.com.lalurecf.application.port.in.taxparameter.ToggleTaxParameterStatus
 import br.com.lalurecf.application.port.in.taxparameter.UpdateTaxParameterUseCase;
 import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.infrastructure.dto.FilterDropdown;
 import br.com.lalurecf.infrastructure.dto.company.FilterOptionsResponse;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.CreateTaxParameterRequest;
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterResponse;
+import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterTypeGroup;
 import br.com.lalurecf.infrastructure.dto.taxparameter.UpdateTaxParameterRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
@@ -173,15 +173,15 @@ public class TaxParameterController {
   /**
    * Retorna parâmetros tributários organizados por tipo para criação de empresa.
    *
-   * @return mapa de tipo -> lista de parâmetros
+   * @return mapa de tipo -> grupo com natureza e lista de parâmetros
    */
   @GetMapping("/company-creation")
   @PreAuthorize("hasRole('ADMIN')")
-  public ResponseEntity<HashMap<String, List<FilterDropdown>>>
+  public ResponseEntity<HashMap<String, TaxParameterTypeGroup>>
       getTaxParametersForCompanyCreation() {
 
     log.debug("GET /tax-parameters/company-creation");
-    HashMap<String, List<FilterDropdown>> response =
+    HashMap<String, TaxParameterTypeGroup> response =
         getTaxParameterTypesUseCase.getTaxParametersForCompanyCreation();
     return ResponseEntity.ok(response);
   }

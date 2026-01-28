@@ -1,6 +1,6 @@
 package br.com.lalurecf.application.port.in.taxparameter;
 
-import br.com.lalurecf.infrastructure.dto.FilterDropdown;
+import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterTypeGroup;
 import java.util.HashMap;
 import java.util.List;
 
@@ -22,8 +22,8 @@ public interface GetTaxParameterTypesUseCase {
   /**
    * Busca parâmetros tributários para criação de empresa.
    *
-   * @return lista de parâmetros tributários agrupados por tipo
+   * @return parâmetros tributários agrupados por tipo com natureza
    */
-  HashMap<String, List<FilterDropdown>> getTaxParametersForCompanyCreation();
+  HashMap<String, TaxParameterTypeGroup> getTaxParametersForCompanyCreation();
 
 }

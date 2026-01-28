@@ -15,6 +15,7 @@ import br.com.lalurecf.infrastructure.dto.FilterDropdown;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.CreateTaxParameterRequest;
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterResponse;
+import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterTypeGroup;
 import br.com.lalurecf.infrastructure.dto.taxparameter.UpdateTaxParameterRequest;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
@@ -192,28 +193,27 @@ public class TaxParameterService implements
   }
 
   @Override
-  public HashMap<String, List<FilterDropdown>> getTaxParametersForCompanyCreation() {
+  public HashMap<String, TaxParameterTypeGroup> getTaxParametersForCompanyCreation() {
 
     List<TaxParameter> allParameters = taxParameterRepository.findTaxParametersOrderByType();
 
-    HashMap<String, List<FilterDropdown>> map = new HashMap<>();
-    String key = null;
-    List<FilterDropdown> valueList = new ArrayList<>();
-    String type = allParameters.stream().map(TaxParameter::getType).findFirst().orElse("");
+    HashMap<String, TaxParameterTypeGroup> map = new HashMap<>();
+    String currentType = null;
+    ParameterNature currentNature = null;
+    List<FilterDropdown> parameterList = new ArrayList<>();
 
     for (TaxParameter parameter : allParameters) {
-      if (!Objects.equals(parameter.getType(), type) && Objects.nonNull(key)) {
-        map.put(key, valueList);
-        valueList = new ArrayList<>();
-        type = parameter.getType();
+      if (!Objects.equals(parameter.getType(), currentType) && currentType != null) {
+        map.put(currentType, new TaxParameterTypeGroup(currentNature, parameterList));
+        parameterList = new ArrayList<>();
       }
-      key = parameter.getType();
-      valueList.add(new FilterDropdown(parameter.getId(), parameter.getDescription()));
+      currentType = parameter.getType();
+      currentNature = parameter.getNature();
+      parameterList.add(new FilterDropdown(parameter.getId(), parameter.getDescription()));
     }
 
-    // Salvar último grupo
-    if (key != null) {
-      map.put(key, valueList);
+    if (currentType != null) {
+      map.put(currentType, new TaxParameterTypeGroup(currentNature, parameterList));
     }
 
     return map;
