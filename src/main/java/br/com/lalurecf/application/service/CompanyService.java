@@ -620,6 +620,17 @@ public class CompanyService implements
           Long assocId = taxParamToAssocId.get(p.getId());
           boolean hasTemporalValues = assocId != null
               && associationsWithTemporalValues.contains(assocId);
+
+          // Buscar valores temporais se existirem
+          List<TemporalValueResponse> temporalValues = Collections.emptyList();
+          if (hasTemporalValues && assocId != null) {
+            temporalValues = valorParametroTemporalRepository
+                .findByEmpresaParametrosTributariosId(assocId)
+                .stream()
+                .map(this::toTemporalValueResponse)
+                .collect(Collectors.toList());
+          }
+
           return new TaxParameterSummary(
               p.getId(),
               p.getCodigo(),
@@ -627,7 +638,8 @@ public class CompanyService implements
               p.getDescricao(),
               assoc != null ? assoc.getCreatedAt() : null,
               createdByEmail,
-              hasTemporalValues);
+              hasTemporalValues,
+              temporalValues);
         })
         .toList();
 
@@ -925,6 +937,16 @@ public class CompanyService implements
 
           boolean hasTemporalValues = associationsWithTemporalValues.contains(assoc.getId());
 
+          // Buscar valores temporais se existirem
+          List<TemporalValueResponse> temporalValues = Collections.emptyList();
+          if (hasTemporalValues) {
+            temporalValues = valorParametroTemporalRepository
+                .findByEmpresaParametrosTributariosId(assoc.getId())
+                .stream()
+                .map(this::toTemporalValueResponse)
+                .collect(Collectors.toList());
+          }
+
           return new TaxParameterSummary(
               param.getId(),
               param.getCodigo(),
@@ -932,7 +954,8 @@ public class CompanyService implements
               param.getDescricao(),
               assoc.getCreatedAt(),
               createdByEmail,
-              hasTemporalValues);
+              hasTemporalValues,
+              temporalValues);
         })
         .filter(summary -> summary != null)
         .collect(Collectors.toList());
@@ -1036,6 +1059,17 @@ public class CompanyService implements
           Long assocId = taxParamToAssocId.get(p.getId());
           boolean hasTemporalValues = assocId != null
               && associationsWithTemporalValues.contains(assocId);
+
+          // Buscar valores temporais se existirem
+          List<TemporalValueResponse> temporalValues = Collections.emptyList();
+          if (hasTemporalValues && assocId != null) {
+            temporalValues = valorParametroTemporalRepository
+                .findByEmpresaParametrosTributariosId(assocId)
+                .stream()
+                .map(this::toTemporalValueResponse)
+                .collect(Collectors.toList());
+          }
+
           return new TaxParameterSummary(
               p.getId(),
               p.getCodigo(),
@@ -1043,7 +1077,8 @@ public class CompanyService implements
               p.getDescricao(),
               assoc != null ? assoc.getCreatedAt() : null,
               createdByEmail,
-              hasTemporalValues);
+              hasTemporalValues,
+              temporalValues);
         })
         .orElse(null);
   }

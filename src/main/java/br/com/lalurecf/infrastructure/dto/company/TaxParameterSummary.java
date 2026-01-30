@@ -1,6 +1,7 @@
 package br.com.lalurecf.infrastructure.dto.company;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Summary representation of a TaxParameter associated with a Company.
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
  * @param associatedAt when the parameter was associated with the company
  * @param associatedBy email of the user who associated the parameter
  * @param hasTemporalValues indicates if this parameter has any temporal values configured
+ * @param temporalValues list of temporal values if this is a periodic parameter
  */
 public record TaxParameterSummary(
     Long id,
@@ -22,4 +24,5 @@ public record TaxParameterSummary(
     String descricao,
     LocalDateTime associatedAt,
     String associatedBy,
-    boolean hasTemporalValues) {}
+    boolean hasTemporalValues,
+    List<TemporalValueResponse> temporalValues) {}
