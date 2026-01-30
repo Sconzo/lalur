@@ -171,16 +171,16 @@ public class TaxParameterController {
 
 
   /**
-   * Retorna parâmetros tributários organizados por tipo para criação de empresa.
+   * Retorna parâmetros tributários organizados por tipo.
    *
    * @return mapa de tipo -> grupo com natureza e lista de parâmetros
    */
-  @GetMapping("/company-creation")
+  @GetMapping("/grouped")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<HashMap<String, TaxParameterTypeGroup>>
-      getTaxParametersForCompanyCreation() {
+      getTaxParametersGrouped() {
 
-    log.debug("GET /tax-parameters/company-creation");
+    log.debug("GET /tax-parameters/grouped");
     HashMap<String, TaxParameterTypeGroup> response =
         getTaxParameterTypesUseCase.getTaxParametersForCompanyCreation();
     return ResponseEntity.ok(response);
