@@ -1,5 +1,6 @@
 package br.com.lalurecf.domain.model;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -8,24 +9,22 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Domain Model - Parâmetro Tributário.
+ * Domain Model - Tipo de Parâmetro Tributário.
  *
- * <p>POJO puro sem dependências de frameworks (Spring/JPA). Representa um parâmetro tributário no
- * contexto de domínio seguindo princípios da arquitetura hexagonal.
+ * <p>POJO puro sem dependências de frameworks (Spring/JPA). Representa um tipo de parâmetro
+ * tributário que agrupa parâmetros e define sua natureza (GLOBAL, MONTHLY, QUARTERLY).
  *
- * <p>Estrutura flat (sem hierarquia parent/child) conforme ADR-001 v2.0. O tipo e natureza são
- * definidos através do relacionamento com TaxParameterType.
+ * <p>Cada tipo encapsula a natureza, permitindo que parâmetros herdem essa característica
+ * através do relacionamento.
  */
 @Data
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class TaxParameter {
+public class TaxParameterType {
   private Long id;
-  private String code;
-  private Long typeId;
-  private TaxParameterType type;
   private String description;
+  private ParameterNature nature;
   private Status status;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;

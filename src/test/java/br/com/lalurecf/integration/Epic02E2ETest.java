@@ -8,12 +8,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.enums.UserRole;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterTypeEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterTypeJpaRepository;
 import br.com.lalurecf.infrastructure.security.JwtTokenProvider;
 import br.com.lalurecf.util.IntegrationTestBase;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,6 +60,9 @@ class Epic02E2ETest extends IntegrationTestBase {
 
   @Autowired
   private TaxParameterJpaRepository taxParameterRepository;
+
+  @Autowired
+  private TaxParameterTypeJpaRepository taxParameterTypeRepository;
 
   @Autowired
   private ObjectMapper objectMapper;
@@ -209,14 +215,26 @@ class Epic02E2ETest extends IntegrationTestBase {
    * Helper: criar parâmetro tributário.
    */
   private TaxParameterEntity createTaxParameter(String codigo, String tipo, String descricao) {
-    TaxParameterEntity param = TaxParameterEntity.builder()
-        .codigo(codigo)
-        .tipo(tipo)
-        .descricao(descricao)
-        .status(Status.ACTIVE)
-        .createdAt(LocalDateTime.now())
-        .updatedAt(LocalDateTime.now())
-        .build();
+    // Create or find type
+    TaxParameterTypeEntity paramType =
+        taxParameterTypeRepository
+            .findByDescricao(tipo)
+            .orElseGet(
+                () ->
+                    taxParameterTypeRepository.save(
+                        TaxParameterTypeEntity.builder()
+                            .descricao(tipo)
+                            .natureza(ParameterNature.GLOBAL)
+                            .status(Status.ACTIVE)
+                            .build()));
+
+    TaxParameterEntity param =
+        TaxParameterEntity.builder()
+            .codigo(codigo)
+            .tipoParametro(paramType)
+            .descricao(descricao)
+            .status(Status.ACTIVE)
+            .build();
     return taxParameterRepository.save(param);
   }
 

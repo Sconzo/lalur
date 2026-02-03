@@ -2,12 +2,15 @@ package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.TaxParameter;
+import br.com.lalurecf.domain.model.TaxParameterType;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.util.IntegrationTestBase;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,14 +23,56 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Teste de integração para TaxParameterRepositoryAdapter.
  *
- * <p>Valida a integração entre adapter, mapper e JPA repository,
- * verificando conversões entity ↔ domain e operações de persistência.
+ * <p>Valida a integração entre adapter, mapper e JPA repository, verificando conversões entity ↔
+ * domain e operações de persistência.
  */
 @DisplayName("TaxParameterRepositoryAdapter - Testes de Integração")
 @Transactional
 class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
 
   @Autowired private TaxParameterRepositoryAdapter adapter;
+  @Autowired private TaxParameterTypeRepositoryAdapter typeAdapter;
+
+  private TaxParameterType irpjType;
+  private TaxParameterType csllType;
+  private TaxParameterType cnaeType;
+  private TaxParameterType geralType;
+
+  @BeforeEach
+  void setUp() {
+    // Create test types
+    irpjType =
+        typeAdapter.save(
+            TaxParameterType.builder()
+                .description("IRPJ")
+                .nature(ParameterNature.QUARTERLY)
+                .status(Status.ACTIVE)
+                .build());
+
+    csllType =
+        typeAdapter.save(
+            TaxParameterType.builder()
+                .description("CSLL")
+                .nature(ParameterNature.QUARTERLY)
+                .status(Status.ACTIVE)
+                .build());
+
+    cnaeType =
+        typeAdapter.save(
+            TaxParameterType.builder()
+                .description("CNAE")
+                .nature(ParameterNature.GLOBAL)
+                .status(Status.ACTIVE)
+                .build());
+
+    geralType =
+        typeAdapter.save(
+            TaxParameterType.builder()
+                .description("GERAL")
+                .nature(ParameterNature.GLOBAL)
+                .status(Status.ACTIVE)
+                .build());
+  }
 
   @Test
   @DisplayName("Should save tax parameter and return domain model with generated ID")
@@ -36,7 +81,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter taxParameter =
         TaxParameter.builder()
             .code("TEST001")
-            .type("IRPJ")
+            .typeId(irpjType.getId())
+            .type(irpjType)
             .description("Teste de Parâmetro IRPJ")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -49,7 +95,9 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     assertThat(saved).isNotNull();
     assertThat(saved.getId()).isNotNull().isPositive();
     assertThat(saved.getCode()).isEqualTo("TEST001");
-    assertThat(saved.getType()).isEqualTo("IRPJ");
+    assertThat(saved.getTypeId()).isEqualTo(irpjType.getId());
+    assertThat(saved.getType()).isNotNull();
+    assertThat(saved.getType().getDescription()).isEqualTo("IRPJ");
     assertThat(saved.getDescription()).isEqualTo("Teste de Parâmetro IRPJ");
     assertThat(saved.getStatus()).isEqualTo(Status.ACTIVE);
     assertThat(saved.getCreatedAt()).isNotNull();
@@ -62,7 +110,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter taxParameter =
         TaxParameter.builder()
             .code("TEST002")
-            .type("CSLL")
+            .typeId(csllType.getId())
+            .type(csllType)
             .description("Teste de Parâmetro CSLL")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -75,7 +124,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     // Then
     assertThat(found).isPresent();
     assertThat(found.get().getCode()).isEqualTo("TEST002");
-    assertThat(found.get().getType()).isEqualTo("CSLL");
+    assertThat(found.get().getType().getDescription()).isEqualTo("CSLL");
     assertThat(found.get().getDescription()).isEqualTo("Teste de Parâmetro CSLL");
   }
 
@@ -96,7 +145,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter taxParameter =
         TaxParameter.builder()
             .code("TEST003")
-            .type("GERAL")
+            .typeId(geralType.getId())
+            .type(geralType)
             .description("Teste de Parâmetro Geral")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -113,13 +163,14 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
   }
 
   @Test
-  @DisplayName("Should find tax parameters by type")
-  void shouldFindByType() {
+  @DisplayName("Should find tax parameters by type ID")
+  void shouldFindByTypeId() {
     // Given - create multiple parameters of same type
     TaxParameter param1 =
         TaxParameter.builder()
             .code("CNAE001")
-            .type("CNAE")
+            .typeId(cnaeType.getId())
+            .type(cnaeType)
             .description("CNAE 1")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -127,7 +178,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter param2 =
         TaxParameter.builder()
             .code("CNAE002")
-            .type("CNAE")
+            .typeId(cnaeType.getId())
+            .type(cnaeType)
             .description("CNAE 2")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -136,11 +188,13 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     adapter.save(param2);
 
     // When
-    List<TaxParameter> found = adapter.findByType("CNAE");
+    List<TaxParameter> found = adapter.findByTypeId(cnaeType.getId());
 
     // Then
     assertThat(found).hasSizeGreaterThanOrEqualTo(2);
-    assertThat(found).extracting(TaxParameter::getType).containsOnly("CNAE");
+    assertThat(found)
+        .extracting(tp -> tp.getType().getDescription())
+        .containsOnly("CNAE");
   }
 
   @Test
@@ -150,7 +204,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter taxParameter =
         TaxParameter.builder()
             .code("TEST_ALL")
-            .type("GERAL")
+            .typeId(geralType.getId())
+            .type(geralType)
             .description("Teste FindAll")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -172,7 +227,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter param1 =
         TaxParameter.builder()
             .code("SPEC001")
-            .type("IRPJ")
+            .typeId(irpjType.getId())
+            .type(irpjType)
             .description("Especificação IRPJ")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -180,7 +236,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter param2 =
         TaxParameter.builder()
             .code("SPEC002")
-            .type("IRPJ")
+            .typeId(irpjType.getId())
+            .type(irpjType)
             .description("Especificação IRPJ 2")
             .status(Status.INACTIVE)
             .createdBy(1L)
@@ -192,7 +249,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     Specification<TaxParameterEntity> spec =
         (root, query, criteriaBuilder) ->
             criteriaBuilder.and(
-                criteriaBuilder.equal(root.get("tipo"), "IRPJ"),
+                criteriaBuilder.equal(root.get("tipoParametro").get("id"), irpjType.getId()),
                 criteriaBuilder.equal(root.get("status"), Status.ACTIVE));
 
     Pageable pageable = PageRequest.of(0, 10);
@@ -202,17 +259,21 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     assertThat(page).isNotNull();
     assertThat(page.getContent()).isNotEmpty();
     assertThat(page.getContent())
-        .allMatch(tp -> "IRPJ".equals(tp.getType()) && Status.ACTIVE.equals(tp.getStatus()));
+        .allMatch(
+            tp ->
+                tp.getType().getDescription().equals("IRPJ")
+                    && Status.ACTIVE.equals(tp.getStatus()));
   }
 
   @Test
-  @DisplayName("Should find tax parameters by IDs and type")
-  void shouldFindByIdInAndType() {
+  @DisplayName("Should find tax parameters by IDs and type ID")
+  void shouldFindByIdInAndTypeId() {
     // Given
     TaxParameter param1 =
         TaxParameter.builder()
             .code("IDIN001")
-            .type("CSLL")
+            .typeId(csllType.getId())
+            .type(csllType)
             .description("ID In Test 1")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -220,7 +281,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter param2 =
         TaxParameter.builder()
             .code("IDIN002")
-            .type("CSLL")
+            .typeId(csllType.getId())
+            .type(csllType)
             .description("ID In Test 2")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -228,7 +290,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter param3 =
         TaxParameter.builder()
             .code("IDIN003")
-            .type("IRPJ") // Different type
+            .typeId(irpjType.getId()) // Different type
+            .type(irpjType)
             .description("ID In Test 3")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -240,22 +303,42 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
 
     // When - search for all 3 IDs but filter by type CSLL
     List<Long> ids = List.of(saved1.getId(), saved2.getId(), saved3.getId());
-    List<TaxParameter> found = adapter.findByIdInAndType(ids, "CSLL");
+    List<TaxParameter> found = adapter.findByIdInAndTypeId(ids, csllType.getId());
 
     // Then - should only return param1 and param2
     assertThat(found).hasSize(2);
-    assertThat(found).extracting(TaxParameter::getType).containsOnly("CSLL");
-    assertThat(found).extracting(TaxParameter::getCode).containsExactlyInAnyOrder("IDIN001", "IDIN002");
+    assertThat(found)
+        .extracting(tp -> tp.getType().getDescription())
+        .containsOnly("CSLL");
+    assertThat(found)
+        .extracting(TaxParameter::getCode)
+        .containsExactlyInAnyOrder("IDIN001", "IDIN002");
   }
 
   @Test
   @DisplayName("Should find distinct types")
   void shouldFindDistinctTypes() {
-    // Given - ensure we have multiple types
+    // Given - ensure we have parameters with different types
+    TaxParameterType typeA =
+        typeAdapter.save(
+            TaxParameterType.builder()
+                .description("TYPE_A")
+                .nature(ParameterNature.GLOBAL)
+                .status(Status.ACTIVE)
+                .build());
+    TaxParameterType typeB =
+        typeAdapter.save(
+            TaxParameterType.builder()
+                .description("TYPE_B")
+                .nature(ParameterNature.MONTHLY)
+                .status(Status.ACTIVE)
+                .build());
+
     adapter.save(
         TaxParameter.builder()
             .code("TYPE001")
-            .type("TYPE_A")
+            .typeId(typeA.getId())
+            .type(typeA)
             .description("Type A")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -263,7 +346,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     adapter.save(
         TaxParameter.builder()
             .code("TYPE002")
-            .type("TYPE_B")
+            .typeId(typeB.getId())
+            .type(typeB)
             .description("Type B")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -284,7 +368,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter original =
         TaxParameter.builder()
             .code("UPDATE001")
-            .type("GERAL")
+            .typeId(geralType.getId())
+            .type(geralType)
             .description("Descrição Original")
             .status(Status.ACTIVE)
             .createdBy(1L)
@@ -314,7 +399,8 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     TaxParameter taxParameter =
         TaxParameter.builder()
             .code("SOFT001")
-            .type("GERAL")
+            .typeId(geralType.getId())
+            .type(geralType)
             .description("Soft Delete Test")
             .status(Status.ACTIVE)
             .createdBy(1L)

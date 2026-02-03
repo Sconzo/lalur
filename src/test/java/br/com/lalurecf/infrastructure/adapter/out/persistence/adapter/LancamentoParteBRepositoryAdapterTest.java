@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.enums.TipoAjuste;
 import br.com.lalurecf.domain.enums.TipoApuracao;
@@ -15,14 +16,16 @@ import br.com.lalurecf.domain.model.LancamentoParteB;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteBEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterTypeEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterTypeJpaRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -80,6 +83,8 @@ class LancamentoParteBRepositoryAdapterTest {
   @Autowired private ContaParteBJpaRepository contaParteBJpaRepository;
 
   @Autowired private TaxParameterJpaRepository taxParameterJpaRepository;
+
+  @Autowired private TaxParameterTypeJpaRepository taxParameterTypeJpaRepository;
 
   @Autowired private ContaReferencialJpaRepository contaReferencialJpaRepository;
 
@@ -154,15 +159,23 @@ class LancamentoParteBRepositoryAdapterTest {
     ContaParteBEntity savedContaParteB = contaParteBJpaRepository.save(contaParteB);
     testContaParteBId = savedContaParteB.getId();
 
+    // Criar tipo de parâmetro tributário
+    TaxParameterTypeEntity taxParameterType =
+        TaxParameterTypeEntity.builder()
+            .descricao("CNAE")
+            .natureza(ParameterNature.GLOBAL)
+            .status(Status.ACTIVE)
+            .build();
+    taxParameterType = taxParameterTypeJpaRepository.save(taxParameterType);
+
     // Criar parâmetro tributário de teste
-    TaxParameterEntity taxParameter = TaxParameterEntity.builder()
-        .codigo("CNAE-6201-5")
-        .tipo("CNAE")
-        .descricao("Desenvolvimento de programas de computador sob encomenda")
-        .status(Status.ACTIVE)
-        .createdAt(LocalDateTime.now())
-        .updatedAt(LocalDateTime.now())
-        .build();
+    TaxParameterEntity taxParameter =
+        TaxParameterEntity.builder()
+            .codigo("CNAE-6201-5")
+            .tipoParametro(taxParameterType)
+            .descricao("Desenvolvimento de programas de computador sob encomenda")
+            .status(Status.ACTIVE)
+            .build();
     TaxParameterEntity savedTaxParameter = taxParameterJpaRepository.save(taxParameter);
     testParametroTributarioId = savedTaxParameter.getId();
   }

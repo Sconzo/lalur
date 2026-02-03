@@ -59,15 +59,13 @@ public class TaxParameterRepositoryAdapter implements TaxParameterRepositoryPort
   }
 
   @Override
-  public List<TaxParameter> findByType(String type) {
-    return jpaRepository.findByTipo(type).stream()
-        .map(mapper::toDomain)
-        .toList();
+  public List<TaxParameter> findByTypeId(Long typeId) {
+    return jpaRepository.findByTipoParametroId(typeId).stream().map(mapper::toDomain).toList();
   }
 
   @Override
-  public List<TaxParameter> findByIdInAndType(List<Long> ids, String type) {
-    return jpaRepository.findByIdInAndTipo(ids, type).stream()
+  public List<TaxParameter> findByIdInAndTypeId(List<Long> ids, Long typeId) {
+    return jpaRepository.findByIdInAndTipoParametroId(ids, typeId).stream()
         .map(mapper::toDomain)
         .toList();
   }

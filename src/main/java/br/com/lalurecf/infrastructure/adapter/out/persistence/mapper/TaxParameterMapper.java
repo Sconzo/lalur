@@ -9,10 +9,10 @@ import org.mapstruct.Mapping;
  * Mapper MapStruct para conversão entre TaxParameter (domain) e TaxParameterEntity (JPA).
  *
  * <p>Mapeia os campos seguindo as convenções:
- * - Domain: camelCase (code, type, description)
- * - Entity: snake_case no DB via @Column (codigo, tipo, descricao)
+ * - Domain: camelCase (code, typeId, type, description)
+ * - Entity: snake_case no DB via @Column (codigo, tipo_parametro_id, descricao)
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = TaxParameterTypeMapper.class)
 public interface TaxParameterMapper {
 
   /**
@@ -22,9 +22,9 @@ public interface TaxParameterMapper {
    * @return modelo de domínio
    */
   @Mapping(source = "codigo", target = "code")
-  @Mapping(source = "tipo", target = "type")
+  @Mapping(source = "tipoParametro.id", target = "typeId")
+  @Mapping(source = "tipoParametro", target = "type")
   @Mapping(source = "descricao", target = "description")
-  @Mapping(source = "natureza", target = "nature")
   TaxParameter toDomain(TaxParameterEntity entity);
 
   /**
@@ -34,8 +34,7 @@ public interface TaxParameterMapper {
    * @return entidade JPA
    */
   @Mapping(source = "code", target = "codigo")
-  @Mapping(source = "type", target = "tipo")
+  @Mapping(source = "type", target = "tipoParametro")
   @Mapping(source = "description", target = "descricao")
-  @Mapping(source = "nature", target = "natureza")
   TaxParameterEntity toEntity(TaxParameter domain);
 }

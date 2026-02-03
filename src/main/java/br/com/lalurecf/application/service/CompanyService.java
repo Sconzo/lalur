@@ -179,7 +179,7 @@ public class CompanyService implements
         for (TemporalValueInput temporalInput : periodicParam.temporalValues()) {
           // Validar natureza do parâmetro para valores temporais
           validateNatureForTemporalValue(
-              parameter.getNatureza(),
+              parameter.getTipoParametro().getNatureza(),
               temporalInput.mes(),
               temporalInput.trimestre());
 
@@ -318,7 +318,7 @@ public class CompanyService implements
         for (TemporalValueInput temporalInput : periodicParam.temporalValues()) {
           // Validar natureza do parâmetro para valores temporais
           validateNatureForTemporalValue(
-              parameter.getNatureza(),
+              parameter.getTipoParametro().getNatureza(),
               temporalInput.mes(),
               temporalInput.trimestre());
 
@@ -611,9 +611,9 @@ public class CompanyService implements
 
     // Encontrar outros parâmetros (que não são os 3 obrigatórios)
     List<TaxParameterSummary> outrosParametros = parameters.stream()
-        .filter(p -> !p.getTipo().equals("CNAE")
-            && !p.getTipo().equals("QUALIFICACAO_PJ")
-            && !p.getTipo().equals("NATUREZA_JURIDICA"))
+        .filter(p -> !p.getTipoParametro().getDescricao().equals("CNAE")
+            && !p.getTipoParametro().getDescricao().equals("QUALIFICACAO_PJ")
+            && !p.getTipoParametro().getDescricao().equals("NATUREZA_JURIDICA"))
         .map(p -> {
           CompanyTaxParameterEntity assoc = associationMap.get(p.getId());
           String createdByEmail = "admin@example.com"; // TODO: buscar email do usuário
@@ -634,7 +634,7 @@ public class CompanyService implements
           return new TaxParameterSummary(
               p.getId(),
               p.getCodigo(),
-              p.getTipo(),
+              p.getTipoParametro().getDescricao(),
               p.getDescricao(),
               assoc != null ? assoc.getCreatedAt() : null,
               createdByEmail,
@@ -851,7 +851,7 @@ public class CompanyService implements
         for (TemporalValueInput temporalInput : periodicParam.temporalValues()) {
           // Validar natureza do parâmetro para valores temporais
           validateNatureForTemporalValue(
-              parameter.getNatureza(),
+              parameter.getTipoParametro().getNatureza(),
               temporalInput.mes(),
               temporalInput.trimestre());
 
@@ -950,7 +950,7 @@ public class CompanyService implements
           return new TaxParameterSummary(
               param.getId(),
               param.getCodigo(),
-              param.getTipo(),
+              param.getTipoParametro().getDescricao(),
               param.getDescricao(),
               assoc.getCreatedAt(),
               createdByEmail,
@@ -995,7 +995,7 @@ public class CompanyService implements
 
     // Extrair os tipos presentes
     java.util.Set<String> presentTypes = parameters.stream()
-        .map(TaxParameterEntity::getTipo)
+        .map(tp -> tp.getTipoParametro().getDescricao())
         .collect(Collectors.toSet());
 
     // Verificar tipos obrigatórios
@@ -1051,7 +1051,7 @@ public class CompanyService implements
       String tipo) {
 
     return parameters.stream()
-        .filter(p -> tipo.equals(p.getTipo()))
+        .filter(p -> tipo.equals(p.getTipoParametro().getDescricao()))
         .findFirst()
         .map(p -> {
           CompanyTaxParameterEntity assoc = associationMap.get(p.getId());
@@ -1073,7 +1073,7 @@ public class CompanyService implements
           return new TaxParameterSummary(
               p.getId(),
               p.getCodigo(),
-              p.getTipo(),
+              p.getTipoParametro().getDescricao(),
               p.getDescricao(),
               assoc != null ? assoc.getCreatedAt() : null,
               createdByEmail,
@@ -1109,7 +1109,8 @@ public class CompanyService implements
             "Parâmetro tributário não encontrado com ID: " + taxParameterId));
 
     // Validar natureza do parâmetro
-    validateNatureForTemporalValue(parameter.getNatureza(), request.mes(), request.trimestre());
+    validateNatureForTemporalValue(
+        parameter.getTipoParametro().getNatureza(), request.mes(), request.trimestre());
 
     // Validar constraint XOR: exatamente UM campo preenchido
     validatePeriodicityConstraint(request.mes(), request.trimestre());
@@ -1224,7 +1225,7 @@ public class CompanyService implements
       if (!valorList.isEmpty()) {
         TaxParameterEntity param =
             valorList.get(0).getEmpresaParametrosTributarios().getParametroTributario();
-        String tipo = param.getTipo();
+        String tipo = param.getTipoParametro().getDescricao();
         String descricao = param.getDescricao();
 
         // Coletar períodos formatados

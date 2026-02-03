@@ -16,8 +16,7 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface TaxParameterJpaRepository
-    extends JpaRepository<TaxParameterEntity, Long>,
-    JpaSpecificationExecutor<TaxParameterEntity> {
+    extends JpaRepository<TaxParameterEntity, Long>, JpaSpecificationExecutor<TaxParameterEntity> {
 
   /**
    * Busca parâmetro tributário por código único.
@@ -28,42 +27,44 @@ public interface TaxParameterJpaRepository
   Optional<TaxParameterEntity> findByCodigo(String codigo);
 
   /**
-   * Busca parâmetros tributários por tipo/categoria.
+   * Busca parâmetros tributários por ID do tipo.
    *
-   * @param tipo tipo do parâmetro (ex: "CNAE", "QUALIFICACAO_PJ", "NATUREZA_JURIDICA")
+   * @param tipoParametroId ID do tipo de parâmetro
    * @return lista de parâmetros do tipo especificado
    */
-  List<TaxParameterEntity> findByTipo(String tipo);
+  List<TaxParameterEntity> findByTipoParametroId(Long tipoParametroId);
 
   /**
-   * Busca parâmetros tributários por IDs e tipo específico.
-   * Usado para validar que os IDs fornecidos são do tipo correto.
+   * Busca parâmetros tributários por IDs e tipo específico. Usado para validar que os IDs
+   * fornecidos são do tipo correto.
    *
    * @param ids lista de IDs
-   * @param tipo tipo esperado
+   * @param tipoParametroId ID do tipo esperado
    * @return lista de parâmetros que correspondem aos IDs E ao tipo
    */
-  @Query("SELECT t FROM TaxParameterEntity t WHERE t.id IN :ids AND t.tipo = :tipo")
-  List<TaxParameterEntity> findByIdInAndTipo(
-      @Param("ids") List<Long> ids,
-      @Param("tipo") String tipo);
+  @Query("SELECT t FROM TaxParameterEntity t WHERE t.id IN :ids AND t.tipoParametro.id = :typeId")
+  List<TaxParameterEntity> findByIdInAndTipoParametroId(
+      @Param("ids") List<Long> ids, @Param("typeId") Long tipoParametroId);
 
   /**
-   * Busca tipos/categorias distintos de parâmetros tributários.
-   * Útil para popular dropdowns de filtros.
+   * Busca tipos/categorias distintos de parâmetros tributários. Útil para popular dropdowns de
+   * filtros.
    *
-   * @return lista de tipos únicos ordenados
+   * @return lista de descrições dos tipos únicos ordenados
    */
-  @Query("SELECT DISTINCT t.tipo FROM TaxParameterEntity t ORDER BY t.tipo")
+  @Query(
+      "SELECT DISTINCT t.tipoParametro.descricao FROM TaxParameterEntity t ORDER BY"
+          + " t.tipoParametro.descricao")
   List<String> findDistinctTipos();
 
   /**
-   * Busca todos os parâmetros tributários ordenados por tipo e descrição.
-   * Útil para agrupar parâmetros por tipo.
+   * Busca todos os parâmetros tributários ordenados por tipo e descrição. Útil para agrupar
+   * parâmetros por tipo.
    *
    * @return lista de parâmetros ordenados
    */
-  @Query("SELECT t FROM TaxParameterEntity t ORDER BY t.tipo, t.descricao")
+  @Query(
+      "SELECT t FROM TaxParameterEntity t JOIN FETCH t.tipoParametro ORDER BY"
+          + " t.tipoParametro.descricao, t.descricao")
   List<TaxParameterEntity> findTaxParametersOrderByType();
-
 }

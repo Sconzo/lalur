@@ -69,65 +69,82 @@ INSERT INTO tb_usuario (
 ON CONFLICT (email) DO NOTHING;
 
 -- ============================================================================
+-- Tipos de Parâmetros Tributários
+-- ============================================================================
+INSERT INTO tb_tipos_parametros_tributarios (descricao, natureza, status, criado_em, atualizado_em)
+VALUES
+    ('FORMA_TRIB_LUCRO_REAL', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('PERIODO_DE_APURACAO', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('QUALIFICACAO_PJ', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('CRITERIO_RECONHECIMENTO__RECEITA', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('ESTIMATIVA_MENSAL', 'MONTHLY', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('FORMA_TRIBUTACAO', 'QUARTERLY', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('NATUREZA_JURIDICA', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('CNAE', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (descricao) DO NOTHING;
+
+-- ============================================================================
 -- Parâmetros Tributários - Regimes de Tributação do IRPJ
 -- ============================================================================
 -- Inserir regimes de tributação padrão conforme tabela ECF
--- natureza: GLOBAL (valor único), MONTHLY (mensal), QUARTERLY (trimestral)
 INSERT INTO tb_parametros_tributarios (
     codigo,
-    tipo,
+    tipo_parametro_id,
     descricao,
-    natureza,
     status,
     criado_em,
     criado_por,
     atualizado_em
-) VALUES
-    ('1', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('2', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real/Arbitrado', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('3', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('4', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real/Arbitrado', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('5', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('6', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Arbitrado', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('7', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Arbitrado', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('8', 'FORMA_TRIB_LUCRO_REAL', 'Imune de IRPJ', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('9', 'FORMA_TRIB_LUCRO_REAL', 'Isento do IRPJ', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('A', 'PERIODO_DE_APURACAO', 'Anual', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('T', 'PERIODO_DE_APURACAO', 'Trimestral', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('01', 'QUALIFICACAO_PJ', 'PJ em Geral', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('02', 'QUALIFICACAO_PJ', 'PJ Componente do Sistema Financeiro', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('03', 'QUALIFICACAO_PJ', 'Sociedades Seguradoras, de Capitalização e Previdência', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de caixa', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('2', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de competência', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1', 'ESTIMATIVA_MENSAL', 'Receita Bruta e Acréscimos', 'MONTHLY', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('2', 'ESTIMATIVA_MENSAL', 'Balanço/Balancete de Suspensão/Redução', 'MONTHLY', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('P', 'FORMA_TRIBUTACAO', 'Presumido', 'QUARTERLY', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('R', 'FORMA_TRIBUTACAO', 'Real', 'QUARTERLY', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('A', 'FORMA_TRIBUTACAO', 'Arbitrado', 'QUARTERLY', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1015', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Federal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1023', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Estadual ou do Distrito Federal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1031', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Municipal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1040', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Federal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1058', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Estadual ou do Distrito Federal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1066', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Municipal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1074', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Federal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1082', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Estadual', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1104', 'NATUREZA_JURIDICA', 'Autarquia Federal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1112', 'NATUREZA_JURIDICA', 'Autarquia Estadual ou do Distrito Federal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('1120', 'NATUREZA_JURIDICA', 'Autarquia Municipal', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0111301', 'CNAE', 'Cultivo de arroz', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0111302', 'CNAE', 'Cultivo de milho', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0111303', 'CNAE', 'Cultivo de trigo', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0111399', 'CNAE', 'Cultivo de outros cereais não especificados anteriormente', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0112101', 'CNAE', 'Cultivo de algodão herbáceo', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0112102', 'CNAE', 'Cultivo de juta', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0112199', 'CNAE', 'Cultivo de outras fibras de lavoura temporária não especificadas anteriormente', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0113000', 'CNAE', 'Cultivo de cana-de-açúcar', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0114800', 'CNAE', 'Cultivo de fumo', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0115600', 'CNAE', 'Cultivo de soja', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0116401', 'CNAE', 'Cultivo de amendoim', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('0116402', 'CNAE', 'Cultivo de girassol', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
-ON CONFLICT (codigo, tipo) DO NOTHING;
+)
+SELECT v.codigo, t.id, v.descricao, 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('1', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real'),
+    ('2', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real/Arbitrado'),
+    ('3', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real'),
+    ('4', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real/Arbitrado'),
+    ('5', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido'),
+    ('6', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Arbitrado'),
+    ('7', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Arbitrado'),
+    ('8', 'FORMA_TRIB_LUCRO_REAL', 'Imune de IRPJ'),
+    ('9', 'FORMA_TRIB_LUCRO_REAL', 'Isento do IRPJ'),
+    ('A', 'PERIODO_DE_APURACAO', 'Anual'),
+    ('T', 'PERIODO_DE_APURACAO', 'Trimestral'),
+    ('01', 'QUALIFICACAO_PJ', 'PJ em Geral'),
+    ('02', 'QUALIFICACAO_PJ', 'PJ Componente do Sistema Financeiro'),
+    ('03', 'QUALIFICACAO_PJ', 'Sociedades Seguradoras, de Capitalização e Previdência'),
+    ('1', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de caixa'),
+    ('2', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de competência'),
+    ('1', 'ESTIMATIVA_MENSAL', 'Receita Bruta e Acréscimos'),
+    ('2', 'ESTIMATIVA_MENSAL', 'Balanço/Balancete de Suspensão/Redução'),
+    ('P', 'FORMA_TRIBUTACAO', 'Presumido'),
+    ('R', 'FORMA_TRIBUTACAO', 'Real'),
+    ('A', 'FORMA_TRIBUTACAO', 'Arbitrado'),
+    ('1015', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Federal'),
+    ('1023', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Estadual ou do Distrito Federal'),
+    ('1031', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Municipal'),
+    ('1040', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Federal'),
+    ('1058', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Estadual ou do Distrito Federal'),
+    ('1066', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Legislativo Municipal'),
+    ('1074', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Federal'),
+    ('1082', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Judiciário Estadual'),
+    ('1104', 'NATUREZA_JURIDICA', 'Autarquia Federal'),
+    ('1112', 'NATUREZA_JURIDICA', 'Autarquia Estadual ou do Distrito Federal'),
+    ('1120', 'NATUREZA_JURIDICA', 'Autarquia Municipal'),
+    ('0111301', 'CNAE', 'Cultivo de arroz'),
+    ('0111302', 'CNAE', 'Cultivo de milho'),
+    ('0111303', 'CNAE', 'Cultivo de trigo'),
+    ('0111399', 'CNAE', 'Cultivo de outros cereais não especificados anteriormente'),
+    ('0112101', 'CNAE', 'Cultivo de algodão herbáceo'),
+    ('0112102', 'CNAE', 'Cultivo de juta'),
+    ('0112199', 'CNAE', 'Cultivo de outras fibras de lavoura temporária não especificadas anteriormente'),
+    ('0113000', 'CNAE', 'Cultivo de cana-de-açúcar'),
+    ('0114800', 'CNAE', 'Cultivo de fumo'),
+    ('0115600', 'CNAE', 'Cultivo de soja'),
+    ('0116401', 'CNAE', 'Cultivo de amendoim'),
+    ('0116402', 'CNAE', 'Cultivo de girassol')
+) AS v(codigo, tipo, descricao)
+JOIN tb_tipos_parametros_tributarios t ON t.descricao = v.tipo
+ON CONFLICT (codigo, tipo_parametro_id) DO NOTHING;
 
 -- ============================================================================
 -- Valores Parametros Temporais - Seed Data
@@ -164,8 +181,9 @@ SELECT
     CURRENT_TIMESTAMP
 FROM tb_empresa e
 CROSS JOIN tb_parametros_tributarios p
+JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
 WHERE e.cnpj = '12345678000199'
-  AND p.tipo = 'ESTIMATIVA_MENSAL'
+  AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo IN ('1', '2')
 ON CONFLICT (empresa_id, parametro_tributario_id) DO NOTHING;
 
@@ -178,8 +196,9 @@ SELECT
     CURRENT_TIMESTAMP
 FROM tb_empresa e
 CROSS JOIN tb_parametros_tributarios p
+JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
 WHERE e.cnpj = '12345678000199'
-  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND t.descricao = 'FORMA_TRIBUTACAO'
   AND p.codigo IN ('P', 'R', 'A')
 ON CONFLICT (empresa_id, parametro_tributario_id) DO NOTHING;
 
@@ -196,6 +215,7 @@ SELECT
 FROM tb_empresa_parametros_tributarios ept
 JOIN tb_empresa e ON ept.empresa_id = e.id
 JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
 CROSS JOIN (
     SELECT 1 AS mes UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL
     SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL
@@ -203,7 +223,7 @@ CROSS JOIN (
     SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
 ) m
 WHERE e.cnpj = '12345678000199'
-  AND p.tipo = 'ESTIMATIVA_MENSAL'
+  AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo = '1'
 ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
 
@@ -220,6 +240,7 @@ SELECT
 FROM tb_empresa_parametros_tributarios ept
 JOIN tb_empresa e ON ept.empresa_id = e.id
 JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
 CROSS JOIN (
     SELECT 1 AS mes UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL
     SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL
@@ -227,7 +248,7 @@ CROSS JOIN (
     SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
 ) m
 WHERE e.cnpj = '12345678000199'
-  AND p.tipo = 'ESTIMATIVA_MENSAL'
+  AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo = '2'
 ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
 
@@ -244,10 +265,11 @@ SELECT
 FROM tb_empresa_parametros_tributarios ept
 JOIN tb_empresa e ON ept.empresa_id = e.id
 JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+JOIN tb_tipos_parametros_tributarios tp ON p.tipo_parametro_id = tp.id
 CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
 CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
 WHERE e.cnpj = '12345678000199'
-  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND tp.descricao = 'FORMA_TRIBUTACAO'
   AND p.codigo = 'P'
 ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
 
@@ -264,10 +286,11 @@ SELECT
 FROM tb_empresa_parametros_tributarios ept
 JOIN tb_empresa e ON ept.empresa_id = e.id
 JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+JOIN tb_tipos_parametros_tributarios tp ON p.tipo_parametro_id = tp.id
 CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
 CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
 WHERE e.cnpj = '12345678000199'
-  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND tp.descricao = 'FORMA_TRIBUTACAO'
   AND p.codigo = 'R'
 ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
 
@@ -284,9 +307,10 @@ SELECT
 FROM tb_empresa_parametros_tributarios ept
 JOIN tb_empresa e ON ept.empresa_id = e.id
 JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
+JOIN tb_tipos_parametros_tributarios tp ON p.tipo_parametro_id = tp.id
 CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
 CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
 WHERE e.cnpj = '12345678000199'
-  AND p.tipo = 'FORMA_TRIBUTACAO'
+  AND tp.descricao = 'FORMA_TRIBUTACAO'
   AND p.codigo = 'A'
 ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;

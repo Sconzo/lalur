@@ -81,8 +81,9 @@ public interface ValorParametroTemporalJpaRepository
       "SELECT v FROM ValorParametroTemporalEntity v "
           + "JOIN FETCH v.empresaParametrosTributarios ept "
           + "JOIN FETCH ept.parametroTributario p "
+          + "JOIN FETCH p.tipoParametro tp "
           + "WHERE ept.empresa.id = :companyId AND v.ano = :ano "
-          + "ORDER BY p.tipo, v.mes, v.trimestre")
+          + "ORDER BY tp.descricao, v.mes, v.trimestre")
   List<ValorParametroTemporalEntity> findByCompanyIdAndAnoWithParameters(
       @Param("companyId") Long companyId, @Param("ano") Integer ano);
 }

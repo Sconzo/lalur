@@ -8,14 +8,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.enums.UserRole;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyTaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterTypeEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyTaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterTypeJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ValorParametroTemporalJpaRepository;
 import br.com.lalurecf.infrastructure.security.JwtTokenProvider;
 import br.com.lalurecf.util.IntegrationTestBase;
@@ -55,6 +58,9 @@ class TemporalValuesIntegrationTest extends IntegrationTestBase {
   private TaxParameterJpaRepository taxParameterRepository;
 
   @Autowired
+  private TaxParameterTypeJpaRepository taxParameterTypeRepository;
+
+  @Autowired
   private CompanyTaxParameterJpaRepository companyTaxParameterRepository;
 
   @Autowired
@@ -86,15 +92,23 @@ class TemporalValuesIntegrationTest extends IntegrationTestBase {
     company = companyRepository.save(company);
     companyId = company.getId();
 
+    // Criar tipo de parâmetro tributário
+    TaxParameterTypeEntity taxParameterType =
+        TaxParameterTypeEntity.builder()
+            .descricao("REGIME")
+            .natureza(ParameterNature.GLOBAL)
+            .status(Status.ACTIVE)
+            .build();
+    taxParameterType = taxParameterTypeRepository.save(taxParameterType);
+
     // Criar parâmetro tributário de teste
-    TaxParameterEntity taxParameter = TaxParameterEntity.builder()
-        .codigo("REGIME_TRIBUTARIO")
-        .descricao("Regime Tributário")
-        .tipo("REGIME")
-        .status(Status.ACTIVE)
-        .createdAt(LocalDateTime.now())
-        .updatedAt(LocalDateTime.now())
-        .build();
+    TaxParameterEntity taxParameter =
+        TaxParameterEntity.builder()
+            .codigo("REGIME_TRIBUTARIO")
+            .descricao("Regime Tributário")
+            .tipoParametro(taxParameterType)
+            .status(Status.ACTIVE)
+            .build();
     taxParameter = taxParameterRepository.save(taxParameter);
     taxParameterId = taxParameter.getId();
 

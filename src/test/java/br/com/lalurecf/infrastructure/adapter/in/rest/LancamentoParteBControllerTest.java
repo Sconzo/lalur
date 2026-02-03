@@ -9,17 +9,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteBEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterTypeEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterTypeJpaRepository;
 import br.com.lalurecf.util.IntegrationTestBase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -70,6 +73,7 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
   @Autowired private CompanyJpaRepository companyRepository;
 
   @Autowired private TaxParameterJpaRepository taxParameterRepository;
+  @Autowired private TaxParameterTypeJpaRepository taxParameterTypeRepository;
 
   @Autowired private ChartOfAccountJpaRepository chartOfAccountRepository;
 
@@ -100,14 +104,23 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
     company = companyRepository.save(company);
     companyId = company.getId();
 
+    // Criar tipo de parâmetro tributário
+    TaxParameterTypeEntity taxParameterType =
+        TaxParameterTypeEntity.builder()
+            .descricao("DEDUTIBILIDADE")
+            .natureza(ParameterNature.GLOBAL)
+            .status(Status.ACTIVE)
+            .build();
+    taxParameterType = taxParameterTypeRepository.save(taxParameterType);
+
     // Criar parâmetro tributário ACTIVE
-    TaxParameterEntity taxParameter = new TaxParameterEntity();
-    taxParameter.setCodigo("ART170-DEDUTIVEL");
-    taxParameter.setTipo("DEDUTIBILIDADE");
-    taxParameter.setDescricao("Despesas operacionais dedutíveis conforme Art. 170 do RIR/2018");
-    taxParameter.setStatus(Status.ACTIVE);
-    taxParameter.setCreatedAt(LocalDateTime.now());
-    taxParameter.setUpdatedAt(LocalDateTime.now());
+    TaxParameterEntity taxParameter =
+        TaxParameterEntity.builder()
+            .codigo("ART170-DEDUTIVEL")
+            .tipoParametro(taxParameterType)
+            .descricao("Despesas operacionais dedutíveis conforme Art. 170 do RIR/2018")
+            .status(Status.ACTIVE)
+            .build();
     taxParameter = taxParameterRepository.save(taxParameter);
     taxParameterId = taxParameter.getId();
 
@@ -450,14 +463,22 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
   @DisplayName("Deve retornar 400 quando parâmetro tributário INACTIVE")
   @WithMockUser(username = "contador@test.com", roles = "CONTADOR")
   void shouldReturn400WhenParametroTributarioInactive() throws Exception {
-    // Arrange - criar parâmetro INACTIVE
-    TaxParameterEntity inactiveParam = new TaxParameterEntity();
-    inactiveParam.setCodigo("PARAM-INATIVO");
-    inactiveParam.setTipo("TESTE");
-    inactiveParam.setDescricao("Parâmetro inativo para teste - Art. X");
-    inactiveParam.setStatus(Status.INACTIVE);
-    inactiveParam.setCreatedAt(LocalDateTime.now());
-    inactiveParam.setUpdatedAt(LocalDateTime.now());
+    // Arrange - criar tipo e parâmetro INACTIVE
+    TaxParameterTypeEntity inactiveType =
+        TaxParameterTypeEntity.builder()
+            .descricao("TESTE")
+            .natureza(ParameterNature.GLOBAL)
+            .status(Status.ACTIVE)
+            .build();
+    inactiveType = taxParameterTypeRepository.save(inactiveType);
+
+    TaxParameterEntity inactiveParam =
+        TaxParameterEntity.builder()
+            .codigo("PARAM-INATIVO")
+            .tipoParametro(inactiveType)
+            .descricao("Parâmetro inativo para teste - Art. X")
+            .status(Status.INACTIVE)
+            .build();
     inactiveParam = taxParameterRepository.save(inactiveParam);
 
     String requestBody =

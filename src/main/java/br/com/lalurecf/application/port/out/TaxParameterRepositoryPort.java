@@ -57,21 +57,21 @@ public interface TaxParameterRepositoryPort {
   Page<TaxParameter> findAll(Specification specification, Pageable pageable);
 
   /**
-   * Busca parâmetros tributários por tipo/categoria.
+   * Busca parâmetros tributários por ID do tipo.
    *
-   * @param type tipo do parâmetro (ex: "CNAE", "IRPJ", "CSLL")
+   * @param typeId ID do tipo de parâmetro
    * @return lista de parâmetros do tipo especificado
    */
-  List<TaxParameter> findByType(String type);
+  List<TaxParameter> findByTypeId(Long typeId);
 
   /**
    * Busca parâmetros tributários por IDs e tipo específico.
    *
    * @param ids lista de IDs
-   * @param type tipo esperado
+   * @param typeId ID do tipo esperado
    * @return lista de parâmetros que correspondem aos IDs e ao tipo
    */
-  List<TaxParameter> findByIdInAndType(List<Long> ids, String type);
+  List<TaxParameter> findByIdInAndTypeId(List<Long> ids, Long typeId);
 
   /**
    * Busca tipos/categorias distintos de parâmetros tributários.

@@ -2,6 +2,7 @@ package br.com.lalurecf.infrastructure.dto.taxparameter;
 
 import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
+import br.com.lalurecf.infrastructure.dto.taxparametertype.TaxParameterTypeResponse;
 import java.time.LocalDateTime;
 
 /**
@@ -9,9 +10,8 @@ import java.time.LocalDateTime;
  *
  * @param id ID do parâmetro
  * @param code código único
- * @param type tipo/categoria
- * @param description descrição
- * @param nature natureza do parâmetro (GLOBAL, MONTHLY, QUARTERLY)
+ * @param type tipo do parâmetro (inclui descrição e natureza)
+ * @param description descrição do parâmetro
  * @param status status (ACTIVE/INACTIVE)
  * @param createdAt data de criação
  * @param updatedAt data de última atualização
@@ -19,9 +19,8 @@ import java.time.LocalDateTime;
 public record TaxParameterResponse(
     Long id,
     String code,
-    String type,
+    TaxParameterTypeResponse type,
     String description,
-    ParameterNature nature,
     Status status,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
