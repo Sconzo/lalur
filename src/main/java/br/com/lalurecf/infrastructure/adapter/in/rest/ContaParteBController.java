@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Todos endpoints requerem role CONTADOR e header X-Company-Id (contexto de empresa).
  */
 @RestController
-@RequestMapping("/api/v1/conta-parte-b")
+@RequestMapping("/conta-parte-b")
 @RequiredArgsConstructor
 @Tag(name = "Contas Parte B", description = "Gerenciamento de contas da Parte B (e-Lalur/e-Lacs)")
 @SuppressWarnings("checkstyle:AbbreviationAsWordInName")

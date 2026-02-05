@@ -93,8 +93,14 @@ BEGIN
 
         -- Add foreign key constraints to tb_usuario if not already present
         IF table_rec.table_name != 'tb_usuario' THEN
-            -- FK for criado_por
-            IF NOT EXISTS (
+            -- FK for criado_por (only if column exists)
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = table_rec.table_name
+                  AND column_name = 'criado_por'
+            ) AND NOT EXISTS (
                 SELECT 1
                 FROM information_schema.table_constraints
                 WHERE table_schema = 'public'
@@ -106,8 +112,14 @@ BEGIN
                 RAISE NOTICE '  - Added FK constraint for criado_por';
             END IF;
 
-            -- FK for atualizado_por
-            IF NOT EXISTS (
+            -- FK for atualizado_por (only if column exists)
+            IF EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = table_rec.table_name
+                  AND column_name = 'atualizado_por'
+            ) AND NOT EXISTS (
                 SELECT 1
                 FROM information_schema.table_constraints
                 WHERE table_schema = 'public'

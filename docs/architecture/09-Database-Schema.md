@@ -15,7 +15,7 @@
 ```sql
 -- ============================================================================
 -- Sistema LALUR V2 ECF - Database Schema
--- PostgreSQL 15.5+
+-- PostgreSQL 12+
 -- Encoding: UTF-8
 -- Timezone: UTC
 -- Versão: 2.0 (ADR-001)

@@ -60,7 +60,7 @@ class AuthControllerIntegrationTest extends IntegrationTestBase {
 
     // Act
     ResponseEntity<LoginResponse> response =
-        restTemplate.postForEntity("/api/v1/auth/login", request, LoginResponse.class);
+        restTemplate.postForEntity("/api/v1/api/v1/auth/login", request, LoginResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -82,7 +82,7 @@ class AuthControllerIntegrationTest extends IntegrationTestBase {
 
     // Act
     ResponseEntity<ErrorResponse> response =
-        restTemplate.postForEntity("/auth/login", request, ErrorResponse.class);
+        restTemplate.postForEntity("/api/v1/auth/login", request, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -98,7 +98,7 @@ class AuthControllerIntegrationTest extends IntegrationTestBase {
 
     // Act
     ResponseEntity<ErrorResponse> response =
-        restTemplate.postForEntity("/auth/login", request, ErrorResponse.class);
+        restTemplate.postForEntity("/api/v1/auth/login", request, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -114,7 +114,7 @@ class AuthControllerIntegrationTest extends IntegrationTestBase {
 
     // Act
     ResponseEntity<ErrorResponse> response =
-        restTemplate.postForEntity("/auth/login", request, ErrorResponse.class);
+        restTemplate.postForEntity("/api/v1/auth/login", request, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -130,7 +130,7 @@ class AuthControllerIntegrationTest extends IntegrationTestBase {
 
     // Act
     ResponseEntity<ErrorResponse> response =
-        restTemplate.postForEntity("/auth/login", request, ErrorResponse.class);
+        restTemplate.postForEntity("/api/v1/auth/login", request, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

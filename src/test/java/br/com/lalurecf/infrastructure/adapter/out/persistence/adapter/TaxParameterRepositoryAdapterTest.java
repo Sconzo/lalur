@@ -40,11 +40,11 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
 
   @BeforeEach
   void setUp() {
-    // Create test types
+    // Create test types with unique names to avoid conflict with seed data
     irpjType =
         typeAdapter.save(
             TaxParameterType.builder()
-                .description("IRPJ")
+                .description("TEST_IRPJ")
                 .nature(ParameterNature.QUARTERLY)
                 .status(Status.ACTIVE)
                 .build());
@@ -52,7 +52,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     csllType =
         typeAdapter.save(
             TaxParameterType.builder()
-                .description("CSLL")
+                .description("TEST_CSLL")
                 .nature(ParameterNature.QUARTERLY)
                 .status(Status.ACTIVE)
                 .build());
@@ -60,7 +60,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     cnaeType =
         typeAdapter.save(
             TaxParameterType.builder()
-                .description("CNAE")
+                .description("TEST_CNAE")
                 .nature(ParameterNature.GLOBAL)
                 .status(Status.ACTIVE)
                 .build());
@@ -68,7 +68,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     geralType =
         typeAdapter.save(
             TaxParameterType.builder()
-                .description("GERAL")
+                .description("TEST_GERAL")
                 .nature(ParameterNature.GLOBAL)
                 .status(Status.ACTIVE)
                 .build());
@@ -97,7 +97,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     assertThat(saved.getCode()).isEqualTo("TEST001");
     assertThat(saved.getTypeId()).isEqualTo(irpjType.getId());
     assertThat(saved.getType()).isNotNull();
-    assertThat(saved.getType().getDescription()).isEqualTo("IRPJ");
+    assertThat(saved.getType().getDescription()).isEqualTo("TEST_IRPJ");
     assertThat(saved.getDescription()).isEqualTo("Teste de Parâmetro IRPJ");
     assertThat(saved.getStatus()).isEqualTo(Status.ACTIVE);
     assertThat(saved.getCreatedAt()).isNotNull();
@@ -124,7 +124,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     // Then
     assertThat(found).isPresent();
     assertThat(found.get().getCode()).isEqualTo("TEST002");
-    assertThat(found.get().getType().getDescription()).isEqualTo("CSLL");
+    assertThat(found.get().getType().getDescription()).isEqualTo("TEST_CSLL");
     assertThat(found.get().getDescription()).isEqualTo("Teste de Parâmetro CSLL");
   }
 
@@ -194,7 +194,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     assertThat(found).hasSizeGreaterThanOrEqualTo(2);
     assertThat(found)
         .extracting(tp -> tp.getType().getDescription())
-        .containsOnly("CNAE");
+        .containsOnly("TEST_CNAE");
   }
 
   @Test
@@ -261,7 +261,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     assertThat(page.getContent())
         .allMatch(
             tp ->
-                tp.getType().getDescription().equals("IRPJ")
+                tp.getType().getDescription().equals("TEST_IRPJ")
                     && Status.ACTIVE.equals(tp.getStatus()));
   }
 
@@ -309,7 +309,7 @@ class TaxParameterRepositoryAdapterTest extends IntegrationTestBase {
     assertThat(found).hasSize(2);
     assertThat(found)
         .extracting(tp -> tp.getType().getDescription())
-        .containsOnly("CSLL");
+        .containsOnly("TEST_CSLL");
     assertThat(found)
         .extracting(TaxParameter::getCode)
         .containsExactlyInAnyOrder("IDIN001", "IDIN002");

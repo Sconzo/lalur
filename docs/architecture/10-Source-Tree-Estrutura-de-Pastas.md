@@ -391,7 +391,7 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:15.5-alpine
+    image: postgres:12-alpine
     container_name: lalurecf-postgres
     environment:
       POSTGRES_DB: ecf_db

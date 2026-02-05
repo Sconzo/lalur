@@ -60,7 +60,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Faz login para obter token
     LoginRequest loginRequest = new LoginRequest(testEmail, "oldPassword123");
     ResponseEntity<LoginResponse> loginResponse =
-        restTemplate.postForEntity("/auth/login", loginRequest, LoginResponse.class);
+        restTemplate.postForEntity("/api/v1/auth/login", loginRequest, LoginResponse.class);
 
     // Verifica se login foi bem-sucedido
     if (loginResponse.getBody() == null) {
@@ -83,7 +83,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Act
     ResponseEntity<ChangePasswordResponse> response =
         restTemplate.exchange(
-            "/auth/change-password", HttpMethod.POST, entity, ChangePasswordResponse.class);
+            "/api/v1/auth/change-password", HttpMethod.POST, entity, ChangePasswordResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -98,7 +98,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Verifica que pode fazer login com nova senha
     LoginRequest newLoginRequest = new LoginRequest(testEmail, "newPassword123");
     ResponseEntity<LoginResponse> newLoginResponse =
-        restTemplate.postForEntity("/auth/login", newLoginRequest, LoginResponse.class);
+        restTemplate.postForEntity("/api/v1/auth/login", newLoginRequest, LoginResponse.class);
     assertThat(newLoginResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
   }
 
@@ -115,7 +115,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Act
     ResponseEntity<ErrorResponse> response =
         restTemplate.exchange(
-            "/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
+            "/api/v1/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -137,7 +137,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Act
     ResponseEntity<ErrorResponse> response =
         restTemplate.exchange(
-            "/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
+            "/api/v1/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -161,7 +161,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Act
     ResponseEntity<ErrorResponse> response =
         restTemplate.exchange(
-            "/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
+            "/api/v1/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -183,7 +183,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Act
     ResponseEntity<ErrorResponse> response =
         restTemplate.exchange(
-            "/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
+            "/api/v1/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -204,7 +204,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Act
     ResponseEntity<ErrorResponse> response =
         restTemplate.exchange(
-            "/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
+            "/api/v1/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -223,7 +223,7 @@ class ChangePasswordIntegrationTest extends IntegrationTestBase {
     // Act
     ResponseEntity<ErrorResponse> response =
         restTemplate.exchange(
-            "/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
+            "/api/v1/auth/change-password", HttpMethod.POST, entity, ErrorResponse.class);
 
     // Assert
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);

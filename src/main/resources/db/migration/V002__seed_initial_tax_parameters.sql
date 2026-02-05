@@ -26,7 +26,7 @@ VALUES
     ('6920-6/02', 'CNAE', 'Atividades de consultoria e auditoria contábil e tributária', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('7020-4/00', 'CNAE', 'Atividades de consultoria em gestão empresarial', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('7490-1/04', 'CNAE', 'Atividades de intermediação e agenciamento de serviços e negócios em geral, exceto imobiliários', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (codigo) DO NOTHING;
+ON CONFLICT (codigo, tipo) DO NOTHING;
 
 -- Qualificação da Pessoa Jurídica
 -- ============================================================================
@@ -41,7 +41,7 @@ VALUES
     ('PRESIDENTE', 'QUALIFICACAO_PJ', 'Presidente', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('PROCURADOR', 'QUALIFICACAO_PJ', 'Procurador', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('EMPRESARIO', 'QUALIFICACAO_PJ', 'Empresário (Empresa Individual)', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (codigo) DO NOTHING;
+ON CONFLICT (codigo, tipo) DO NOTHING;
 
 -- Natureza Jurídica
 -- ============================================================================
@@ -64,7 +64,7 @@ VALUES
     ('306-9', 'NATUREZA_JURIDICA', 'Fundação Privada', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('322-0', 'NATUREZA_JURIDICA', 'Organização Religiosa', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('403-1', 'NATUREZA_JURIDICA', 'Empresa Individual de Responsabilidade Limitada (EIRELI)', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (codigo) DO NOTHING;
+ON CONFLICT (codigo, tipo) DO NOTHING;
 
 -- ============================================================================
 -- Verification Query

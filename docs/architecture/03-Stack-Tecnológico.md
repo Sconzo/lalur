@@ -16,7 +16,7 @@ Stack-Tecnológico
 | **Persistência** | Spring Data JPA | 3.2.1 | Abstração de repositórios | Repository pattern out-of-the-box, reduz boilerplate |
 | **ORM** | Hibernate | 6.4.1 | Mapeamento objeto-relacional | ORM maduro, integração nativa com Spring Data JPA |
 | **Segurança** | Spring Security | 6.2.1 | Autenticação e autorização | RBAC, JWT integration, CORS, CSRF protection |
-| **Banco de Dados** | PostgreSQL | 15.5 | Database relacional ACID | Conformidade ACID crítica para cálculos fiscais, constraints robustos, JSON support (calculationMemory), open-source |
+| **Banco de Dados** | PostgreSQL | 12 | Database relacional ACID | Conformidade ACID crítica para cálculos fiscais, constraints robustos, JSON support (calculationMemory), open-source |
 | **Build Tool** | Maven | 3.9.6 | Gerenciamento de build | Padrão Java enterprise, plugins robustos (JaCoCo, Checkstyle), dependency management |
 | **Containerização** | Docker | 25.0.0 | Containerização de app | Portabilidade, isolamento, reprodutibilidade de ambientes |
 | **Orquestração Local** | Docker Compose | 2.24.0 | Orquestração multi-container | Setup completo (PostgreSQL + App) com um comando, ideal para dev |
@@ -42,7 +42,7 @@ Stack-Tecnológico
 - **Todas as versões são pinadas** (não usar "latest") para garantir reprodutibilidade de builds
 - **Java 21:** Virtual Threads (Project Loom) não serão usados no MVP, mas mantém opção futura
 - **Spring Boot 3.x:** Requer Java 17+, utiliza Jakarta EE 9+ (namespace `jakarta.*` vs `javax.*`)
-- **PostgreSQL 15.5:** Versão estável com JSONB performance, melhorias em indexes, suporte a `YearMonth` via custom converter
+- **PostgreSQL 12:** Versão requisitada pelo cliente, suporte a JSONB, suporte a `YearMonth` via custom converter
 - **Não usar Flyway/Liquibase no MVP:** JPA DDL automático (`ddl-auto: update` em dev, `validate` em prod) - migrar para Flyway se schema evoluir muito
 - **WebClient vs RestTemplate:** WebClient é não-bloqueante, mas usado de forma síncrona (`.block()`) no MVP para simplicidade
 - **JSON Convention:** camelCase (padrão Java/Jackson) - não forçar snake_case

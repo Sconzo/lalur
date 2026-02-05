@@ -43,7 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
  * (GET) acessíveis para ADMIN e CONTADOR.
  */
 @RestController
-@RequestMapping("/api/v1/conta-referencial")
+@RequestMapping("/conta-referencial")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(

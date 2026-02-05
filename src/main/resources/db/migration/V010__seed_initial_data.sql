@@ -1,48 +1,23 @@
 -- ============================================================================
--- Script de inicialização de dados - LALUR V2 ECF
+-- Seed Initial Data
+-- Version: V010
+-- Date: 2026-02-05
 -- ============================================================================
--- Este script é executado automaticamente pelo Spring Boot após a criação
--- do schema (quando spring.jpa.defer-datasource-initialization=true)
 --
--- ATENÇÃO: Este script usa INSERT ... ON CONFLICT DO NOTHING (PostgreSQL)
--- para evitar duplicação de dados em reinicializações.
+-- This migration adds initial seed data:
+-- 1. Admin user for first login
+-- 2. Example company for testing
+-- 3. Additional tax parameter types and parameters
+-- 4. Company-parameter associations and temporal values
+--
 -- ============================================================================
 
--- Criar usuário SYSTEM com ID fixo = 1 (usado para auditoria sem autenticação)
--- Senha desabilitada (hash inválido) - usuário não pode fazer login
-INSERT INTO tb_usuario (
-    id,
-    primeiro_nome,
-    sobrenome,
-    email,
-    senha,
-    funcao,
-    status,
-    deve_mudar_senha,
-    criado_em,
-    criado_por,
-    atualizado_em
-) VALUES (
-    1,
-    'Sistema',
-    'Automático',
-    'system@lalurecf.com.br',
-    '$2a$12$disabled.password.hash.not.usable',
-    'ADMIN',
-    'ACTIVE',
-    false,
-    CURRENT_TIMESTAMP,
-    1,
-    CURRENT_TIMESTAMP
-)
-ON CONFLICT (id) DO NOTHING;
+-- ============================================================================
+-- 1. Create ADMIN user (default login)
+-- ============================================================================
+-- Password: Admin@123 (BCrypt strength 12)
+-- IMPORTANT: Change password after first login!
 
--- Resetar sequence para não conflitar com ID fixo
-SELECT setval('tb_usuario_id_seq', (SELECT COALESCE(MAX(id), 1) FROM tb_usuario), true);
-
--- Criar usuário ADMIN padrão se não existir
--- Senha padrão: Admin@123 (hash BCrypt com strength 12)
--- IMPORTANTE: Altere a senha após o primeiro login!
 INSERT INTO tb_usuario (
     primeiro_nome,
     sobrenome,
@@ -52,52 +27,52 @@ INSERT INTO tb_usuario (
     status,
     deve_mudar_senha,
     criado_em,
-    criado_por,
-    atualizado_em
+    criado_por
 ) VALUES (
     'Admin',
     'Sistema',
     'admin@gmail.com',
-    '$2a$12$wVByGsG.Ko94ePxBn/dTt.sTzh7RRXYkRH.P2TYKEo.8HjhyvOI9.',
+    '$2a$12$qAYdO1nyZ3mndqAv.XvfJecnAwEtdc18gUwuJHfvuD0Gxh7AJntAC',
     'ADMIN',
     'ACTIVE',
     true,
     CURRENT_TIMESTAMP,
-    1,
-    CURRENT_TIMESTAMP
+    1
 )
 ON CONFLICT (email) DO NOTHING;
 
 -- ============================================================================
--- Tipos de Parâmetros Tributários
+-- 2. Add missing Tax Parameter Types
 -- ============================================================================
-INSERT INTO tb_tipos_parametros_tributarios (descricao, natureza, status, criado_em, criado_por, atualizado_em)
+-- Some types may already exist from V009 migration (migrated from old 'tipo' column)
+
+INSERT INTO tb_tipos_parametros_tributarios (descricao, natureza, status, criado_em, criado_por)
 VALUES
-    ('FORMA_TRIB_LUCRO_REAL', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('PERIODO_DE_APURACAO', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('QUALIFICACAO_PJ', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('CRITERIO_RECONHECIMENTO__RECEITA', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('ESTIMATIVA_MENSAL', 'MONTHLY', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('FORMA_TRIBUTACAO', 'QUARTERLY', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('NATUREZA_JURIDICA', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP),
-    ('CNAE', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+    ('FORMA_TRIB_LUCRO_REAL', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('PERIODO_DE_APURACAO', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('QUALIFICACAO_PJ', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('CRITERIO_RECONHECIMENTO__RECEITA', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('ESTIMATIVA_MENSAL', 'MONTHLY', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('FORMA_TRIBUTACAO', 'QUARTERLY', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('NATUREZA_JURIDICA', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1),
+    ('CNAE', 'GLOBAL', 'ACTIVE', CURRENT_TIMESTAMP, 1)
 ON CONFLICT (descricao) DO NOTHING;
 
 -- ============================================================================
--- Parâmetros Tributários - Regimes de Tributação do IRPJ
+-- 3. Add Tax Parameters (ECF standard codes)
 -- ============================================================================
--- Inserir regimes de tributação padrão conforme tabela ECF
+
 INSERT INTO tb_parametros_tributarios (
     codigo,
     tipo_parametro_id,
     descricao,
     status,
     criado_em,
-    criado_por,
-    atualizado_em
+    criado_por
 )
-SELECT v.codigo, t.id, v.descricao, 'ACTIVE', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP
+SELECT v.codigo, t.id, v.descricao, 'ACTIVE', CURRENT_TIMESTAMP, 1
 FROM (VALUES
+    -- FORMA_TRIB_LUCRO_REAL
     ('1', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real'),
     ('2', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Real/Arbitrado'),
     ('3', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Real'),
@@ -107,18 +82,24 @@ FROM (VALUES
     ('7', 'FORMA_TRIB_LUCRO_REAL', 'Lucro Presumido/Arbitrado'),
     ('8', 'FORMA_TRIB_LUCRO_REAL', 'Imune de IRPJ'),
     ('9', 'FORMA_TRIB_LUCRO_REAL', 'Isento do IRPJ'),
+    -- PERIODO_DE_APURACAO
     ('A', 'PERIODO_DE_APURACAO', 'Anual'),
     ('T', 'PERIODO_DE_APURACAO', 'Trimestral'),
+    -- QUALIFICACAO_PJ (complementar ao V002)
     ('01', 'QUALIFICACAO_PJ', 'PJ em Geral'),
     ('02', 'QUALIFICACAO_PJ', 'PJ Componente do Sistema Financeiro'),
     ('03', 'QUALIFICACAO_PJ', 'Sociedades Seguradoras, de Capitalização e Previdência'),
+    -- CRITERIO_RECONHECIMENTO__RECEITA
     ('1', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de caixa'),
     ('2', 'CRITERIO_RECONHECIMENTO__RECEITA', 'Regime de competência'),
+    -- ESTIMATIVA_MENSAL
     ('1', 'ESTIMATIVA_MENSAL', 'Receita Bruta e Acréscimos'),
     ('2', 'ESTIMATIVA_MENSAL', 'Balanço/Balancete de Suspensão/Redução'),
+    -- FORMA_TRIBUTACAO
     ('P', 'FORMA_TRIBUTACAO', 'Presumido'),
     ('R', 'FORMA_TRIBUTACAO', 'Real'),
     ('A', 'FORMA_TRIBUTACAO', 'Arbitrado'),
+    -- NATUREZA_JURIDICA (complementar ao V002)
     ('1015', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Federal'),
     ('1023', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Estadual ou do Distrito Federal'),
     ('1031', 'NATUREZA_JURIDICA', 'Órgão Público do Poder Executivo Municipal'),
@@ -130,6 +111,7 @@ FROM (VALUES
     ('1104', 'NATUREZA_JURIDICA', 'Autarquia Federal'),
     ('1112', 'NATUREZA_JURIDICA', 'Autarquia Estadual ou do Distrito Federal'),
     ('1120', 'NATUREZA_JURIDICA', 'Autarquia Municipal'),
+    -- CNAE (complementar ao V002)
     ('0111301', 'CNAE', 'Cultivo de arroz'),
     ('0111302', 'CNAE', 'Cultivo de milho'),
     ('0111303', 'CNAE', 'Cultivo de trigo'),
@@ -144,35 +126,37 @@ FROM (VALUES
     ('0116402', 'CNAE', 'Cultivo de girassol')
 ) AS v(codigo, tipo, descricao)
 JOIN tb_tipos_parametros_tributarios t ON t.descricao = v.tipo
-ON CONFLICT (codigo, tipo_parametro_id) DO NOTHING;
+WHERE NOT EXISTS (
+    SELECT 1 FROM tb_parametros_tributarios p
+    WHERE p.codigo = v.codigo AND p.tipo_parametro_id = t.id
+);
 
 -- ============================================================================
--- Valores Parametros Temporais - Seed Data
+-- 4. Create example company
 -- ============================================================================
--- Popula tb_valores_parametros_temporais com dados iniciais para empresa exemplo
--- Inclui períodos mensais para ESTIMATIVA_MENSAL e trimestrais para FORMA_TRIBUTACAO
 
--- Criar empresa exemplo se não existir
 INSERT INTO tb_empresa (
     razao_social,
     cnpj,
     periodo_contabil,
     status,
     criado_em,
-    criado_por,
-    atualizado_em
+    criado_por
 ) VALUES (
     'Empresa Exemplo LTDA',
     '12345678000199',
     '2024-01-01',
     'ACTIVE',
     CURRENT_TIMESTAMP,
-    1,
-    CURRENT_TIMESTAMP
+    1
 )
 ON CONFLICT (cnpj) DO NOTHING;
 
--- Associar parâmetros ESTIMATIVA_MENSAL à empresa exemplo
+-- ============================================================================
+-- 5. Associate tax parameters to example company
+-- ============================================================================
+
+-- ESTIMATIVA_MENSAL parameters
 INSERT INTO tb_empresa_parametros_tributarios (empresa_id, parametro_tributario_id, criado_por, criado_em)
 SELECT
     e.id,
@@ -185,9 +169,12 @@ JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
 WHERE e.cnpj = '12345678000199'
   AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo IN ('1', '2')
-ON CONFLICT (empresa_id, parametro_tributario_id) DO NOTHING;
+  AND NOT EXISTS (
+      SELECT 1 FROM tb_empresa_parametros_tributarios ept
+      WHERE ept.empresa_id = e.id AND ept.parametro_tributario_id = p.id
+  );
 
--- Associar parâmetros FORMA_TRIBUTACAO à empresa exemplo
+-- FORMA_TRIBUTACAO parameters
 INSERT INTO tb_empresa_parametros_tributarios (empresa_id, parametro_tributario_id, criado_por, criado_em)
 SELECT
     e.id,
@@ -200,9 +187,16 @@ JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
 WHERE e.cnpj = '12345678000199'
   AND t.descricao = 'FORMA_TRIBUTACAO'
   AND p.codigo IN ('P', 'R', 'A')
-ON CONFLICT (empresa_id, parametro_tributario_id) DO NOTHING;
+  AND NOT EXISTS (
+      SELECT 1 FROM tb_empresa_parametros_tributarios ept
+      WHERE ept.empresa_id = e.id AND ept.parametro_tributario_id = p.id
+  );
 
--- Valores temporais MENSAIS para ESTIMATIVA_MENSAL (código 1) - Ano 2024
+-- ============================================================================
+-- 6. Create temporal values for parameters
+-- ============================================================================
+
+-- Monthly values for ESTIMATIVA_MENSAL (code 1) - Year 2024
 INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
 SELECT
     ept.id,
@@ -225,9 +219,15 @@ CROSS JOIN (
 WHERE e.cnpj = '12345678000199'
   AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo = '1'
-ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+  AND NOT EXISTS (
+      SELECT 1 FROM tb_valores_parametros_temporais vpt
+      WHERE vpt.empresa_parametros_tributarios_id = ept.id
+        AND vpt.ano = 2024
+        AND vpt.mes = m.mes
+        AND vpt.trimestre IS NULL
+  );
 
--- Valores temporais MENSAIS para ESTIMATIVA_MENSAL (código 2) - Ano 2024
+-- Monthly values for ESTIMATIVA_MENSAL (code 2) - Year 2024
 INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
 SELECT
     ept.id,
@@ -250,15 +250,21 @@ CROSS JOIN (
 WHERE e.cnpj = '12345678000199'
   AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo = '2'
-ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+  AND NOT EXISTS (
+      SELECT 1 FROM tb_valores_parametros_temporais vpt
+      WHERE vpt.empresa_parametros_tributarios_id = ept.id
+        AND vpt.ano = 2024
+        AND vpt.mes = m.mes
+        AND vpt.trimestre IS NULL
+  );
 
--- Valores temporais TRIMESTRAIS para FORMA_TRIBUTACAO (Presumido) - Anos 2023-2025
+-- Quarterly values for FORMA_TRIBUTACAO - Years 2023-2025
 INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
 SELECT
     ept.id,
     y.ano,
     NULL,
-    t.trimestre,
+    q.trimestre,
     'ACTIVE',
     CURRENT_TIMESTAMP,
     1
@@ -267,50 +273,29 @@ JOIN tb_empresa e ON ept.empresa_id = e.id
 JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
 JOIN tb_tipos_parametros_tributarios tp ON p.tipo_parametro_id = tp.id
 CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
-CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
+CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) q
 WHERE e.cnpj = '12345678000199'
   AND tp.descricao = 'FORMA_TRIBUTACAO'
-  AND p.codigo = 'P'
-ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+  AND p.codigo IN ('P', 'R', 'A')
+  AND NOT EXISTS (
+      SELECT 1 FROM tb_valores_parametros_temporais vpt
+      WHERE vpt.empresa_parametros_tributarios_id = ept.id
+        AND vpt.ano = y.ano
+        AND vpt.mes IS NULL
+        AND vpt.trimestre = q.trimestre
+  );
 
--- Valores temporais TRIMESTRAIS para FORMA_TRIBUTACAO (Real) - Anos 2023-2025
-INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
-SELECT
-    ept.id,
-    y.ano,
-    NULL,
-    t.trimestre,
-    'ACTIVE',
-    CURRENT_TIMESTAMP,
-    1
-FROM tb_empresa_parametros_tributarios ept
-JOIN tb_empresa e ON ept.empresa_id = e.id
-JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
-JOIN tb_tipos_parametros_tributarios tp ON p.tipo_parametro_id = tp.id
-CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
-CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
-WHERE e.cnpj = '12345678000199'
-  AND tp.descricao = 'FORMA_TRIBUTACAO'
-  AND p.codigo = 'R'
-ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
-
--- Valores temporais TRIMESTRAIS para FORMA_TRIBUTACAO (Arbitrado) - Anos 2023-2025
-INSERT INTO tb_valores_parametros_temporais (empresa_parametros_tributarios_id, ano, mes, trimestre, status, criado_em, criado_por)
-SELECT
-    ept.id,
-    y.ano,
-    NULL,
-    t.trimestre,
-    'ACTIVE',
-    CURRENT_TIMESTAMP,
-    1
-FROM tb_empresa_parametros_tributarios ept
-JOIN tb_empresa e ON ept.empresa_id = e.id
-JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
-JOIN tb_tipos_parametros_tributarios tp ON p.tipo_parametro_id = tp.id
-CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
-CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) t
-WHERE e.cnpj = '12345678000199'
-  AND tp.descricao = 'FORMA_TRIBUTACAO'
-  AND p.codigo = 'A'
-ON CONFLICT (empresa_parametros_tributarios_id, ano, mes, trimestre) DO NOTHING;
+-- ============================================================================
+-- Verification Queries
+-- ============================================================================
+--
+-- 1. Verify admin user created:
+--    SELECT id, email, funcao, deve_mudar_senha FROM tb_usuario WHERE email = 'admin@gmail.com';
+--
+-- 2. Verify tax parameter types:
+--    SELECT * FROM tb_tipos_parametros_tributarios ORDER BY id;
+--
+-- 3. Verify example company:
+--    SELECT * FROM tb_empresa WHERE cnpj = '12345678000199';
+--
+-- ============================================================================

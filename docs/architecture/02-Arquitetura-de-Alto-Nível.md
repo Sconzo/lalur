@@ -2,7 +2,7 @@ Arquitetura-de-Alto-Nível
 
 ### Resumo Técnico
 
-O Sistema LALUR V2 ECF é uma **API REST backend monolítica modular** construída com **Java 21 + Spring Boot 3.x**, seguindo **arquitetura hexagonal (Ports & Adapters)** com 8 bounded contexts. O sistema utiliza **PostgreSQL 15+** como banco de dados relacional com conformidade ACID, essencial para garantir integridade em cálculos fiscais (IRPJ/CSLL). A arquitetura é **multi-tenant** (header `X-Company-Id`), com autenticação **JWT stateless** e dois roles (ADMIN e CONTADOR). A solução foi desenhada para atingir os objetivos do PRD: **reduzir tempo de processamento em 70%** (de 8-16h para 2-5h), **precisão >99.5%** nos cálculos tributários, e **suportar múltiplas empresas** de forma escalável. O deploy inicial utiliza **Docker Compose** com PostgreSQL containerizado, e CI/CD via **GitHub Actions**.
+O Sistema LALUR V2 ECF é uma **API REST backend monolítica modular** construída com **Java 21 + Spring Boot 3.x**, seguindo **arquitetura hexagonal (Ports & Adapters)** com 8 bounded contexts. O sistema utiliza **PostgreSQL 12** como banco de dados relacional com conformidade ACID, essencial para garantir integridade em cálculos fiscais (IRPJ/CSLL). A arquitetura é **multi-tenant** (header `X-Company-Id`), com autenticação **JWT stateless** e dois roles (ADMIN e CONTADOR). A solução foi desenhada para atingir os objetivos do PRD: **reduzir tempo de processamento em 70%** (de 8-16h para 2-5h), **precisão >99.5%** nos cálculos tributários, e **suportar múltiplas empresas** de forma escalável. O deploy inicial utiliza **Docker Compose** com PostgreSQL containerizado, e CI/CD via **GitHub Actions**.
 
 ### Visão Geral da Arquitetura
 
@@ -89,7 +89,7 @@ graph TB
     end
 
     subgraph "Data Layer"
-        PostgreSQL[(PostgreSQL 15.5<br/>ACID Compliance)]
+        PostgreSQL[(PostgreSQL 12<br/>ACID Compliance)]
         FileSystem[File System<br/>ECF Storage]
     end
 

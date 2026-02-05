@@ -21,7 +21,7 @@ Infraestrutura-e-Deployment
 
 - **dev (Desenvolvimento Local):**
   - Docker Compose (`docker-compose up`)
-  - PostgreSQL 15.5 em container local
+  - PostgreSQL 12 em container local
   - `application-dev.yml`, JPA DDL `ddl-auto: update`
 
 - **test (CI/CD - GitHub Actions):**

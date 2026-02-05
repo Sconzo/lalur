@@ -76,6 +76,8 @@ END $$;
 -- JPA @LastModifiedDate should be NULL on entity creation (only set on update)
 
 DO $$
+DECLARE
+    rec RECORD;
 BEGIN
     -- Fix tb_usuario
     IF EXISTS (

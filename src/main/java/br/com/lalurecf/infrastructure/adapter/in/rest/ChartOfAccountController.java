@@ -47,7 +47,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>Todos endpoints requerem autenticação como CONTADOR e header X-Company-Id.
  */
 @RestController
-@RequestMapping("/api/v1/chart-of-accounts")
+@RequestMapping("/chart-of-accounts")
 @RequiredArgsConstructor
 @Slf4j
 public class ChartOfAccountController {
