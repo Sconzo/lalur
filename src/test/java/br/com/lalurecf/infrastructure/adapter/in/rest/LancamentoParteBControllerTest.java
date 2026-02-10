@@ -11,13 +11,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteBEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterTypeEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
@@ -75,7 +75,7 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
   @Autowired private TaxParameterJpaRepository taxParameterRepository;
   @Autowired private TaxParameterTypeJpaRepository taxParameterTypeRepository;
 
-  @Autowired private ChartOfAccountJpaRepository chartOfAccountRepository;
+  @Autowired private PlanoDeContasJpaRepository planoDeContasRepository;
 
   @Autowired private ContaParteBJpaRepository contaParteBRepository;
 
@@ -124,7 +124,7 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
     taxParameter = taxParameterRepository.save(taxParameter);
     taxParameterId = taxParameter.getId();
 
-    // Criar conta referencial para ChartOfAccount
+    // Criar conta referencial para PlanoDeContas
     ContaReferencialEntity contaReferencial = new ContaReferencialEntity();
     contaReferencial.setCodigoRfb("3.01");
     contaReferencial.setDescricao("Receita Bruta");
@@ -134,22 +134,22 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
     contaReferencial = contaReferencialRepository.save(contaReferencial);
 
     // Criar conta contábil da empresa
-    ChartOfAccountEntity chartOfAccount = new ChartOfAccountEntity();
-    chartOfAccount.setCode("1.01.01.001");
-    chartOfAccount.setName("Despesas Administrativas");
-    chartOfAccount.setCompany(company);
-    chartOfAccount.setContaReferencial(contaReferencial);
-    chartOfAccount.setFiscalYear(2024);
-    chartOfAccount.setAccountType(br.com.lalurecf.domain.enums.AccountType.DESPESA);
-    chartOfAccount.setClasse(br.com.lalurecf.domain.enums.ClasseContabil.DESPESAS_OPERACIONAIS);
-    chartOfAccount.setNivel(4);
-    chartOfAccount.setNatureza(br.com.lalurecf.domain.enums.NaturezaConta.DEVEDORA);
-    chartOfAccount.setAfetaResultado(true);
-    chartOfAccount.setDedutivel(true);
-    chartOfAccount.setCreatedAt(LocalDateTime.now());
-    chartOfAccount.setUpdatedAt(LocalDateTime.now());
-    chartOfAccount = chartOfAccountRepository.save(chartOfAccount);
-    contaContabilId = chartOfAccount.getId();
+    PlanoDeContasEntity planoDeContas = new PlanoDeContasEntity();
+    planoDeContas.setCode("1.01.01.001");
+    planoDeContas.setName("Despesas Administrativas");
+    planoDeContas.setCompany(company);
+    planoDeContas.setContaReferencial(contaReferencial);
+    planoDeContas.setFiscalYear(2024);
+    planoDeContas.setAccountType(br.com.lalurecf.domain.enums.AccountType.DESPESA);
+    planoDeContas.setClasse(br.com.lalurecf.domain.enums.ClasseContabil.DESPESAS_OPERACIONAIS);
+    planoDeContas.setNivel(4);
+    planoDeContas.setNatureza(br.com.lalurecf.domain.enums.NaturezaConta.DEVEDORA);
+    planoDeContas.setAfetaResultado(true);
+    planoDeContas.setDedutivel(true);
+    planoDeContas.setCreatedAt(LocalDateTime.now());
+    planoDeContas.setUpdatedAt(LocalDateTime.now());
+    planoDeContas = planoDeContasRepository.save(planoDeContas);
+    contaContabilId = planoDeContas.getId();
 
     // Criar conta Parte B da empresa
     ContaParteBEntity contaParteB = new ContaParteBEntity();
@@ -527,7 +527,7 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
 
     ContaReferencialEntity contaRef = contaReferencialRepository.findAll().get(0);
 
-    ChartOfAccountEntity otherConta = new ChartOfAccountEntity();
+    PlanoDeContasEntity otherConta = new PlanoDeContasEntity();
     otherConta.setCode("2.01.01.001");
     otherConta.setName("Conta de outra empresa");
     otherConta.setCompany(otherCompany);
@@ -541,7 +541,7 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
     otherConta.setDedutivel(false);
     otherConta.setCreatedAt(LocalDateTime.now());
     otherConta.setUpdatedAt(LocalDateTime.now());
-    otherConta = chartOfAccountRepository.save(otherConta);
+    otherConta = planoDeContasRepository.save(otherConta);
 
     String requestBody =
         """

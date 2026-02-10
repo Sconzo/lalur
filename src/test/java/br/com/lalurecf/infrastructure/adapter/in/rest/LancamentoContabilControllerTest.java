@@ -9,10 +9,10 @@ import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoContabilJpaRepository;
@@ -75,15 +75,15 @@ class LancamentoContabilControllerTest {
 
   @Autowired private CompanyJpaRepository companyJpaRepository;
 
-  @Autowired private ChartOfAccountJpaRepository chartOfAccountJpaRepository;
+  @Autowired private PlanoDeContasJpaRepository planoDeContasJpaRepository;
 
   @Autowired private ContaReferencialJpaRepository contaReferencialJpaRepository;
 
   @Autowired private LancamentoContabilJpaRepository lancamentoContabilJpaRepository;
 
   private Long testCompanyId;
-  private Long chartOfAccountIdDebito;
-  private Long chartOfAccountIdCredito;
+  private Long planoDeContasIdDebito;
+  private Long planoDeContasIdCredito;
 
   @BeforeEach
   void setUp() {
@@ -108,23 +108,23 @@ class LancamentoContabilControllerTest {
     contaReferencial = contaReferencialJpaRepository.save(contaReferencial);
 
     // Criar contas do plano de contas
-    chartOfAccountIdDebito =
-        createChartOfAccount(company, contaReferencial, "1.1.01.001", "Caixa", AccountType.ATIVO);
-    chartOfAccountIdCredito =
-        createChartOfAccount(
+    planoDeContasIdDebito =
+        createPlanoDeContas(company, contaReferencial, "1.1.01.001", "Caixa", AccountType.ATIVO);
+    planoDeContasIdCredito =
+        createPlanoDeContas(
             company, contaReferencial, "3.1.01.001", "Receita de Vendas", AccountType.RECEITA);
-    createChartOfAccount(
+    createPlanoDeContas(
         company, contaReferencial, "5.1.01.001", "Despesas Operacionais", AccountType.DESPESA);
   }
 
-  private Long createChartOfAccount(
+  private Long createPlanoDeContas(
       CompanyEntity company,
       ContaReferencialEntity contaReferencial,
       String code,
       String name,
       AccountType accountType) {
-    ChartOfAccountEntity account =
-        ChartOfAccountEntity.builder()
+    PlanoDeContasEntity account =
+        PlanoDeContasEntity.builder()
             .company(company)
             .contaReferencial(contaReferencial)
             .code(code)
@@ -140,7 +140,7 @@ class LancamentoContabilControllerTest {
             .createdAt(LocalDateTime.now())
             .updatedAt(LocalDateTime.now())
             .build();
-    return chartOfAccountJpaRepository.save(account).getId();
+    return planoDeContasJpaRepository.save(account).getId();
   }
 
   @Test
@@ -565,10 +565,10 @@ class LancamentoContabilControllerTest {
     String requestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 500.00,"
@@ -603,10 +603,10 @@ class LancamentoContabilControllerTest {
     String requestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 500.00,"
@@ -632,10 +632,10 @@ class LancamentoContabilControllerTest {
     String requestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2023-12-31\","
             + "\"valor\": 500.00,"
@@ -661,10 +661,10 @@ class LancamentoContabilControllerTest {
     String requestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 0.00,"
@@ -733,10 +733,10 @@ class LancamentoContabilControllerTest {
     String requestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 500.00,"
@@ -781,10 +781,10 @@ class LancamentoContabilControllerTest {
     String createRequestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 500.00,"
@@ -810,10 +810,10 @@ class LancamentoContabilControllerTest {
     String updateRequestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-20\","
             + "\"valor\": 750.00,"
@@ -845,10 +845,10 @@ class LancamentoContabilControllerTest {
     String createRequestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 500.00,"
@@ -874,10 +874,10 @@ class LancamentoContabilControllerTest {
     String updateRequestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2023-12-31\","
             + "\"valor\": 750.00,"
@@ -902,10 +902,10 @@ class LancamentoContabilControllerTest {
     String requestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 500.00,"
@@ -956,10 +956,10 @@ class LancamentoContabilControllerTest {
     String requestBody =
         "{"
             + "\"contaDebitoId\": "
-            + chartOfAccountIdDebito
+            + planoDeContasIdDebito
             + ","
             + "\"contaCreditoId\": "
-            + chartOfAccountIdCredito
+            + planoDeContasIdCredito
             + ","
             + "\"data\": \"2024-03-15\","
             + "\"valor\": 500.00,"

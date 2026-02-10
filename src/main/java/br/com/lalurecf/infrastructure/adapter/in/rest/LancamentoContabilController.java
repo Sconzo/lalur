@@ -8,13 +8,13 @@ import br.com.lalurecf.application.port.in.lancamentocontabil.ListLancamentoCont
 import br.com.lalurecf.application.port.in.lancamentocontabil.ToggleLancamentoContabilStatusUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.UpdateLancamentoContabilUseCase;
 import br.com.lalurecf.domain.model.LancamentoContabil;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusRequest;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.CreateLancamentoContabilRequest;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.ImportLancamentoContabilResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.LancamentoContabilResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.UpdateLancamentoContabilRequest;
 import br.com.lalurecf.infrastructure.dto.mapper.LancamentoContabilDtoMapper;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusRequest;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;

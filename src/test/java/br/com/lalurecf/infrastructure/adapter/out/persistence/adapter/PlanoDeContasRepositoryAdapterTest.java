@@ -9,10 +9,10 @@ import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.domain.model.ChartOfAccount;
+import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.domain.model.Company;
 import br.com.lalurecf.domain.model.ContaReferencial;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,8 +33,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @Testcontainers
 @Transactional
-@DisplayName("ChartOfAccountRepositoryAdapter Integration Tests")
-class ChartOfAccountRepositoryAdapterTest {
+@DisplayName("PlanoDeContasRepositoryAdapter Integration Tests")
+class PlanoDeContasRepositoryAdapterTest {
 
   @Container
   static PostgreSQLContainer<?> postgres =
@@ -50,9 +50,9 @@ class ChartOfAccountRepositoryAdapterTest {
     registry.add("spring.datasource.password", postgres::getPassword);
   }
 
-  @Autowired private ChartOfAccountRepositoryAdapter repositoryAdapter;
+  @Autowired private PlanoDeContasRepositoryAdapter repositoryAdapter;
 
-  @Autowired private ChartOfAccountJpaRepository jpaRepository;
+  @Autowired private PlanoDeContasJpaRepository jpaRepository;
 
   @Autowired private CompanyRepositoryAdapter companyRepository;
 
@@ -85,15 +85,15 @@ class ChartOfAccountRepositoryAdapterTest {
   }
 
   @Test
-  @DisplayName("Should save chart of account with FK to ContaReferencial and retrieve by ID")
-  void shouldSaveChartOfAccountAndRetrieveById() {
+  @DisplayName("Should save plano de contas with FK to ContaReferencial and retrieve by ID")
+  void shouldSavePlanoDeContasAndRetrieveById() {
     // Arrange
-    ChartOfAccount account =
-        createTestChartOfAccount("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
+    PlanoDeContas account =
+        createTestPlanoDeContas("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
 
     // Act
-    ChartOfAccount saved = repositoryAdapter.save(account);
-    Optional<ChartOfAccount> found = repositoryAdapter.findById(saved.getId());
+    PlanoDeContas saved = repositoryAdapter.save(account);
+    Optional<PlanoDeContas> found = repositoryAdapter.findById(saved.getId());
 
     // Assert
     assertNotNull(saved.getId());
@@ -114,12 +114,12 @@ class ChartOfAccountRepositoryAdapterTest {
   @DisplayName("Should enforce unique constraint on company+code+fiscalYear")
   void shouldEnforceUniqueConstraint() {
     // Arrange
-    ChartOfAccount account1 =
-        createTestChartOfAccount("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
+    PlanoDeContas account1 =
+        createTestPlanoDeContas("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
     repositoryAdapter.save(account1);
 
-    ChartOfAccount account2 =
-        createTestChartOfAccount("1.1.01.001", "Caixa Duplicada", 2024, AccountType.ATIVO);
+    PlanoDeContas account2 =
+        createTestPlanoDeContas("1.1.01.001", "Caixa Duplicada", 2024, AccountType.ATIVO);
 
     // Act & Assert
     assertThrows(
@@ -132,14 +132,14 @@ class ChartOfAccountRepositoryAdapterTest {
   @DisplayName("Should allow same code for different fiscal years")
   void shouldAllowSameCodeForDifferentYears() {
     // Arrange
-    ChartOfAccount account2024 =
-        createTestChartOfAccount("1.1.01.001", "Caixa 2024", 2024, AccountType.ATIVO);
-    ChartOfAccount account2025 =
-        createTestChartOfAccount("1.1.01.001", "Caixa 2025", 2025, AccountType.ATIVO);
+    PlanoDeContas account2024 =
+        createTestPlanoDeContas("1.1.01.001", "Caixa 2024", 2024, AccountType.ATIVO);
+    PlanoDeContas account2025 =
+        createTestPlanoDeContas("1.1.01.001", "Caixa 2025", 2025, AccountType.ATIVO);
 
     // Act
-    ChartOfAccount saved2024 = repositoryAdapter.save(account2024);
-    ChartOfAccount saved2025 = repositoryAdapter.save(account2025);
+    PlanoDeContas saved2024 = repositoryAdapter.save(account2024);
+    PlanoDeContas saved2025 = repositoryAdapter.save(account2025);
 
     // Assert
     assertNotNull(saved2024.getId());
@@ -154,12 +154,12 @@ class ChartOfAccountRepositoryAdapterTest {
   @DisplayName("Should find accounts by company and fiscal year")
   void shouldFindByCompanyAndFiscalYear() {
     // Arrange
-    repositoryAdapter.save(createTestChartOfAccount("1.1.01.001", "Caixa", 2024, AccountType.ATIVO));
-    repositoryAdapter.save(createTestChartOfAccount("1.1.02.001", "Bancos", 2024, AccountType.ATIVO));
-    repositoryAdapter.save(createTestChartOfAccount("2.1.01.001", "Fornecedores", 2023, AccountType.PASSIVO));
+    repositoryAdapter.save(createTestPlanoDeContas("1.1.01.001", "Caixa", 2024, AccountType.ATIVO));
+    repositoryAdapter.save(createTestPlanoDeContas("1.1.02.001", "Bancos", 2024, AccountType.ATIVO));
+    repositoryAdapter.save(createTestPlanoDeContas("2.1.01.001", "Fornecedores", 2023, AccountType.PASSIVO));
 
     // Act
-    List<ChartOfAccount> accounts2024 =
+    List<PlanoDeContas> accounts2024 =
         repositoryAdapter.findByCompanyIdAndFiscalYear(testCompany.getId(), 2024);
 
     // Assert
@@ -171,12 +171,12 @@ class ChartOfAccountRepositoryAdapterTest {
   @DisplayName("Should find account by company, code and fiscal year")
   void shouldFindByCompanyCodeAndFiscalYear() {
     // Arrange
-    ChartOfAccount account =
-        createTestChartOfAccount("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
+    PlanoDeContas account =
+        createTestPlanoDeContas("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
     repositoryAdapter.save(account);
 
     // Act
-    Optional<ChartOfAccount> found =
+    Optional<PlanoDeContas> found =
         repositoryAdapter.findByCompanyIdAndCodeAndFiscalYear(
             testCompany.getId(), "1.1.01.001", 2024);
 
@@ -191,13 +191,13 @@ class ChartOfAccountRepositoryAdapterTest {
   @DisplayName("Should delete account by ID")
   void shouldDeleteById() {
     // Arrange
-    ChartOfAccount account =
-        createTestChartOfAccount("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
-    ChartOfAccount saved = repositoryAdapter.save(account);
+    PlanoDeContas account =
+        createTestPlanoDeContas("1.1.01.001", "Caixa", 2024, AccountType.ATIVO);
+    PlanoDeContas saved = repositoryAdapter.save(account);
 
     // Act
     repositoryAdapter.deleteById(saved.getId());
-    Optional<ChartOfAccount> found = repositoryAdapter.findById(saved.getId());
+    Optional<PlanoDeContas> found = repositoryAdapter.findById(saved.getId());
 
     // Assert
     assertTrue(found.isEmpty());
@@ -209,11 +209,11 @@ class ChartOfAccountRepositoryAdapterTest {
     // Arrange
     for (int i = 1; i <= 5; i++) {
       repositoryAdapter.save(
-          createTestChartOfAccount("1.1.0" + i + ".001", "Conta " + i, 2024, AccountType.ATIVO));
+          createTestPlanoDeContas("1.1.0" + i + ".001", "Conta " + i, 2024, AccountType.ATIVO));
     }
 
     // Act
-    Page<ChartOfAccount> page =
+    Page<PlanoDeContas> page =
         repositoryAdapter.findByCompanyId(testCompany.getId(), PageRequest.of(0, 3));
 
     // Assert
@@ -226,8 +226,8 @@ class ChartOfAccountRepositoryAdapterTest {
   @DisplayName("Should persist and retrieve all ECF-specific fields correctly")
   void shouldPersistEcfFields() {
     // Arrange
-    ChartOfAccount account =
-        ChartOfAccount.builder()
+    PlanoDeContas account =
+        PlanoDeContas.builder()
             .companyId(testCompany.getId())
             .contaReferencialId(testContaReferencial.getId())
             .code("3.1.01.001")
@@ -243,12 +243,12 @@ class ChartOfAccountRepositoryAdapterTest {
             .build();
 
     // Act
-    ChartOfAccount saved = repositoryAdapter.save(account);
-    Optional<ChartOfAccount> found = repositoryAdapter.findById(saved.getId());
+    PlanoDeContas saved = repositoryAdapter.save(account);
+    Optional<PlanoDeContas> found = repositoryAdapter.findById(saved.getId());
 
     // Assert
     assertTrue(found.isPresent());
-    ChartOfAccount retrieved = found.get();
+    PlanoDeContas retrieved = found.get();
     assertEquals(ClasseContabil.RECEITA_BRUTA, retrieved.getClasse());
     assertEquals(4, retrieved.getNivel());
     assertEquals(NaturezaConta.CREDORA, retrieved.getNatureza());
@@ -260,25 +260,25 @@ class ChartOfAccountRepositoryAdapterTest {
   @DisplayName("Should update existing account")
   void shouldUpdateExistingAccount() {
     // Arrange
-    ChartOfAccount account =
-        createTestChartOfAccount("1.1.01.001", "Caixa Original", 2024, AccountType.ATIVO);
-    ChartOfAccount saved = repositoryAdapter.save(account);
+    PlanoDeContas account =
+        createTestPlanoDeContas("1.1.01.001", "Caixa Original", 2024, AccountType.ATIVO);
+    PlanoDeContas saved = repositoryAdapter.save(account);
 
     // Act
     saved.setName("Caixa Atualizada");
     saved.setNivel(5);
-    ChartOfAccount updated = repositoryAdapter.save(saved);
+    PlanoDeContas updated = repositoryAdapter.save(saved);
 
     // Assert
-    Optional<ChartOfAccount> found = repositoryAdapter.findById(updated.getId());
+    Optional<PlanoDeContas> found = repositoryAdapter.findById(updated.getId());
     assertTrue(found.isPresent());
     assertEquals("Caixa Atualizada", found.get().getName());
     assertEquals(5, found.get().getNivel());
   }
 
-  private ChartOfAccount createTestChartOfAccount(
+  private PlanoDeContas createTestPlanoDeContas(
       String code, String name, Integer fiscalYear, AccountType accountType) {
-    return ChartOfAccount.builder()
+    return PlanoDeContas.builder()
         .companyId(testCompany.getId())
         .contaReferencialId(testContaReferencial.getId())
         .code(code)

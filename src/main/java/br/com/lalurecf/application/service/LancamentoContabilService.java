@@ -5,14 +5,14 @@ import br.com.lalurecf.application.port.in.lancamentocontabil.GetLancamentoConta
 import br.com.lalurecf.application.port.in.lancamentocontabil.ListLancamentoContabilUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.ToggleLancamentoContabilStatusUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.UpdateLancamentoContabilUseCase;
-import br.com.lalurecf.application.port.out.ChartOfAccountRepositoryPort;
 import br.com.lalurecf.application.port.out.CompanyRepositoryPort;
 import br.com.lalurecf.application.port.out.LancamentoContabilRepositoryPort;
+import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.exception.BusinessRuleViolationException;
-import br.com.lalurecf.domain.model.ChartOfAccount;
 import br.com.lalurecf.domain.model.Company;
 import br.com.lalurecf.domain.model.LancamentoContabil;
+import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import br.com.lalurecf.infrastructure.validation.EnforcePeriodoContabil;
@@ -42,7 +42,7 @@ public class LancamentoContabilService
         ToggleLancamentoContabilStatusUseCase {
 
   private final LancamentoContabilRepositoryPort lancamentoContabilRepository;
-  private final ChartOfAccountRepositoryPort chartOfAccountRepository;
+  private final PlanoDeContasRepositoryPort planoDeContasRepository;
   private final CompanyRepositoryPort companyRepository;
 
   @Override
@@ -81,8 +81,8 @@ public class LancamentoContabilService
     }
 
     // Buscar e validar conta débito
-    ChartOfAccount contaDebito =
-        chartOfAccountRepository
+    PlanoDeContas contaDebito =
+        planoDeContasRepository
             .findById(lancamento.getContaDebitoId())
             .orElseThrow(
                 () ->
@@ -100,8 +100,8 @@ public class LancamentoContabilService
     }
 
     // Buscar e validar conta crédito
-    ChartOfAccount contaCredito =
-        chartOfAccountRepository
+    PlanoDeContas contaCredito =
+        planoDeContasRepository
             .findById(lancamento.getContaCreditoId())
             .orElseThrow(
                 () ->
@@ -303,8 +303,8 @@ public class LancamentoContabilService
     }
 
     // Buscar e validar conta débito
-    ChartOfAccount contaDebito =
-        chartOfAccountRepository
+    PlanoDeContas contaDebito =
+        planoDeContasRepository
             .findById(lancamentoAtualizado.getContaDebitoId())
             .orElseThrow(
                 () ->
@@ -318,8 +318,8 @@ public class LancamentoContabilService
     }
 
     // Buscar e validar conta crédito
-    ChartOfAccount contaCredito =
-        chartOfAccountRepository
+    PlanoDeContas contaCredito =
+        planoDeContasRepository
             .findById(lancamentoAtualizado.getContaCreditoId())
             .orElseThrow(
                 () ->

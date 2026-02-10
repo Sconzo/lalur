@@ -1,10 +1,10 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 
-import br.com.lalurecf.application.port.out.ChartOfAccountRepositoryPort;
-import br.com.lalurecf.domain.model.ChartOfAccount;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.ChartOfAccountMapper;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
+import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.PlanoDeContasMapper;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -14,28 +14,28 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 /**
- * Adapter de persistência para ChartOfAccount.
+ * Adapter de persistência para PlanoDeContas.
  *
- * <p>Implementa ChartOfAccountRepositoryPort (hexagonal port OUT) usando Spring Data JPA como
+ * <p>Implementa PlanoDeContasRepositoryPort (hexagonal port OUT) usando Spring Data JPA como
  * tecnologia de persistência.
  *
  * <p>Responsabilidades:
  *
  * <ul>
- *   <li>Converter entre domain model (ChartOfAccount) e JPA entity (ChartOfAccountEntity)
- *   <li>Delegar operações de persistência ao ChartOfAccountJpaRepository
+ *   <li>Converter entre domain model (PlanoDeContas) e JPA entity (PlanoDeContasEntity)
+ *   <li>Delegar operações de persistência ao PlanoDeContasJpaRepository
  * </ul>
  */
 @Component
 @RequiredArgsConstructor
-public class ChartOfAccountRepositoryAdapter implements ChartOfAccountRepositoryPort {
+public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPort {
 
-  private final ChartOfAccountJpaRepository jpaRepository;
-  private final ChartOfAccountMapper mapper;
+  private final PlanoDeContasJpaRepository jpaRepository;
+  private final PlanoDeContasMapper mapper;
 
   @Override
-  public ChartOfAccount save(ChartOfAccount account) {
-    ChartOfAccountEntity entity;
+  public PlanoDeContas save(PlanoDeContas account) {
+    PlanoDeContasEntity entity;
 
     if (account.getId() != null) {
       // Update: busca entity existente e atualiza seus campos
@@ -45,31 +45,31 @@ public class ChartOfAccountRepositoryAdapter implements ChartOfAccountRepository
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
-                          "ChartOfAccount not found with id: " + account.getId()));
+                          "PlanoDeContas not found with id: " + account.getId()));
       mapper.updateEntity(account, entity);
     } else {
       // Create: converte domain para nova entity
       entity = mapper.toEntity(account);
     }
 
-    ChartOfAccountEntity savedEntity = jpaRepository.save(entity);
+    PlanoDeContasEntity savedEntity = jpaRepository.save(entity);
     return mapper.toDomain(savedEntity);
   }
 
   @Override
-  public Optional<ChartOfAccount> findById(Long id) {
+  public Optional<PlanoDeContas> findById(Long id) {
     return jpaRepository.findById(id).map(mapper::toDomain);
   }
 
   @Override
-  public List<ChartOfAccount> findByCompanyIdAndFiscalYear(Long companyId, Integer fiscalYear) {
+  public List<PlanoDeContas> findByCompanyIdAndFiscalYear(Long companyId, Integer fiscalYear) {
     return jpaRepository.findByCompanyIdAndFiscalYear(companyId, fiscalYear).stream()
         .map(mapper::toDomain)
         .collect(Collectors.toList());
   }
 
   @Override
-  public Optional<ChartOfAccount> findByCompanyIdAndCodeAndFiscalYear(
+  public Optional<PlanoDeContas> findByCompanyIdAndCodeAndFiscalYear(
       Long companyId, String code, Integer fiscalYear) {
     return jpaRepository
         .findByCompanyIdAndCodeAndFiscalYear(companyId, code, fiscalYear)
@@ -82,7 +82,7 @@ public class ChartOfAccountRepositoryAdapter implements ChartOfAccountRepository
   }
 
   @Override
-  public Page<ChartOfAccount> findByCompanyId(Long companyId, Pageable pageable) {
+  public Page<PlanoDeContas> findByCompanyId(Long companyId, Pageable pageable) {
     return jpaRepository.findByCompanyId(companyId, pageable).map(mapper::toDomain);
   }
 }

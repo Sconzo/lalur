@@ -1,4 +1,4 @@
-package br.com.lalurecf.infrastructure.dto.chartofaccount;
+package br.com.lalurecf.infrastructure.dto.planodecontas;
 
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
@@ -13,7 +13,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO para atualização de conta contábil (ChartOfAccount).
+ * DTO para atualização de conta contábil (PlanoDeContas).
  *
  * <p>Permite editar campos da conta, EXCETO code e fiscalYear que são imutáveis após criação.
  */
@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateChartOfAccountRequest {
+public class UpdatePlanoDeContasRequest {
 
   /** Nome da conta contábil (ex: "Caixa"). */
   @NotBlank(message = "Name is required")

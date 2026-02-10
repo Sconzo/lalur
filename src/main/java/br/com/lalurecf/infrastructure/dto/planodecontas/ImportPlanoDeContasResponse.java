@@ -1,4 +1,4 @@
-package br.com.lalurecf.infrastructure.dto.chartofaccount;
+package br.com.lalurecf.infrastructure.dto.planodecontas;
 
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ImportChartOfAccountResponse {
+public class ImportPlanoDeContasResponse {
 
   /** Indica se a importação foi bem-sucedida. */
   private boolean success;
@@ -45,7 +45,7 @@ public class ImportChartOfAccountResponse {
    *
    * <p>Null se dry-run = false.
    */
-  private List<ChartOfAccountPreview> preview;
+  private List<PlanoDeContasPreview> preview;
 
   /**
    * Representa um erro encontrado durante a importação.
@@ -73,7 +73,7 @@ public class ImportChartOfAccountResponse {
   @Builder
   @NoArgsConstructor
   @AllArgsConstructor
-  public static class ChartOfAccountPreview {
+  public static class PlanoDeContasPreview {
     private String code;
     private String name;
     private Integer fiscalYear;

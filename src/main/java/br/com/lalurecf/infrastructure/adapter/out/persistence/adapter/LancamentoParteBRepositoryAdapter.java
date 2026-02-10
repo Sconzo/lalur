@@ -2,16 +2,16 @@ package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 
 import br.com.lalurecf.application.port.out.LancamentoParteBRepositoryPort;
 import br.com.lalurecf.domain.model.LancamentoParteB;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteBEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.LancamentoParteBEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.LancamentoParteBMapper;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoParteBJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
 import java.util.List;
 import java.util.Optional;
@@ -32,7 +32,7 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>Converter entre domain model (LancamentoParteB) e JPA entity (LancamentoParteBEntity)
  *   <li>Delegar operações de persistência ao LancamentoParteBJpaRepository
- *   <li>Resolver relacionamentos com CompanyEntity, ChartOfAccountEntity, ContaParteBEntity e
+ *   <li>Resolver relacionamentos com CompanyEntity, PlanoDeContasEntity, ContaParteBEntity e
  *       TaxParameterEntity
  * </ul>
  */
@@ -43,7 +43,7 @@ public class LancamentoParteBRepositoryAdapter implements LancamentoParteBReposi
 
   private final LancamentoParteBJpaRepository jpaRepository;
   private final CompanyJpaRepository companyJpaRepository;
-  private final ChartOfAccountJpaRepository chartOfAccountJpaRepository;
+  private final PlanoDeContasJpaRepository planoDeContasJpaRepository;
   private final ContaParteBJpaRepository contaParteBJpaRepository;
   private final TaxParameterJpaRepository taxParameterJpaRepository;
   private final LancamentoParteBMapper mapper;
@@ -78,8 +78,8 @@ public class LancamentoParteBRepositoryAdapter implements LancamentoParteBReposi
 
       // Resolver relacionamento com ContaContabil (se informado)
       if (lancamento.getContaContabilId() != null) {
-        ChartOfAccountEntity contaContabil =
-            chartOfAccountJpaRepository
+        PlanoDeContasEntity contaContabil =
+            planoDeContasJpaRepository
                 .findById(lancamento.getContaContabilId())
                 .orElseThrow(
                     () ->

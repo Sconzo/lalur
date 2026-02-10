@@ -1,6 +1,6 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.repository;
 
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -9,13 +9,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
- * Spring Data JPA Repository para ChartOfAccountEntity.
+ * Spring Data JPA Repository para PlanoDeContasEntity.
  *
  * <p>Query methods customizados para busca de contas contábeis por empresa, código e ano fiscal.
  */
 @Repository
-public interface ChartOfAccountJpaRepository
-    extends JpaRepository<ChartOfAccountEntity, Long> {
+public interface PlanoDeContasJpaRepository
+    extends JpaRepository<PlanoDeContasEntity, Long> {
 
   /**
    * Busca todas contas de uma empresa para um ano fiscal.
@@ -24,7 +24,7 @@ public interface ChartOfAccountJpaRepository
    * @param fiscalYear ano fiscal
    * @return lista de contas
    */
-  List<ChartOfAccountEntity> findByCompanyIdAndFiscalYear(Long companyId, Integer fiscalYear);
+  List<PlanoDeContasEntity> findByCompanyIdAndFiscalYear(Long companyId, Integer fiscalYear);
 
   /**
    * Busca conta por empresa, código e ano fiscal.
@@ -34,7 +34,7 @@ public interface ChartOfAccountJpaRepository
    * @param fiscalYear ano fiscal
    * @return Optional com conta se encontrada
    */
-  Optional<ChartOfAccountEntity> findByCompanyIdAndCodeAndFiscalYear(
+  Optional<PlanoDeContasEntity> findByCompanyIdAndCodeAndFiscalYear(
       Long companyId, String code, Integer fiscalYear);
 
   /**
@@ -44,5 +44,5 @@ public interface ChartOfAccountJpaRepository
    * @param pageable configuração de paginação
    * @return página de contas
    */
-  Page<ChartOfAccountEntity> findByCompanyId(Long companyId, Pageable pageable);
+  Page<PlanoDeContasEntity> findByCompanyId(Long companyId, Pageable pageable);
 }

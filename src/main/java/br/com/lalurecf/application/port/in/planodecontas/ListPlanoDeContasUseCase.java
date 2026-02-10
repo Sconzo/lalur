@@ -1,18 +1,18 @@
-package br.com.lalurecf.application.port.in.chartofaccount;
+package br.com.lalurecf.application.port.in.planodecontas;
 
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ChartOfAccountResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.PlanoDeContasResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 /**
- * Port IN: Use case para listar contas contábeis (ChartOfAccount) com filtros.
+ * Port IN: Use case para listar contas contábeis (PlanoDeContas) com filtros.
  *
  * <p>Retorna apenas contas da empresa no contexto atual.
  */
-public interface ListChartOfAccountsUseCase {
+public interface ListPlanoDeContasUseCase {
 
   /**
    * Lista contas contábeis da empresa no contexto com filtros opcionais.
@@ -26,7 +26,7 @@ public interface ListChartOfAccountsUseCase {
    * @param pageable configuração de paginação
    * @return página de contas
    */
-  Page<ChartOfAccountResponse> execute(
+  Page<PlanoDeContasResponse> execute(
       Integer fiscalYear,
       AccountType accountType,
       ClasseContabil classe,

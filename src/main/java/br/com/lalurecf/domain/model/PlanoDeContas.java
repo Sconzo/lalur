@@ -23,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChartOfAccount {
+public class PlanoDeContas {
 
   /** ID da conta. */
   private Long id;

@@ -1,20 +1,20 @@
 package br.com.lalurecf.infrastructure.adapter.in.rest;
 
-import br.com.lalurecf.application.port.in.chartofaccount.CreateChartOfAccountUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.GetChartOfAccountUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.ImportChartOfAccountUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.ListChartOfAccountsUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.ToggleChartOfAccountStatusUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.UpdateChartOfAccountUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.CreatePlanoDeContasUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.GetPlanoDeContasUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.ImportPlanoDeContasUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.ListPlanoDeContasUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.TogglePlanoDeContasStatusUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.UpdatePlanoDeContasUseCase;
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ChartOfAccountResponse;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.CreateChartOfAccountRequest;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ImportChartOfAccountResponse;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusRequest;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusResponse;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.UpdateChartOfAccountRequest;
+import br.com.lalurecf.infrastructure.dto.planodecontas.CreatePlanoDeContasRequest;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.PlanoDeContasResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusRequest;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.UpdatePlanoDeContasRequest;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * REST Controller para gerenciamento de Plano de Contas (ChartOfAccount).
+ * REST Controller para gerenciamento de Plano de Contas (PlanoDeContas).
  *
  * <p>Endpoints para CRUD de contas contábeis com validações ECF e vinculação a Conta Referencial
  * RFB.
@@ -47,17 +47,17 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>Todos endpoints requerem autenticação como CONTADOR e header X-Company-Id.
  */
 @RestController
-@RequestMapping("/chart-of-accounts")
+@RequestMapping("/plano-de-contas")
 @RequiredArgsConstructor
 @Slf4j
-public class ChartOfAccountController {
+public class PlanoDeContasController {
 
-  private final CreateChartOfAccountUseCase createChartOfAccountUseCase;
-  private final ListChartOfAccountsUseCase listChartOfAccountsUseCase;
-  private final GetChartOfAccountUseCase getChartOfAccountUseCase;
-  private final UpdateChartOfAccountUseCase updateChartOfAccountUseCase;
-  private final ToggleChartOfAccountStatusUseCase toggleChartOfAccountStatusUseCase;
-  private final ImportChartOfAccountUseCase importChartOfAccountUseCase;
+  private final CreatePlanoDeContasUseCase createPlanoDeContasUseCase;
+  private final ListPlanoDeContasUseCase listPlanoDeContasUseCase;
+  private final GetPlanoDeContasUseCase getPlanoDeContasUseCase;
+  private final UpdatePlanoDeContasUseCase updatePlanoDeContasUseCase;
+  private final TogglePlanoDeContasStatusUseCase togglePlanoDeContasStatusUseCase;
+  private final ImportPlanoDeContasUseCase importPlanoDeContasUseCase;
 
   /**
    * Cria uma nova conta contábil.
@@ -67,10 +67,10 @@ public class ChartOfAccountController {
    */
   @PostMapping
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<ChartOfAccountResponse> create(
-      @Valid @RequestBody CreateChartOfAccountRequest request) {
-    log.info("POST /api/v1/chart-of-accounts - Creating chart of account");
-    ChartOfAccountResponse response = createChartOfAccountUseCase.execute(request);
+  public ResponseEntity<PlanoDeContasResponse> create(
+      @Valid @RequestBody CreatePlanoDeContasRequest request) {
+    log.info("POST /api/v1/plano-de-contas - Creating plano de contas");
+    PlanoDeContasResponse response = createPlanoDeContasUseCase.execute(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -97,13 +97,13 @@ public class ChartOfAccountController {
    */
   @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<ImportChartOfAccountResponse> importChartOfAccounts(
+  public ResponseEntity<ImportPlanoDeContasResponse> importPlanoDeContas(
       @RequestParam("file") MultipartFile file,
       @RequestParam("fiscalYear") Integer fiscalYear,
       @RequestParam(value = "dryRun", required = false, defaultValue = "false") boolean dryRun) {
 
     log.info(
-        "POST /api/v1/chart-of-accounts/import - fiscalYear: {}, dryRun: {}, file: {}",
+        "POST /api/v1/plano-de-contas/import - fiscalYear: {}, dryRun: {}, file: {}",
         fiscalYear,
         dryRun,
         file.getOriginalFilename());
@@ -121,8 +121,8 @@ public class ChartOfAccountController {
     }
 
     // Executar importação
-    ImportChartOfAccountResponse response =
-        importChartOfAccountUseCase.importChartOfAccounts(file, companyId, fiscalYear, dryRun);
+    ImportPlanoDeContasResponse response =
+        importPlanoDeContasUseCase.importPlanoDeContas(file, companyId, fiscalYear, dryRun);
 
     return ResponseEntity.status(HttpStatus.OK).body(response);
   }
@@ -141,7 +141,7 @@ public class ChartOfAccountController {
    */
   @GetMapping
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<Page<ChartOfAccountResponse>> list(
+  public ResponseEntity<Page<PlanoDeContasResponse>> list(
       @RequestParam(required = false) Integer fiscalYear,
       @RequestParam(required = false) AccountType accountType,
       @RequestParam(required = false) ClasseContabil classe,
@@ -150,9 +150,9 @@ public class ChartOfAccountController {
       @RequestParam(required = false, defaultValue = "false") Boolean includeInactive,
       @PageableDefault(size = 100, sort = "code", direction = Sort.Direction.ASC)
           Pageable pageable) {
-    log.info("GET /api/v1/chart-of-accounts - Listing chart of accounts");
-    Page<ChartOfAccountResponse> response =
-        listChartOfAccountsUseCase.execute(
+    log.info("GET /api/v1/plano-de-contas - Listing plano de contas");
+    Page<PlanoDeContasResponse> response =
+        listPlanoDeContasUseCase.execute(
             fiscalYear, accountType, classe, natureza, search, includeInactive, pageable);
     return ResponseEntity.ok(response);
   }
@@ -165,9 +165,9 @@ public class ChartOfAccountController {
    */
   @GetMapping("/{id}")
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<ChartOfAccountResponse> getById(@PathVariable Long id) {
-    log.info("GET /api/v1/chart-of-accounts/{} - Getting chart of account", id);
-    ChartOfAccountResponse response = getChartOfAccountUseCase.execute(id);
+  public ResponseEntity<PlanoDeContasResponse> getById(@PathVariable Long id) {
+    log.info("GET /api/v1/plano-de-contas/{} - Getting plano de contas", id);
+    PlanoDeContasResponse response = getPlanoDeContasUseCase.execute(id);
     return ResponseEntity.ok(response);
   }
 
@@ -182,10 +182,10 @@ public class ChartOfAccountController {
    */
   @PutMapping("/{id}")
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<ChartOfAccountResponse> update(
-      @PathVariable Long id, @Valid @RequestBody UpdateChartOfAccountRequest request) {
-    log.info("PUT /api/v1/chart-of-accounts/{} - Updating chart of account", id);
-    ChartOfAccountResponse response = updateChartOfAccountUseCase.execute(id, request);
+  public ResponseEntity<PlanoDeContasResponse> update(
+      @PathVariable Long id, @Valid @RequestBody UpdatePlanoDeContasRequest request) {
+    log.info("PUT /api/v1/plano-de-contas/{} - Updating plano de contas", id);
+    PlanoDeContasResponse response = updatePlanoDeContasUseCase.execute(id, request);
     return ResponseEntity.ok(response);
   }
 
@@ -200,8 +200,8 @@ public class ChartOfAccountController {
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<ToggleStatusResponse> toggleStatus(
       @PathVariable Long id, @Valid @RequestBody ToggleStatusRequest request) {
-    log.info("PATCH /api/v1/chart-of-accounts/{}/status - Toggling status", id);
-    ToggleStatusResponse response = toggleChartOfAccountStatusUseCase.execute(id, request);
+    log.info("PATCH /api/v1/plano-de-contas/{}/status - Toggling status", id);
+    ToggleStatusResponse response = togglePlanoDeContasStatusUseCase.execute(id, request);
     return ResponseEntity.ok(response);
   }
 }

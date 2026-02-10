@@ -3,13 +3,13 @@ package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 import br.com.lalurecf.application.port.out.LancamentoContabilRepositoryPort;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.LancamentoContabil;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.LancamentoContabilEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.LancamentoContabilMapper;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoContabilJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
 
   private final LancamentoContabilJpaRepository jpaRepository;
   private final CompanyJpaRepository companyRepository;
-  private final ChartOfAccountJpaRepository chartOfAccountRepository;
+  private final PlanoDeContasJpaRepository planoDeContasRepository;
   private final LancamentoContabilMapper mapper;
 
   @Override
@@ -62,8 +62,8 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
     entity.setCompany(company);
 
     // Resolver FK: contaDebito
-    ChartOfAccountEntity contaDebito =
-        chartOfAccountRepository
+    PlanoDeContasEntity contaDebito =
+        planoDeContasRepository
             .findById(lancamento.getContaDebitoId())
             .orElseThrow(
                 () ->
@@ -72,8 +72,8 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
     entity.setContaDebito(contaDebito);
 
     // Resolver FK: contaCredito
-    ChartOfAccountEntity contaCredito =
-        chartOfAccountRepository
+    PlanoDeContasEntity contaCredito =
+        planoDeContasRepository
             .findById(lancamento.getContaCreditoId())
             .orElseThrow(
                 () ->

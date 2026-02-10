@@ -1,30 +1,30 @@
 package br.com.lalurecf.infrastructure.dto.mapper;
 
-import br.com.lalurecf.domain.model.ChartOfAccount;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ChartOfAccountResponse;
+import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.infrastructure.dto.planodecontas.PlanoDeContasResponse;
 import org.springframework.stereotype.Component;
 
 /**
- * Mapper para conversão entre ChartOfAccount (domain) e DTOs.
+ * Mapper para conversão entre PlanoDeContas (domain) e DTOs.
  *
  * <p>Converte objetos de domínio para DTOs de resposta.
  */
 @Component
-public class ChartOfAccountDtoMapper {
+public class PlanoDeContasDtoMapper {
 
   /**
-   * Converte ChartOfAccount domain para ChartOfAccountResponse DTO.
+   * Converte PlanoDeContas domain para PlanoDeContasResponse DTO.
    *
    * @param account objeto de domínio
    * @param contaReferencialCodigo código da Conta Referencial RFB
    * @return DTO de resposta
    */
-  public ChartOfAccountResponse toResponse(ChartOfAccount account, String contaReferencialCodigo) {
+  public PlanoDeContasResponse toResponse(PlanoDeContas account, String contaReferencialCodigo) {
     if (account == null) {
       return null;
     }
 
-    return ChartOfAccountResponse.builder()
+    return PlanoDeContasResponse.builder()
         .id(account.getId())
         .code(account.getCode())
         .name(account.getName())

@@ -1,6 +1,6 @@
-package br.com.lalurecf.application.port.in.chartofaccount;
+package br.com.lalurecf.application.port.in.planodecontas;
 
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ImportChartOfAccountResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
  * <p>Formato esperado: code;name;accountType;contaReferencialCodigo;classe;nivel;natureza;
  * afetaResultado;dedutivel
  */
-public interface ImportChartOfAccountUseCase {
+public interface ImportPlanoDeContasUseCase {
 
   /**
    * Importa plano de contas de arquivo CSV/TXT.
@@ -23,6 +23,6 @@ public interface ImportChartOfAccountUseCase {
    * @param dryRun se true, apenas retorna preview sem persistir
    * @return relatório detalhado da importação
    */
-  ImportChartOfAccountResponse importChartOfAccounts(
+  ImportPlanoDeContasResponse importPlanoDeContas(
       MultipartFile file, Long companyId, Integer fiscalYear, boolean dryRun);
 }

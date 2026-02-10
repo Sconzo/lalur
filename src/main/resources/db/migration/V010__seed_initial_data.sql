@@ -35,7 +35,7 @@ INSERT INTO tb_usuario (
     '$2a$12$qAYdO1nyZ3mndqAv.XvfJecnAwEtdc18gUwuJHfvuD0Gxh7AJntAC',
     'ADMIN',
     'ACTIVE',
-    true,
+    false,
     CURRENT_TIMESTAMP,
     1
 )
@@ -144,7 +144,7 @@ INSERT INTO tb_empresa (
     criado_por
 ) VALUES (
     'Empresa Exemplo LTDA',
-    '12345678000199',
+    '11222333000181',
     '2024-01-01',
     'ACTIVE',
     CURRENT_TIMESTAMP,
@@ -166,7 +166,7 @@ SELECT
 FROM tb_empresa e
 CROSS JOIN tb_parametros_tributarios p
 JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
-WHERE e.cnpj = '12345678000199'
+WHERE e.cnpj = '11222333000181'
   AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo IN ('1', '2')
   AND NOT EXISTS (
@@ -184,7 +184,7 @@ SELECT
 FROM tb_empresa e
 CROSS JOIN tb_parametros_tributarios p
 JOIN tb_tipos_parametros_tributarios t ON p.tipo_parametro_id = t.id
-WHERE e.cnpj = '12345678000199'
+WHERE e.cnpj = '11222333000181'
   AND t.descricao = 'FORMA_TRIBUTACAO'
   AND p.codigo IN ('P', 'R', 'A')
   AND NOT EXISTS (
@@ -216,7 +216,7 @@ CROSS JOIN (
     SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
     SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
 ) m
-WHERE e.cnpj = '12345678000199'
+WHERE e.cnpj = '11222333000181'
   AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo = '1'
   AND NOT EXISTS (
@@ -247,7 +247,7 @@ CROSS JOIN (
     SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
     SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12
 ) m
-WHERE e.cnpj = '12345678000199'
+WHERE e.cnpj = '11222333000181'
   AND t.descricao = 'ESTIMATIVA_MENSAL'
   AND p.codigo = '2'
   AND NOT EXISTS (
@@ -274,7 +274,7 @@ JOIN tb_parametros_tributarios p ON ept.parametro_tributario_id = p.id
 JOIN tb_tipos_parametros_tributarios tp ON p.tipo_parametro_id = tp.id
 CROSS JOIN (SELECT 2023 AS ano UNION ALL SELECT 2024 UNION ALL SELECT 2025) y
 CROSS JOIN (SELECT 1 AS trimestre UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4) q
-WHERE e.cnpj = '12345678000199'
+WHERE e.cnpj = '11222333000181'
   AND tp.descricao = 'FORMA_TRIBUTACAO'
   AND p.codigo IN ('P', 'R', 'A')
   AND NOT EXISTS (

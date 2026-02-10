@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
  *
  * <p>Representa um lançamento contábil com método de partidas dobradas (débito e crédito).
  * Cada lançamento possui uma conta de débito e uma conta de crédito, ambas referenciando
- * ChartOfAccount.
+ * PlanoDeContas.
  *
  * <p>Implementa TemporalEntity para sujeição ao bloqueio temporal do Período Contábil.
  *

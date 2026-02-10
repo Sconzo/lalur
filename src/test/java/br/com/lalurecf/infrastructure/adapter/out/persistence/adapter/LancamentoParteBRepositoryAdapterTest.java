@@ -13,13 +13,13 @@ import br.com.lalurecf.domain.enums.TipoRelacionamento;
 import br.com.lalurecf.domain.enums.TipoSaldo;
 import br.com.lalurecf.domain.enums.TipoTributo;
 import br.com.lalurecf.domain.model.LancamentoParteB;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteBEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterTypeEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
@@ -78,7 +78,7 @@ class LancamentoParteBRepositoryAdapterTest {
 
   @Autowired private CompanyJpaRepository companyJpaRepository;
 
-  @Autowired private ChartOfAccountJpaRepository chartOfAccountJpaRepository;
+  @Autowired private PlanoDeContasJpaRepository planoDeContasJpaRepository;
 
   @Autowired private ContaParteBJpaRepository contaParteBJpaRepository;
 
@@ -96,7 +96,7 @@ class LancamentoParteBRepositoryAdapterTest {
   @BeforeEach
   void setUp() {
     jpaRepository.deleteAll();
-    chartOfAccountJpaRepository.deleteAll();
+    planoDeContasJpaRepository.deleteAll();
     contaParteBJpaRepository.deleteAll();
     taxParameterJpaRepository.deleteAll();
     contaReferencialJpaRepository.deleteAll();
@@ -126,7 +126,7 @@ class LancamentoParteBRepositoryAdapterTest {
         contaReferencialJpaRepository.save(contaReferencial);
 
     // Criar conta contábil de teste
-    ChartOfAccountEntity contaContabil = ChartOfAccountEntity.builder()
+    PlanoDeContasEntity contaContabil = PlanoDeContasEntity.builder()
         .company(savedCompany)
         .contaReferencial(savedContaReferencial)
         .code("3.01.01")
@@ -140,7 +140,7 @@ class LancamentoParteBRepositoryAdapterTest {
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
-    ChartOfAccountEntity savedContaContabil = chartOfAccountJpaRepository.save(contaContabil);
+    PlanoDeContasEntity savedContaContabil = planoDeContasJpaRepository.save(contaContabil);
     testContaContabilId = savedContaContabil.getId();
 
     // Criar conta Parte B de teste

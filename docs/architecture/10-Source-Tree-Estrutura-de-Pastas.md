@@ -27,7 +27,7 @@ LALUR-V2-ECF/
 │   │   │               │   ├── model/                       # Entidades de domínio (POJOs puros)
 │   │   │               │   │   ├── User.java
 │   │   │               │   │   ├── Company.java
-│   │   │               │   │   ├── ChartOfAccount.java
+│   │   │               │   │   ├── PlanoDeContas.java
 │   │   │               │   │   ├── AccountingData.java
 │   │   │               │   │   ├── TaxParameter.java
 │   │   │               │   │   ├── FiscalMovement.java
@@ -83,8 +83,8 @@ LALUR-V2-ECF/
 │   │   │               │   │   │   │   └── ListCompaniesUseCase.java
 │   │   │               │   │   │   │
 │   │   │               │   │   │   ├── chartofaccount/
-│   │   │               │   │   │   │   ├── ImportChartOfAccountsUseCase.java
-│   │   │               │   │   │   │   └── ExportChartOfAccountsUseCase.java
+│   │   │               │   │   │   │   ├── ImportPlanoDeContassUseCase.java
+│   │   │               │   │   │   │   └── ExportPlanoDeContassUseCase.java
 │   │   │               │   │   │   │
 │   │   │               │   │   │   ├── accountingdata/
 │   │   │               │   │   │   │   ├── ImportAccountingDataUseCase.java
@@ -115,7 +115,7 @@ LALUR-V2-ECF/
 │   │   │               │   │       ├── persistence/
 │   │   │               │   │       │   ├── UserRepositoryPort.java
 │   │   │               │   │       │   ├── CompanyRepositoryPort.java
-│   │   │               │   │       │   ├── ChartOfAccountRepositoryPort.java
+│   │   │               │   │       │   ├── PlanoDeContasRepositoryPort.java
 │   │   │               │   │       │   ├── AccountingDataRepositoryPort.java
 │   │   │               │   │       │   ├── TaxParameterRepositoryPort.java
 │   │   │               │   │       │   ├── FiscalMovementRepositoryPort.java
@@ -133,7 +133,7 @@ LALUR-V2-ECF/
 │   │   │               │       ├── AuthService.java
 │   │   │               │       ├── UserService.java
 │   │   │               │       ├── CompanyService.java
-│   │   │               │       ├── ChartOfAccountService.java
+│   │   │               │       ├── PlanoDeContasService.java
 │   │   │               │       ├── AccountingDataService.java
 │   │   │               │       ├── TaxParameterService.java
 │   │   │               │       ├── FiscalMovementService.java
@@ -149,7 +149,7 @@ LALUR-V2-ECF/
 │   │   │                   │   │       ├── AuthController.java
 │   │   │                   │   │       ├── UserController.java
 │   │   │                   │   │       ├── CompanyController.java
-│   │   │                   │   │       ├── ChartOfAccountController.java
+│   │   │                   │   │       ├── PlanoDeContasController.java
 │   │   │                   │   │       ├── AccountingDataController.java
 │   │   │                   │   │       ├── TaxParameterController.java
 │   │   │                   │   │       ├── FiscalMovementController.java
@@ -162,7 +162,7 @@ LALUR-V2-ECF/
 │   │   │                   │       │   │   ├── BaseEntity.java
 │   │   │                   │       │   │   ├── UserEntity.java
 │   │   │                   │       │   │   ├── CompanyEntity.java
-│   │   │                   │       │   │   ├── ChartOfAccountEntity.java
+│   │   │                   │       │   │   ├── PlanoDeContasEntity.java
 │   │   │                   │       │   │   ├── AccountingDataEntity.java
 │   │   │                   │       │   │   ├── TaxParameterEntity.java
 │   │   │                   │       │   │   ├── FiscalMovementEntity.java
@@ -172,7 +172,7 @@ LALUR-V2-ECF/
 │   │   │                   │       │   ├── repository/      # Spring Data JPA repositories
 │   │   │                   │       │   │   ├── UserJpaRepository.java
 │   │   │                   │       │   │   ├── CompanyJpaRepository.java
-│   │   │                   │       │   │   ├── ChartOfAccountJpaRepository.java
+│   │   │                   │       │   │   ├── PlanoDeContasJpaRepository.java
 │   │   │                   │       │   │   ├── AccountingDataJpaRepository.java
 │   │   │                   │       │   │   ├── TaxParameterJpaRepository.java
 │   │   │                   │       │   │   ├── FiscalMovementJpaRepository.java
@@ -182,7 +182,7 @@ LALUR-V2-ECF/
 │   │   │                   │       │   ├── adapter/         # Repository adapters (implementam RepositoryPort)
 │   │   │                   │       │   │   ├── UserRepositoryAdapter.java
 │   │   │                   │       │   │   ├── CompanyRepositoryAdapter.java
-│   │   │                   │       │   │   ├── ChartOfAccountRepositoryAdapter.java
+│   │   │                   │       │   │   ├── PlanoDeContasRepositoryAdapter.java
 │   │   │                   │       │   │   ├── AccountingDataRepositoryAdapter.java
 │   │   │                   │       │   │   ├── TaxParameterRepositoryAdapter.java
 │   │   │                   │       │   │   ├── FiscalMovementRepositoryAdapter.java
@@ -192,7 +192,7 @@ LALUR-V2-ECF/
 │   │   │                   │       │   ├── mapper/          # MapStruct mappers (Entity ↔ Domain)
 │   │   │                   │       │   │   ├── UserMapper.java
 │   │   │                   │       │   │   ├── CompanyMapper.java
-│   │   │                   │       │   │   ├── ChartOfAccountMapper.java
+│   │   │                   │       │   │   ├── PlanoDeContasMapper.java
 │   │   │                   │       │   │   ├── AccountingDataMapper.java
 │   │   │                   │       │   │   ├── TaxParameterMapper.java
 │   │   │                   │       │   │   ├── FiscalMovementMapper.java
@@ -246,7 +246,7 @@ LALUR-V2-ECF/
 │   │   │                   │   │   └── CnpjSearchResponse.java
 │   │   │                   │   │
 │   │   │                   │   ├── chartofaccount/
-│   │   │                   │   │   ├── ChartOfAccountResponse.java
+│   │   │                   │   │   ├── PlanoDeContasResponse.java
 │   │   │                   │   │   └── ImportChartResponse.java
 │   │   │                   │   │
 │   │   │                   │   ├── accountingdata/
@@ -282,7 +282,7 @@ LALUR-V2-ECF/
 │   │   │                   │   └── mapper/                  # DTO ↔ Domain mappers
 │   │   │                   │       ├── UserDtoMapper.java
 │   │   │                   │       ├── CompanyDtoMapper.java
-│   │   │                   │       ├── ChartOfAccountDtoMapper.java
+│   │   │                   │       ├── PlanoDeContasDtoMapper.java
 │   │   │                   │       ├── AccountingDataDtoMapper.java
 │   │   │                   │       ├── TaxParameterDtoMapper.java
 │   │   │                   │       ├── FiscalMovementDtoMapper.java

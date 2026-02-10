@@ -17,7 +17,7 @@ import br.com.lalurecf.domain.enums.TipoRelacionamento;
 import br.com.lalurecf.domain.enums.TipoSaldo;
 import br.com.lalurecf.domain.enums.TipoTributo;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
@@ -82,7 +82,7 @@ class Epic3EndToEndTest {
   @Autowired private ObjectMapper objectMapper;
   @Autowired private CompanyJpaRepository companyJpaRepository;
   @Autowired private ContaReferencialJpaRepository contaReferencialJpaRepository;
-  @Autowired private ChartOfAccountJpaRepository chartOfAccountJpaRepository;
+  @Autowired private PlanoDeContasJpaRepository planoDeContasJpaRepository;
   @Autowired private LancamentoContabilJpaRepository lancamentoContabilJpaRepository;
   @Autowired private ContaParteBJpaRepository contaParteBJpaRepository;
   @Autowired private LancamentoParteBJpaRepository lancamentoParteBJpaRepository;
@@ -247,7 +247,7 @@ class Epic3EndToEndTest {
     MvcResult importResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -260,7 +260,7 @@ class Epic3EndToEndTest {
     String importResponse = importResult.getResponse().getContentAsString();
     JsonNode importNode = objectMapper.readTree(importResponse);
     assertEquals(100, importNode.get("processedLines").asInt());
-    assertEquals(100, chartOfAccountJpaRepository.count());
+    assertEquals(100, planoDeContasJpaRepository.count());
 
     // Tenta reimportar mesmo arquivo
     MockMultipartFile file2 =
@@ -273,7 +273,7 @@ class Epic3EndToEndTest {
     MvcResult reimportResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file2)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -286,7 +286,7 @@ class Epic3EndToEndTest {
     String reimportResponse = reimportResult.getResponse().getContentAsString();
     JsonNode reimportNode = objectMapper.readTree(reimportResponse);
     assertEquals(0, reimportNode.get("processedLines").asInt());
-    assertEquals(100, chartOfAccountJpaRepository.count()); // Ainda 100
+    assertEquals(100, planoDeContasJpaRepository.count()); // Ainda 100
 
     // Tenta importar conta com contaReferencialCodigo inexistente
     String invalidCsv =
@@ -300,7 +300,7 @@ class Epic3EndToEndTest {
     MvcResult invalidResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(invalidFile)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -346,7 +346,7 @@ class Epic3EndToEndTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+            MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                 .file(planoFile)
                 .param("fiscalYear", "2024")
                 .param("dryRun", "false")
@@ -354,7 +354,7 @@ class Epic3EndToEndTest {
                 .with(user("contador").roles("CONTADOR")))
         .andExpect(MockMvcResultMatchers.status().isOk());
 
-    assertEquals(50, chartOfAccountJpaRepository.count());
+    assertEquals(50, planoDeContasJpaRepository.count());
 
     // Importa lançamentos contábeis via CSV (500 lançamentos)
     StringBuilder lancCsv = new StringBuilder();
@@ -581,7 +581,7 @@ class Epic3EndToEndTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+            MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                 .file(planoFile)
                 .param("fiscalYear", "2024")
                 .param("dryRun", "false")
@@ -641,7 +641,7 @@ class Epic3EndToEndTest {
     MvcResult planoResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(planoFile)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -654,7 +654,7 @@ class Epic3EndToEndTest {
     MvcResult listResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.get("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.get("/api/v1/plano-de-contas")
                     .header("X-Company-Id", testCompanyId.toString())
                     .with(user("contador").roles("CONTADOR")))
             .andExpect(MockMvcResultMatchers.status().isOk())
@@ -736,7 +736,7 @@ class Epic3EndToEndTest {
     MvcResult dryRunResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(planoFile)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "true")
@@ -751,7 +751,7 @@ class Epic3EndToEndTest {
     assertNotNull(dryRunNode.get("preview"));
 
     // Valida que nada foi persistido
-    assertEquals(0, chartOfAccountJpaRepository.count());
+    assertEquals(0, planoDeContasJpaRepository.count());
 
     // Executa sem dry run
     MockMultipartFile planoFile2 =
@@ -760,7 +760,7 @@ class Epic3EndToEndTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+            MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                 .file(planoFile2)
                 .param("fiscalYear", "2024")
                 .param("dryRun", "false")
@@ -769,7 +769,7 @@ class Epic3EndToEndTest {
         .andExpect(MockMvcResultMatchers.status().isOk());
 
     // Valida que foi persistido
-    assertEquals(1, chartOfAccountJpaRepository.count());
+    assertEquals(1, planoDeContasJpaRepository.count());
   }
 
   @Test
@@ -790,7 +790,7 @@ class Epic3EndToEndTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+            MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                 .file(planoFile1)
                 .param("fiscalYear", "2024")
                 .param("dryRun", "false")
@@ -802,7 +802,7 @@ class Epic3EndToEndTest {
     MvcResult listEmp2Result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.get("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.get("/api/v1/plano-de-contas")
                     .header("X-Company-Id", testCompany2Id.toString())
                     .with(user("contador").roles("CONTADOR")))
             .andExpect(MockMvcResultMatchers.status().isOk())
@@ -819,7 +819,7 @@ class Epic3EndToEndTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+            MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                 .file(planoFile2)
                 .param("fiscalYear", "2024")
                 .param("dryRun", "false")
@@ -831,7 +831,7 @@ class Epic3EndToEndTest {
     MvcResult listEmp2AfterResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.get("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.get("/api/v1/plano-de-contas")
                     .header("X-Company-Id", testCompany2Id.toString())
                     .with(user("contador").roles("CONTADOR")))
             .andExpect(MockMvcResultMatchers.status().isOk())

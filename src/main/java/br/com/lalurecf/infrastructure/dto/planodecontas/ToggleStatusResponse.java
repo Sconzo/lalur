@@ -1,4 +1,4 @@
-package br.com.lalurecf.infrastructure.dto.chartofaccount;
+package br.com.lalurecf.infrastructure.dto.planodecontas;
 
 import br.com.lalurecf.domain.enums.Status;
 import lombok.AllArgsConstructor;

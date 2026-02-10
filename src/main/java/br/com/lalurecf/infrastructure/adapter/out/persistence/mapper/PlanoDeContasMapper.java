@@ -1,40 +1,40 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.mapper;
 
-import br.com.lalurecf.domain.model.ChartOfAccount;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
+import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 /**
- * MapStruct mapper para conversão entre ChartOfAccountEntity e ChartOfAccount (domain).
+ * MapStruct mapper para conversão entre PlanoDeContasEntity e PlanoDeContas (domain).
  *
  * <p>Converte entidade JPA (infraestrutura) para/de modelo de domínio puro.
  */
 @Mapper(componentModel = "spring")
-public interface ChartOfAccountMapper {
+public interface PlanoDeContasMapper {
 
   /**
-   * Converte ChartOfAccountEntity para ChartOfAccount (domain).
+   * Converte PlanoDeContasEntity para PlanoDeContas (domain).
    *
    * @param entity entidade JPA
    * @return modelo de domínio
    */
   @Mapping(source = "company.id", target = "companyId")
   @Mapping(source = "contaReferencial.id", target = "contaReferencialId")
-  ChartOfAccount toDomain(ChartOfAccountEntity entity);
+  PlanoDeContas toDomain(PlanoDeContasEntity entity);
 
   /**
-   * Converte ChartOfAccount (domain) para ChartOfAccountEntity.
+   * Converte PlanoDeContas (domain) para PlanoDeContasEntity.
    *
    * @param domain modelo de domínio
    * @return entidade JPA
    */
   @Mapping(source = "companyId", target = "company.id")
   @Mapping(source = "contaReferencialId", target = "contaReferencial.id")
-  ChartOfAccountEntity toEntity(ChartOfAccount domain);
+  PlanoDeContasEntity toEntity(PlanoDeContas domain);
 
   /**
-   * Atualiza uma ChartOfAccountEntity existente com dados do ChartOfAccount (domain).
+   * Atualiza uma PlanoDeContasEntity existente com dados do PlanoDeContas (domain).
    *
    * <p>Usado para operações de UPDATE preservando ID e campos de auditoria.
    *
@@ -47,5 +47,5 @@ public interface ChartOfAccountMapper {
   @Mapping(source = "companyId", target = "company.id")
   @Mapping(source = "contaReferencialId", target = "contaReferencial.id")
   void updateEntity(
-      ChartOfAccount domain, @org.mapstruct.MappingTarget ChartOfAccountEntity entity);
+      PlanoDeContas domain, @org.mapstruct.MappingTarget PlanoDeContasEntity entity);
 }

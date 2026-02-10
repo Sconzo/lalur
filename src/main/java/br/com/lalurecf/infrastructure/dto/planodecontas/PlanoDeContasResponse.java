@@ -1,4 +1,4 @@
-package br.com.lalurecf.infrastructure.dto.chartofaccount;
+package br.com.lalurecf.infrastructure.dto.planodecontas;
 
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
@@ -11,7 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO de resposta para conta contábil (ChartOfAccount).
+ * DTO de resposta para conta contábil (PlanoDeContas).
  *
  * <p>Inclui código da Conta Referencial RFB para exibição na UI.
  */
@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChartOfAccountResponse {
+public class PlanoDeContasResponse {
 
   /** ID da conta. */
   private Long id;

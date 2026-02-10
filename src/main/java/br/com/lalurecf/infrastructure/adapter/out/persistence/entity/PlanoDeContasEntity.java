@@ -31,17 +31,17 @@ import lombok.experimental.SuperBuilder;
  */
 @Entity
 @Table(
-    name = "tb_chart_of_account",
+    name = "tb_plano_de_contas",
     uniqueConstraints =
         @UniqueConstraint(
-            name = "uk_chart_of_account_company_code_year",
+            name = "uk_plano_de_contas_company_code_year",
             columnNames = {"company_id", "code", "fiscal_year"}))
 @Getter
 @Setter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChartOfAccountEntity extends BaseEntity {
+public class PlanoDeContasEntity extends BaseEntity {
 
   /**
    * Empresa dona da conta.

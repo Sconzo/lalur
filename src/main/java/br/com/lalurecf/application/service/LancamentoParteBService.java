@@ -5,17 +5,17 @@ import br.com.lalurecf.application.port.in.lancamentoparteb.GetLancamentoParteBU
 import br.com.lalurecf.application.port.in.lancamentoparteb.ListLancamentoParteBUseCase;
 import br.com.lalurecf.application.port.in.lancamentoparteb.ToggleLancamentoParteBStatusUseCase;
 import br.com.lalurecf.application.port.in.lancamentoparteb.UpdateLancamentoParteBUseCase;
-import br.com.lalurecf.application.port.out.ChartOfAccountRepositoryPort;
 import br.com.lalurecf.application.port.out.ContaParteBRepositoryPort;
 import br.com.lalurecf.application.port.out.LancamentoParteBRepositoryPort;
+import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
 import br.com.lalurecf.application.port.out.TaxParameterRepositoryPort;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.enums.TipoAjuste;
 import br.com.lalurecf.domain.enums.TipoApuracao;
 import br.com.lalurecf.domain.enums.TipoRelacionamento;
-import br.com.lalurecf.domain.model.ChartOfAccount;
 import br.com.lalurecf.domain.model.ContaParteB;
 import br.com.lalurecf.domain.model.LancamentoParteB;
+import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.domain.model.TaxParameter;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.CreateLancamentoParteBRequest;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.LancamentoParteBResponse;
@@ -51,7 +51,7 @@ public class LancamentoParteBService
 
   private final LancamentoParteBRepositoryPort lancamentoParteBRepository;
   private final TaxParameterRepositoryPort taxParameterRepository;
-  private final ChartOfAccountRepositoryPort chartOfAccountRepository;
+  private final PlanoDeContasRepositoryPort planoDeContasRepository;
   private final ContaParteBRepositoryPort contaParteBRepository;
   private final LancamentoParteBDtoMapper dtoMapper;
 
@@ -344,8 +344,8 @@ public class LancamentoParteBService
    * Valida que conta contábil existe e pertence à empresa.
    */
   private void validateContaContabil(Long contaContabilId, Long companyId) {
-    ChartOfAccount contaContabil =
-        chartOfAccountRepository
+    PlanoDeContas contaContabil =
+        planoDeContasRepository
             .findById(contaContabilId)
             .orElseThrow(
                 () ->

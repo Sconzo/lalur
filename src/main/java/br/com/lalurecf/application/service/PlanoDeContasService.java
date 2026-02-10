@@ -1,24 +1,24 @@
 package br.com.lalurecf.application.service;
 
-import br.com.lalurecf.application.port.in.chartofaccount.CreateChartOfAccountUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.GetChartOfAccountUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.ListChartOfAccountsUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.ToggleChartOfAccountStatusUseCase;
-import br.com.lalurecf.application.port.in.chartofaccount.UpdateChartOfAccountUseCase;
-import br.com.lalurecf.application.port.out.ChartOfAccountRepositoryPort;
+import br.com.lalurecf.application.port.in.planodecontas.CreatePlanoDeContasUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.GetPlanoDeContasUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.ListPlanoDeContasUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.TogglePlanoDeContasStatusUseCase;
+import br.com.lalurecf.application.port.in.planodecontas.UpdatePlanoDeContasUseCase;
 import br.com.lalurecf.application.port.out.ContaReferencialRepositoryPort;
+import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.domain.model.ChartOfAccount;
 import br.com.lalurecf.domain.model.ContaReferencial;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ChartOfAccountResponse;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.CreateChartOfAccountRequest;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusRequest;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ToggleStatusResponse;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.UpdateChartOfAccountRequest;
-import br.com.lalurecf.infrastructure.dto.mapper.ChartOfAccountDtoMapper;
+import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.infrastructure.dto.mapper.PlanoDeContasDtoMapper;
+import br.com.lalurecf.infrastructure.dto.planodecontas.CreatePlanoDeContasRequest;
+import br.com.lalurecf.infrastructure.dto.planodecontas.PlanoDeContasResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusRequest;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.UpdatePlanoDeContasRequest;
 import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import java.time.Year;
@@ -32,28 +32,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service que implementa os Use Cases de ChartOfAccount (Plano de Contas).
+ * Service que implementa os Use Cases de PlanoDeContas (Plano de Contas).
  *
  * <p>Gerencia CRUD de contas contábeis com validações ECF e vinculação a Conta Referencial RFB.
  */
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class ChartOfAccountService
-    implements CreateChartOfAccountUseCase,
-        ListChartOfAccountsUseCase,
-        GetChartOfAccountUseCase,
-        UpdateChartOfAccountUseCase,
-        ToggleChartOfAccountStatusUseCase {
+public class PlanoDeContasService
+    implements CreatePlanoDeContasUseCase,
+        ListPlanoDeContasUseCase,
+        GetPlanoDeContasUseCase,
+        UpdatePlanoDeContasUseCase,
+        TogglePlanoDeContasStatusUseCase {
 
-  private final ChartOfAccountRepositoryPort chartOfAccountRepository;
+  private final PlanoDeContasRepositoryPort planoDeContasRepository;
   private final ContaReferencialRepositoryPort contaReferencialRepository;
-  private final ChartOfAccountDtoMapper dtoMapper;
+  private final PlanoDeContasDtoMapper dtoMapper;
 
   @Override
   @Transactional
-  public ChartOfAccountResponse execute(CreateChartOfAccountRequest request) {
-    log.info("Creating ChartOfAccount with code: {}", request.getCode());
+  public PlanoDeContasResponse execute(CreatePlanoDeContasRequest request) {
+    log.info("Creating PlanoDeContas with code: {}", request.getCode());
 
     // Obter empresa do contexto
     Long companyId = CompanyContext.getCurrentCompanyId();
@@ -85,20 +85,20 @@ public class ChartOfAccountService
     }
 
     // Verificar unicidade (company + code + fiscalYear)
-    Optional<ChartOfAccount> existing =
-        chartOfAccountRepository.findByCompanyIdAndCodeAndFiscalYear(
+    Optional<PlanoDeContas> existing =
+        planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
             companyId, request.getCode(), request.getFiscalYear());
 
     if (existing.isPresent()) {
       throw new IllegalArgumentException(
           String.format(
-              "ChartOfAccount with code '%s' already exists for company %d and fiscal year %d",
+              "PlanoDeContas with code '%s' already exists for company %d and fiscal year %d",
               request.getCode(), companyId, request.getFiscalYear()));
     }
 
     // Criar conta
-    ChartOfAccount account =
-        ChartOfAccount.builder()
+    PlanoDeContas account =
+        PlanoDeContas.builder()
             .companyId(companyId)
             .code(request.getCode())
             .name(request.getName())
@@ -113,15 +113,15 @@ public class ChartOfAccountService
             .status(Status.ACTIVE)
             .build();
 
-    ChartOfAccount saved = chartOfAccountRepository.save(account);
-    log.info("ChartOfAccount created successfully with id: {}", saved.getId());
+    PlanoDeContas saved = planoDeContasRepository.save(account);
+    log.info("PlanoDeContas created successfully with id: {}", saved.getId());
 
     return dtoMapper.toResponse(saved, contaReferencial.getCodigoRfb());
   }
 
   @Override
   @Transactional(readOnly = true)
-  public Page<ChartOfAccountResponse> execute(
+  public Page<PlanoDeContasResponse> execute(
       Integer fiscalYear,
       AccountType accountType,
       ClasseContabil classe,
@@ -137,11 +137,11 @@ public class ChartOfAccountService
     }
 
     log.info(
-        "Listing ChartOfAccounts for company: {}, fiscalYear: {}", companyId, fiscalYear);
+        "Listing PlanoDeContas for company: {}, fiscalYear: {}", companyId, fiscalYear);
 
     // Buscar todas contas da empresa
-    Page<ChartOfAccount> accountsPage =
-        chartOfAccountRepository.findByCompanyId(companyId, pageable);
+    Page<PlanoDeContas> accountsPage =
+        planoDeContasRepository.findByCompanyId(companyId, pageable);
 
     // Filtrar por critérios
     var filteredAccounts =
@@ -200,25 +200,25 @@ public class ChartOfAccountService
 
   @Override
   @Transactional(readOnly = true)
-  public ChartOfAccountResponse execute(Long id) {
+  public PlanoDeContasResponse execute(Long id) {
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
       throw new IllegalArgumentException(
           "Company context is required (header X-Company-Id missing)");
     }
 
-    log.info("Getting ChartOfAccount with id: {}", id);
+    log.info("Getting PlanoDeContas with id: {}", id);
 
-    ChartOfAccount account =
-        chartOfAccountRepository
+    PlanoDeContas account =
+        planoDeContasRepository
             .findById(id)
             .orElseThrow(
-                () -> new ResourceNotFoundException("ChartOfAccount not found with id: " + id));
+                () -> new ResourceNotFoundException("PlanoDeContas not found with id: " + id));
 
     // Validar que pertence à empresa do contexto
     if (!account.getCompanyId().equals(companyId)) {
       throw new IllegalArgumentException(
-          "ChartOfAccount does not belong to company in context");
+          "PlanoDeContas does not belong to company in context");
     }
 
     // Buscar código da conta referencial
@@ -233,25 +233,25 @@ public class ChartOfAccountService
 
   @Override
   @Transactional
-  public ChartOfAccountResponse execute(Long id, UpdateChartOfAccountRequest request) {
+  public PlanoDeContasResponse execute(Long id, UpdatePlanoDeContasRequest request) {
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
       throw new IllegalArgumentException(
           "Company context is required (header X-Company-Id missing)");
     }
 
-    log.info("Updating ChartOfAccount with id: {}", id);
+    log.info("Updating PlanoDeContas with id: {}", id);
 
-    ChartOfAccount account =
-        chartOfAccountRepository
+    PlanoDeContas account =
+        planoDeContasRepository
             .findById(id)
             .orElseThrow(
-                () -> new ResourceNotFoundException("ChartOfAccount not found with id: " + id));
+                () -> new ResourceNotFoundException("PlanoDeContas not found with id: " + id));
 
     // Validar que pertence à empresa do contexto
     if (!account.getCompanyId().equals(companyId)) {
       throw new IllegalArgumentException(
-          "ChartOfAccount does not belong to company in context");
+          "PlanoDeContas does not belong to company in context");
     }
 
     // Validar contaReferencialId existe e está ACTIVE
@@ -278,8 +278,8 @@ public class ChartOfAccountService
     account.setAfetaResultado(request.getAfetaResultado());
     account.setDedutivel(request.getDedutivel());
 
-    ChartOfAccount updated = chartOfAccountRepository.save(account);
-    log.info("ChartOfAccount updated successfully with id: {}", updated.getId());
+    PlanoDeContas updated = planoDeContasRepository.save(account);
+    log.info("PlanoDeContas updated successfully with id: {}", updated.getId());
 
     return dtoMapper.toResponse(updated, contaReferencial.getCodigoRfb());
   }
@@ -293,29 +293,29 @@ public class ChartOfAccountService
           "Company context is required (header X-Company-Id missing)");
     }
 
-    log.info("Toggling status of ChartOfAccount with id: {} to {}", id, request.getStatus());
+    log.info("Toggling status of PlanoDeContas with id: {} to {}", id, request.getStatus());
 
-    ChartOfAccount account =
-        chartOfAccountRepository
+    PlanoDeContas account =
+        planoDeContasRepository
             .findById(id)
             .orElseThrow(
-                () -> new ResourceNotFoundException("ChartOfAccount not found with id: " + id));
+                () -> new ResourceNotFoundException("PlanoDeContas not found with id: " + id));
 
     // Validar que pertence à empresa do contexto
     if (!account.getCompanyId().equals(companyId)) {
       throw new IllegalArgumentException(
-          "ChartOfAccount does not belong to company in context");
+          "PlanoDeContas does not belong to company in context");
     }
 
     // Alternar status
     account.setStatus(request.getStatus());
-    chartOfAccountRepository.save(account);
+    planoDeContasRepository.save(account);
 
     String message =
         String.format(
-            "ChartOfAccount '%s' status changed to %s", account.getName(), request.getStatus());
+            "PlanoDeContas '%s' status changed to %s", account.getName(), request.getStatus());
 
-    log.info("ChartOfAccount status toggled successfully: {}", message);
+    log.info("PlanoDeContas status toggled successfully: {}", message);
 
     return ToggleStatusResponse.builder()
         .success(true)

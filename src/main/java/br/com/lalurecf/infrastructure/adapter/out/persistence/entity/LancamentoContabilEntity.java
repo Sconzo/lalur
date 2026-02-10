@@ -58,7 +58,7 @@ public class LancamentoContabilEntity extends BaseEntity {
    */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "conta_debito_id", nullable = false)
-  private ChartOfAccountEntity contaDebito;
+  private PlanoDeContasEntity contaDebito;
 
   /**
    * Conta de crédito.
@@ -67,7 +67,7 @@ public class LancamentoContabilEntity extends BaseEntity {
    */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "conta_credito_id", nullable = false)
-  private ChartOfAccountEntity contaCredito;
+  private PlanoDeContasEntity contaCredito;
 
   /**
    * Data do lançamento contábil.

@@ -72,7 +72,7 @@ public class LancamentoParteBEntity extends BaseEntity {
    */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "conta_contabil_id")
-  private ChartOfAccountEntity contaContabil;
+  private PlanoDeContasEntity contaContabil;
 
   /**
    * Conta da Parte B relacionada (nullable dependendo de tipoRelacionamento).

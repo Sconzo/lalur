@@ -1,17 +1,17 @@
 package br.com.lalurecf.application.service;
 
-import br.com.lalurecf.application.port.in.chartofaccount.ImportChartOfAccountUseCase;
-import br.com.lalurecf.application.port.out.ChartOfAccountRepositoryPort;
+import br.com.lalurecf.application.port.in.planodecontas.ImportPlanoDeContasUseCase;
 import br.com.lalurecf.application.port.out.ContaReferencialRepositoryPort;
+import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.domain.model.ChartOfAccount;
 import br.com.lalurecf.domain.model.ContaReferencial;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ImportChartOfAccountResponse;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ImportChartOfAccountResponse.ChartOfAccountPreview;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ImportChartOfAccountResponse.ImportError;
+import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse.ImportError;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse.PlanoDeContasPreview;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -37,20 +37,20 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class ImportChartOfAccountService implements ImportChartOfAccountUseCase {
+public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
 
   private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-  private final ChartOfAccountRepositoryPort chartOfAccountRepository;
+  private final PlanoDeContasRepositoryPort planoDeContasRepository;
   private final ContaReferencialRepositoryPort contaReferencialRepository;
 
   @Override
   @Transactional
-  public ImportChartOfAccountResponse importChartOfAccounts(
+  public ImportPlanoDeContasResponse importPlanoDeContas(
       MultipartFile file, Long companyId, Integer fiscalYear, boolean dryRun) {
 
     log.info(
-        "Importing ChartOfAccount for company {} and fiscalYear {} (dryRun: {})",
+        "Importing PlanoDeContas for company {} and fiscalYear {} (dryRun: {})",
         companyId,
         fiscalYear,
         dryRun);
@@ -65,8 +65,8 @@ public class ImportChartOfAccountService implements ImportChartOfAccountUseCase 
     }
 
     List<ImportError> errors = new ArrayList<>();
-    List<ChartOfAccountPreview> preview = dryRun ? new ArrayList<>() : null;
-    List<ChartOfAccount> accountsToSave = new ArrayList<>();
+    List<PlanoDeContasPreview> preview = dryRun ? new ArrayList<>() : null;
+    List<PlanoDeContas> accountsToSave = new ArrayList<>();
     Set<String> processedCodes = new HashSet<>();
     int totalLines = 0;
     int processedLines = 0;
@@ -95,8 +95,8 @@ public class ImportChartOfAccountService implements ImportChartOfAccountUseCase 
           }
 
           // Verificar duplicata no banco
-          Optional<ChartOfAccount> existing =
-              chartOfAccountRepository.findByCompanyIdAndCodeAndFiscalYear(
+          Optional<PlanoDeContas> existing =
+              planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
                   companyId, parsedLine.code, fiscalYear);
           if (existing.isPresent()) {
             errors.add(
@@ -138,9 +138,9 @@ public class ImportChartOfAccountService implements ImportChartOfAccountUseCase 
             continue;
           }
 
-          // Criar ChartOfAccount
-          ChartOfAccount account =
-              ChartOfAccount.builder()
+          // Criar PlanoDeContas
+          PlanoDeContas account =
+              PlanoDeContas.builder()
                   .companyId(companyId)
                   .code(parsedLine.code)
                   .name(parsedLine.name)
@@ -157,7 +157,7 @@ public class ImportChartOfAccountService implements ImportChartOfAccountUseCase 
 
           if (dryRun) {
             preview.add(
-                ChartOfAccountPreview.builder()
+                PlanoDeContasPreview.builder()
                     .code(parsedLine.code)
                     .name(parsedLine.name)
                     .fiscalYear(fiscalYear)
@@ -185,8 +185,8 @@ public class ImportChartOfAccountService implements ImportChartOfAccountUseCase 
 
       // Persistir se não for dry-run
       if (!dryRun && !accountsToSave.isEmpty()) {
-        for (ChartOfAccount account : accountsToSave) {
-          chartOfAccountRepository.save(account);
+        for (PlanoDeContas account : accountsToSave) {
+          planoDeContasRepository.save(account);
         }
       }
 
@@ -201,7 +201,7 @@ public class ImportChartOfAccountService implements ImportChartOfAccountUseCase 
                   "Import completed. %d accounts imported, %d skipped",
                   processedLines, totalLines - processedLines);
 
-      return ImportChartOfAccountResponse.builder()
+      return ImportPlanoDeContasResponse.builder()
           .success(success)
           .message(message)
           .totalLines(totalLines)
@@ -212,7 +212,7 @@ public class ImportChartOfAccountService implements ImportChartOfAccountUseCase 
           .build();
 
     } catch (Exception e) {
-      log.error("Error importing ChartOfAccount: {}", e.getMessage(), e);
+      log.error("Error importing PlanoDeContas: {}", e.getMessage(), e);
       throw new RuntimeException("Error importing file: " + e.getMessage(), e);
     }
   }

@@ -13,10 +13,10 @@ import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.LancamentoContabil;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoContabilJpaRepository;
@@ -81,7 +81,7 @@ class LancamentoContabilRepositoryAdapterTest {
 
   @Autowired private CompanyJpaRepository companyJpaRepository;
 
-  @Autowired private ChartOfAccountJpaRepository chartOfAccountJpaRepository;
+  @Autowired private PlanoDeContasJpaRepository planoDeContasJpaRepository;
 
   @Autowired private ContaReferencialJpaRepository contaReferencialJpaRepository;
 
@@ -112,7 +112,7 @@ class LancamentoContabilRepositoryAdapterTest {
     contaReferencial = contaReferencialJpaRepository.save(contaReferencial);
 
     // Criar conta de débito (Caixa - Ativo)
-    ChartOfAccountEntity contaDebito = ChartOfAccountEntity.builder()
+    PlanoDeContasEntity contaDebito = PlanoDeContasEntity.builder()
         .company(company)
         .contaReferencial(contaReferencial)
         .code("1.01.01.001")
@@ -128,11 +128,11 @@ class LancamentoContabilRepositoryAdapterTest {
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
-    contaDebito = chartOfAccountJpaRepository.save(contaDebito);
+    contaDebito = planoDeContasJpaRepository.save(contaDebito);
     testContaDebitoId = contaDebito.getId();
 
     // Criar conta de crédito (Receitas - Resultado)
-    ChartOfAccountEntity contaCredito = ChartOfAccountEntity.builder()
+    PlanoDeContasEntity contaCredito = PlanoDeContasEntity.builder()
         .company(company)
         .contaReferencial(contaReferencial)
         .code("3.01.01.001")
@@ -148,7 +148,7 @@ class LancamentoContabilRepositoryAdapterTest {
         .createdAt(LocalDateTime.now())
         .updatedAt(LocalDateTime.now())
         .build();
-    contaCredito = chartOfAccountJpaRepository.save(contaCredito);
+    contaCredito = planoDeContasJpaRepository.save(contaCredito);
     testContaCreditoId = contaCredito.getId();
   }
 

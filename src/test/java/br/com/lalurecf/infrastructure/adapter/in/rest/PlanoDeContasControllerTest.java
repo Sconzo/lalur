@@ -6,13 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ChartOfAccountEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
-import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ChartOfAccountJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
-import br.com.lalurecf.infrastructure.dto.chartofaccount.ImportChartOfAccountResponse;
+import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -37,7 +37,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Testes de integração para ChartOfAccountController.
+ * Testes de integração para PlanoDeContasController.
  *
  * <p>Valida importação de plano de contas via CSV com vinculação a Contas Referenciais RFB.
  */
@@ -45,10 +45,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureMockMvc
 @Testcontainers
 @Transactional
-@DisplayName("ChartOfAccountController Integration Tests")
+@DisplayName("PlanoDeContasController Integration Tests")
 @org.springframework.test.annotation.DirtiesContext(
     classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-class ChartOfAccountControllerTest {
+class PlanoDeContasControllerTest {
 
   @Container
   static PostgreSQLContainer<?> postgres =
@@ -70,7 +70,7 @@ class ChartOfAccountControllerTest {
 
   @Autowired private CompanyJpaRepository companyJpaRepository;
 
-  @Autowired private ChartOfAccountJpaRepository chartOfAccountJpaRepository;
+  @Autowired private PlanoDeContasJpaRepository planoDeContasJpaRepository;
 
   @Autowired private ContaReferencialJpaRepository contaReferencialJpaRepository;
 
@@ -110,7 +110,7 @@ class ChartOfAccountControllerTest {
   @Test
   @WithMockUser(roles = "CONTADOR")
   @DisplayName("Deve importar plano de contas com sucesso")
-  void shouldImportChartOfAccountsWithSuccess() throws Exception {
+  void shouldImportPlanoDeContasWithSuccess() throws Exception {
     // Arrange
     String csvContent =
         """
@@ -128,7 +128,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -138,8 +138,8 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertNotNull(response);
     assertTrue(response.isSuccess());
@@ -149,7 +149,7 @@ class ChartOfAccountControllerTest {
     assertTrue(response.getErrors().isEmpty());
 
     // Verificar no banco
-    assertEquals(3, chartOfAccountJpaRepository.count());
+    assertEquals(3, planoDeContasJpaRepository.count());
   }
 
   @Test
@@ -172,7 +172,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "true")
@@ -182,8 +182,8 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertNotNull(response);
     assertEquals(2, response.getProcessedLines());
@@ -191,7 +191,7 @@ class ChartOfAccountControllerTest {
     assertEquals(2, response.getPreview().size());
 
     // Verificar que não persistiu no banco
-    assertEquals(0, chartOfAccountJpaRepository.count());
+    assertEquals(0, planoDeContasJpaRepository.count());
   }
 
   @Test
@@ -213,7 +213,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -223,8 +223,8 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertFalse(response.isSuccess());
     assertEquals(0, response.getProcessedLines());
@@ -252,7 +252,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -262,8 +262,8 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertFalse(response.isSuccess());
     assertEquals(0, response.getProcessedLines());
@@ -290,7 +290,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -300,8 +300,8 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertFalse(response.isSuccess());
     assertEquals(0, response.getProcessedLines());
@@ -328,7 +328,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -338,8 +338,8 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertFalse(response.isSuccess());
     assertEquals(0, response.getProcessedLines());
@@ -367,7 +367,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -377,8 +377,8 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertEquals(2, response.getTotalLines());
     assertEquals(1, response.getProcessedLines());
@@ -387,7 +387,7 @@ class ChartOfAccountControllerTest {
     assertTrue(response.getErrors().get(0).getError().contains("Duplicate code"));
 
     // Verificar que apenas 1 foi persistido
-    assertEquals(1, chartOfAccountJpaRepository.count());
+    assertEquals(1, planoDeContasJpaRepository.count());
   }
 
   @Test
@@ -409,7 +409,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -419,12 +419,12 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertTrue(response.isSuccess());
     assertEquals(1, response.getProcessedLines());
-    assertEquals(1, chartOfAccountJpaRepository.count());
+    assertEquals(1, planoDeContasJpaRepository.count());
   }
 
   @Test
@@ -446,7 +446,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.multipart("/api/v1/chart-of-accounts/import")
+                MockMvcRequestBuilders.multipart("/api/v1/plano-de-contas/import")
                     .file(file)
                     .param("fiscalYear", "2024")
                     .param("dryRun", "false")
@@ -456,14 +456,14 @@ class ChartOfAccountControllerTest {
 
     // Assert
     String responseBody = result.getResponse().getContentAsString();
-    ImportChartOfAccountResponse response =
-        objectMapper.readValue(responseBody, ImportChartOfAccountResponse.class);
+    ImportPlanoDeContasResponse response =
+        objectMapper.readValue(responseBody, ImportPlanoDeContasResponse.class);
 
     assertTrue(response.isSuccess());
     assertEquals(1, response.getProcessedLines());
 
     // Verificar que o nome foi salvo corretamente
-    ChartOfAccountEntity account = chartOfAccountJpaRepository.findAll().get(0);
+    PlanoDeContasEntity account = planoDeContasJpaRepository.findAll().get(0);
     assertEquals("Caixa e Equivalentes de Caixa", account.getName());
   }
 
@@ -472,7 +472,7 @@ class ChartOfAccountControllerTest {
   @Test
   @WithMockUser(roles = "CONTADOR")
   @DisplayName("Cenário 1: CONTADOR consegue criar conta com todos campos ECF")
-  void shouldCreateChartOfAccountWithAllEcfFields() throws Exception {
+  void shouldCreatePlanoDeContasWithAllEcfFields() throws Exception {
     // Arrange
     String requestBody =
         "{"
@@ -493,7 +493,7 @@ class ChartOfAccountControllerTest {
     // Act & Assert
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+            MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                 .contentType("application/json")
                 .content(requestBody)
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -527,7 +527,7 @@ class ChartOfAccountControllerTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+            MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                 .contentType("application/json")
                 .content(requestBody)
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -552,7 +552,7 @@ class ChartOfAccountControllerTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+            MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                 .contentType("application/json")
                 .content(duplicateRequestBody)
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -581,7 +581,7 @@ class ChartOfAccountControllerTest {
     // Act & Assert
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+            MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                 .contentType("application/json")
                 .content(requestBody)
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -617,7 +617,7 @@ class ChartOfAccountControllerTest {
     // Act & Assert
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+            MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                 .contentType("application/json")
                 .content(requestBody)
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -648,7 +648,7 @@ class ChartOfAccountControllerTest {
     // Act & Assert
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+            MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                 .contentType("application/json")
                 .content(requestBody)
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -679,7 +679,7 @@ class ChartOfAccountControllerTest {
     // Act & Assert
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+            MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                 .contentType("application/json")
                 .content(requestBody))
         .andExpect(MockMvcResultMatchers.status().isBadRequest());
@@ -707,7 +707,7 @@ class ChartOfAccountControllerTest {
             + "}";
 
     mockMvc.perform(
-        MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+        MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
             .contentType("application/json")
             .content(requestBody1)
             .header("X-Company-Id", testCompanyId.toString()));
@@ -740,7 +740,7 @@ class ChartOfAccountControllerTest {
             + "}";
 
     mockMvc.perform(
-        MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+        MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
             .contentType("application/json")
             .content(requestBody2)
             .header("X-Company-Id", company2.getId().toString()));
@@ -749,7 +749,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.get("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.get("/api/v1/plano-de-contas")
                     .header("X-Company-Id", testCompanyId.toString()))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andReturn();
@@ -784,7 +784,7 @@ class ChartOfAccountControllerTest {
     MvcResult createResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                     .contentType("application/json")
                     .content(createRequestBody)
                     .header("X-Company-Id", testCompanyId.toString()))
@@ -812,7 +812,7 @@ class ChartOfAccountControllerTest {
     MvcResult updateResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/api/v1/chart-of-accounts/" + accountId)
+                MockMvcRequestBuilders.put("/api/v1/plano-de-contas/" + accountId)
                     .contentType("application/json")
                     .content(updateRequestBody)
                     .header("X-Company-Id", testCompanyId.toString()))
@@ -850,7 +850,7 @@ class ChartOfAccountControllerTest {
     MvcResult createResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                     .contentType("application/json")
                     .content(createRequestBody)
                     .header("X-Company-Id", testCompanyId.toString()))
@@ -863,7 +863,7 @@ class ChartOfAccountControllerTest {
     // Act - Toggle para INACTIVE
     mockMvc
         .perform(
-            MockMvcRequestBuilders.patch("/api/v1/chart-of-accounts/" + accountId + "/status")
+            MockMvcRequestBuilders.patch("/api/v1/plano-de-contas/" + accountId + "/status")
                 .contentType("application/json")
                 .content("{\"status\": \"INACTIVE\"}")
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -896,7 +896,7 @@ class ChartOfAccountControllerTest {
     MvcResult createResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                     .contentType("application/json")
                     .content(createRequestBody)
                     .header("X-Company-Id", testCompanyId.toString()))
@@ -908,7 +908,7 @@ class ChartOfAccountControllerTest {
 
     // Inativar primeiro
     mockMvc.perform(
-        MockMvcRequestBuilders.patch("/api/v1/chart-of-accounts/" + accountId + "/status")
+        MockMvcRequestBuilders.patch("/api/v1/plano-de-contas/" + accountId + "/status")
             .contentType("application/json")
             .content("{\"status\": \"INACTIVE\"}")
             .header("X-Company-Id", testCompanyId.toString()));
@@ -916,7 +916,7 @@ class ChartOfAccountControllerTest {
     // Act - Reativar para ACTIVE
     mockMvc
         .perform(
-            MockMvcRequestBuilders.patch("/api/v1/chart-of-accounts/" + accountId + "/status")
+            MockMvcRequestBuilders.patch("/api/v1/plano-de-contas/" + accountId + "/status")
                 .contentType("application/json")
                 .content("{\"status\": \"ACTIVE\"}")
                 .header("X-Company-Id", testCompanyId.toString()))
@@ -947,7 +947,7 @@ class ChartOfAccountControllerTest {
             + "}";
 
     mockMvc.perform(
-        MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+        MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
             .contentType("application/json")
             .content(requestBody1)
             .header("X-Company-Id", testCompanyId.toString()));
@@ -970,7 +970,7 @@ class ChartOfAccountControllerTest {
             + "}";
 
     mockMvc.perform(
-        MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+        MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
             .contentType("application/json")
             .content(requestBody2)
             .header("X-Company-Id", testCompanyId.toString()));
@@ -979,7 +979,7 @@ class ChartOfAccountControllerTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.get("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.get("/api/v1/plano-de-contas")
                     .param("classe", "ATIVO_CIRCULANTE")
                     .header("X-Company-Id", testCompanyId.toString()))
             .andExpect(MockMvcResultMatchers.status().isOk())
@@ -1015,7 +1015,7 @@ class ChartOfAccountControllerTest {
     MvcResult createResult =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.post("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.post("/api/v1/plano-de-contas")
                     .contentType("application/json")
                     .content(createRequestBody)
                     .header("X-Company-Id", testCompanyId.toString()))
@@ -1027,7 +1027,7 @@ class ChartOfAccountControllerTest {
 
     // Inativar conta
     mockMvc.perform(
-        MockMvcRequestBuilders.patch("/api/v1/chart-of-accounts/" + accountId + "/status")
+        MockMvcRequestBuilders.patch("/api/v1/plano-de-contas/" + accountId + "/status")
             .contentType("application/json")
             .content("{\"status\": \"INACTIVE\"}")
             .header("X-Company-Id", testCompanyId.toString()));
@@ -1036,7 +1036,7 @@ class ChartOfAccountControllerTest {
     MvcResult resultWithoutInactive =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.get("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.get("/api/v1/plano-de-contas")
                     .header("X-Company-Id", testCompanyId.toString()))
             .andExpect(MockMvcResultMatchers.status().isOk())
             .andReturn();
@@ -1048,7 +1048,7 @@ class ChartOfAccountControllerTest {
     MvcResult resultWithInactive =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.get("/api/v1/chart-of-accounts")
+                MockMvcRequestBuilders.get("/api/v1/plano-de-contas")
                     .param("includeInactive", "true")
                     .header("X-Company-Id", testCompanyId.toString()))
             .andExpect(MockMvcResultMatchers.status().isOk())

@@ -1,13 +1,13 @@
 package br.com.lalurecf.application.service;
 
 import br.com.lalurecf.application.port.in.ImportLancamentoContabilUseCase;
-import br.com.lalurecf.application.port.out.ChartOfAccountRepositoryPort;
 import br.com.lalurecf.application.port.out.CompanyRepositoryPort;
 import br.com.lalurecf.application.port.out.LancamentoContabilRepositoryPort;
+import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
 import br.com.lalurecf.domain.enums.Status;
-import br.com.lalurecf.domain.model.ChartOfAccount;
 import br.com.lalurecf.domain.model.Company;
 import br.com.lalurecf.domain.model.LancamentoContabil;
+import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.ImportLancamentoContabilResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.ImportLancamentoContabilResponse.ImportError;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.ImportLancamentoContabilResponse.LancamentoContabilPreview;
@@ -45,7 +45,7 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 
   private final LancamentoContabilRepositoryPort lancamentoContabilRepository;
-  private final ChartOfAccountRepositoryPort chartOfAccountRepository;
+  private final PlanoDeContasRepositoryPort planoDeContasRepository;
   private final CompanyRepositoryPort companyRepository;
 
   @Override
@@ -139,8 +139,8 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
           }
 
           // Buscar contas
-          Optional<ChartOfAccount> contaDebitoOpt =
-              chartOfAccountRepository.findByCompanyIdAndCodeAndFiscalYear(
+          Optional<PlanoDeContas> contaDebitoOpt =
+              planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
                   companyId, contaDebitoCode, fiscalYear);
           if (contaDebitoOpt.isEmpty()) {
             errors.add(
@@ -155,8 +155,8 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
             continue;
           }
 
-          Optional<ChartOfAccount> contaCreditoOpt =
-              chartOfAccountRepository.findByCompanyIdAndCodeAndFiscalYear(
+          Optional<PlanoDeContas> contaCreditoOpt =
+              planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
                   companyId, contaCreditoCode, fiscalYear);
           if (contaCreditoOpt.isEmpty()) {
             errors.add(

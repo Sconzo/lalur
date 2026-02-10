@@ -1,4 +1,4 @@
-package br.com.lalurecf.infrastructure.dto.chartofaccount;
+package br.com.lalurecf.infrastructure.dto.planodecontas;
 
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
@@ -13,7 +13,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO para criação de conta contábil (ChartOfAccount).
+ * DTO para criação de conta contábil (PlanoDeContas).
  *
  * <p>Contém todos os campos ECF-specific necessários para cadastro de conta no plano de contas,
  * incluindo vinculação obrigatória a uma Conta Referencial RFB.
@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateChartOfAccountRequest {
+public class CreatePlanoDeContasRequest {
 
   /** Código da conta contábil (ex: "1.1.01.001"). */
   @NotBlank(message = "Code is required")

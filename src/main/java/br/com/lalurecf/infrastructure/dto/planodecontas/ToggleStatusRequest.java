@@ -1,4 +1,4 @@
-package br.com.lalurecf.infrastructure.dto.chartofaccount;
+package br.com.lalurecf.infrastructure.dto.planodecontas;
 
 import br.com.lalurecf.domain.enums.Status;
 import jakarta.validation.constraints.NotNull;
@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO para alternar status de conta contábil (ChartOfAccount).
+ * DTO para alternar status de conta contábil (PlanoDeContas).
  *
  * <p>Permite ativar (ACTIVE) ou inativar (INACTIVE) uma conta.
  */
