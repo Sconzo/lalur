@@ -70,18 +70,22 @@ public class PlanoDeContasService
       throw new IllegalArgumentException("Code cannot be empty");
     }
 
-    // Validar contaReferencialId existe e está ACTIVE
-    ContaReferencial contaReferencial =
-        contaReferencialRepository
-            .findById(request.getContaReferencialId())
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "ContaReferencial not found with id: " + request.getContaReferencialId()));
+    // Validar contaReferencialId existe e está ACTIVE (se informado)
+    ContaReferencial contaReferencial = null;
+    if (request.getContaReferencialId() != null) {
+      contaReferencial =
+          contaReferencialRepository
+              .findById(request.getContaReferencialId())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "ContaReferencial not found with id: "
+                              + request.getContaReferencialId()));
 
-    if (contaReferencial.getStatus() != Status.ACTIVE) {
-      throw new IllegalArgumentException(
-          "ContaReferencial must be ACTIVE. Current status: " + contaReferencial.getStatus());
+      if (contaReferencial.getStatus() != Status.ACTIVE) {
+        throw new IllegalArgumentException(
+            "ContaReferencial must be ACTIVE. Current status: " + contaReferencial.getStatus());
+      }
     }
 
     // Verificar unicidade (company + code + fiscalYear)
@@ -116,7 +120,8 @@ public class PlanoDeContasService
     PlanoDeContas saved = planoDeContasRepository.save(account);
     log.info("PlanoDeContas created successfully with id: {}", saved.getId());
 
-    return dtoMapper.toResponse(saved, contaReferencial.getCodigoRfb());
+    String codigoRfb = contaReferencial != null ? contaReferencial.getCodigoRfb() : null;
+    return dtoMapper.toResponse(saved, codigoRfb);
   }
 
   @Override
@@ -185,12 +190,15 @@ public class PlanoDeContasService
                 })
             .map(
                 acc -> {
-                  // Buscar código da conta referencial
-                  String codigoRfb =
-                      contaReferencialRepository
-                          .findById(acc.getContaReferencialId())
-                          .map(ContaReferencial::getCodigoRfb)
-                          .orElse(null);
+                  // Buscar código da conta referencial (se vinculada)
+                  String codigoRfb = null;
+                  if (acc.getContaReferencialId() != null) {
+                    codigoRfb =
+                        contaReferencialRepository
+                            .findById(acc.getContaReferencialId())
+                            .map(ContaReferencial::getCodigoRfb)
+                            .orElse(null);
+                  }
                   return dtoMapper.toResponse(acc, codigoRfb);
                 })
             .toList();
@@ -221,12 +229,15 @@ public class PlanoDeContasService
           "PlanoDeContas does not belong to company in context");
     }
 
-    // Buscar código da conta referencial
-    String codigoRfb =
-        contaReferencialRepository
-            .findById(account.getContaReferencialId())
-            .map(ContaReferencial::getCodigoRfb)
-            .orElse(null);
+    // Buscar código da conta referencial (se vinculada)
+    String codigoRfb = null;
+    if (account.getContaReferencialId() != null) {
+      codigoRfb =
+          contaReferencialRepository
+              .findById(account.getContaReferencialId())
+              .map(ContaReferencial::getCodigoRfb)
+              .orElse(null);
+    }
 
     return dtoMapper.toResponse(account, codigoRfb);
   }
@@ -254,18 +265,22 @@ public class PlanoDeContasService
           "PlanoDeContas does not belong to company in context");
     }
 
-    // Validar contaReferencialId existe e está ACTIVE
-    ContaReferencial contaReferencial =
-        contaReferencialRepository
-            .findById(request.getContaReferencialId())
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "ContaReferencial not found with id: " + request.getContaReferencialId()));
+    // Validar contaReferencialId existe e está ACTIVE (se informado)
+    ContaReferencial contaReferencial = null;
+    if (request.getContaReferencialId() != null) {
+      contaReferencial =
+          contaReferencialRepository
+              .findById(request.getContaReferencialId())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "ContaReferencial not found with id: "
+                              + request.getContaReferencialId()));
 
-    if (contaReferencial.getStatus() != Status.ACTIVE) {
-      throw new IllegalArgumentException(
-          "ContaReferencial must be ACTIVE. Current status: " + contaReferencial.getStatus());
+      if (contaReferencial.getStatus() != Status.ACTIVE) {
+        throw new IllegalArgumentException(
+            "ContaReferencial must be ACTIVE. Current status: " + contaReferencial.getStatus());
+      }
     }
 
     // Atualizar campos (code e fiscalYear são imutáveis)
@@ -281,7 +296,8 @@ public class PlanoDeContasService
     PlanoDeContas updated = planoDeContasRepository.save(account);
     log.info("PlanoDeContas updated successfully with id: {}", updated.getId());
 
-    return dtoMapper.toResponse(updated, contaReferencial.getCodigoRfb());
+    String codigoRfb = contaReferencial != null ? contaReferencial.getCodigoRfb() : null;
+    return dtoMapper.toResponse(updated, codigoRfb);
   }
 
   @Override

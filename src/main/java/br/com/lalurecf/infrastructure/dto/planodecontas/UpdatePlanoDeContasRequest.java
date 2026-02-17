@@ -31,8 +31,7 @@ public class UpdatePlanoDeContasRequest {
   @NotNull(message = "Account type is required")
   private AccountType accountType;
 
-  /** ID da Conta Referencial RFB (FK obrigatória). */
-  @NotNull(message = "Conta Referencial ID is required")
+  /** ID da Conta Referencial RFB (opcional). */
   private Long contaReferencialId;
 
   /** Classe contábil ECF (ATIVO_CIRCULANTE, RECEITA_BRUTA, etc.). */

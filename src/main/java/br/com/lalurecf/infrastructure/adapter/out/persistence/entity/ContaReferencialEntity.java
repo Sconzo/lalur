@@ -53,4 +53,8 @@ public class ContaReferencialEntity extends BaseEntity {
    */
   @Column(name = "ano_validade")
   private Integer anoValidade;
+
+  /** Modelo da conta referencial (uso futuro). */
+  @Column(name = "modelo", length = 50)
+  private String modelo;
 }

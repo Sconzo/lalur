@@ -37,6 +37,9 @@ public class ContaReferencial {
    */
   private Integer anoValidade;
 
+  /** Modelo da conta referencial (uso futuro). */
+  private String modelo;
+
   /** Status da conta (ACTIVE/INACTIVE). */
   private Status status;
 

@@ -55,11 +55,11 @@ public class PlanoDeContasEntity extends BaseEntity {
   /**
    * Conta Referencial RFB oficial.
    *
-   * <p>FK obrigatória - toda conta contábil deve estar vinculada a uma conta da tabela mestra RFB
+   * <p>FK opcional - conta contábil pode ser vinculada a uma conta da tabela mestra RFB
    * para compliance ECF.
    */
   @ManyToOne
-  @JoinColumn(name = "conta_referencial_id", nullable = false)
+  @JoinColumn(name = "conta_referencial_id", nullable = true)
   private ContaReferencialEntity contaReferencial;
 
   /**
