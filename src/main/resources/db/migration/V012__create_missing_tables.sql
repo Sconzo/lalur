@@ -200,29 +200,13 @@ COMMENT ON TABLE tb_lancamento_parte_b IS 'Lançamentos da Parte B do e-Lalur/e-
 -- ============================================================================
 -- 6. ALTER existing tables (for databases where tables already exist via ddl-auto)
 -- ============================================================================
--- These ALTERs are safe: they only run if the table exists and the change is needed.
+-- These ALTERs are safe:
+-- ALTER TABLE IF EXISTS is a no-op when the table doesn't exist.
+-- DROP NOT NULL is idempotent (no error if column is already nullable).
+-- ADD COLUMN IF NOT EXISTS is a no-op when the column already exists.
 
 -- Make conta_referencial_id nullable (was NOT NULL in ddl-auto schema)
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'tb_plano_de_contas'
-          AND column_name = 'conta_referencial_id'
-          AND is_nullable = 'NO'
-    ) THEN
-        ALTER TABLE tb_plano_de_contas ALTER COLUMN conta_referencial_id DROP NOT NULL;
-    END IF;
-END $$;
+ALTER TABLE IF EXISTS tb_plano_de_contas ALTER COLUMN conta_referencial_id DROP NOT NULL;
 
 -- Add 'modelo' column to tb_conta_referencial (if missing)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'tb_conta_referencial'
-          AND column_name = 'modelo'
-    ) THEN
-        ALTER TABLE tb_conta_referencial ADD COLUMN modelo VARCHAR(50);
-    END IF;
-END $$;
+ALTER TABLE IF EXISTS tb_conta_referencial ADD COLUMN IF NOT EXISTS modelo VARCHAR(50);
