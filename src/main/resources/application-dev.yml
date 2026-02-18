@@ -5,7 +5,7 @@ spring:
     password: ecf_password_dev
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
