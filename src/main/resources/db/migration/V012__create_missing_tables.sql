@@ -196,3 +196,33 @@ CREATE INDEX IF NOT EXISTS idx_lancamento_parte_b_ano_mes ON tb_lancamento_parte
 CREATE INDEX IF NOT EXISTS idx_lancamento_parte_b_status ON tb_lancamento_parte_b(status);
 
 COMMENT ON TABLE tb_lancamento_parte_b IS 'Lançamentos da Parte B do e-Lalur/e-Lacs';
+
+-- ============================================================================
+-- 6. ALTER existing tables (for databases where tables already exist via ddl-auto)
+-- ============================================================================
+-- These ALTERs are safe: they only run if the table exists and the change is needed.
+
+-- Make conta_referencial_id nullable (was NOT NULL in ddl-auto schema)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tb_plano_de_contas'
+          AND column_name = 'conta_referencial_id'
+          AND is_nullable = 'NO'
+    ) THEN
+        ALTER TABLE tb_plano_de_contas ALTER COLUMN conta_referencial_id DROP NOT NULL;
+    END IF;
+END $$;
+
+-- Add 'modelo' column to tb_conta_referencial (if missing)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tb_conta_referencial'
+          AND column_name = 'modelo'
+    ) THEN
+        ALTER TABLE tb_conta_referencial ADD COLUMN modelo VARCHAR(50);
+    END IF;
+END $$;
