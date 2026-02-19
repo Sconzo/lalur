@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS tb_conta_referencial (
     codigo_rfb VARCHAR(50) NOT NULL,
     descricao VARCHAR(1000) NOT NULL,
     ano_validade INTEGER,
-    modelo VARCHAR(50),
 
     -- Audit fields (BaseEntity)
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
@@ -200,13 +199,12 @@ COMMENT ON TABLE tb_lancamento_parte_b IS 'Lançamentos da Parte B do e-Lalur/e-
 -- ============================================================================
 -- 6. ALTER existing tables (for databases where tables already exist via ddl-auto)
 -- ============================================================================
--- These ALTERs are safe:
--- ALTER TABLE IF EXISTS is a no-op when the table doesn't exist.
--- DROP NOT NULL is idempotent (no error if column is already nullable).
--- ADD COLUMN IF NOT EXISTS is a no-op when the column already exists.
+-- These ALTERs run after CREATE TABLE IF NOT EXISTS above, so tables always exist.
+-- DROP NOT NULL is idempotent: no error if the column is already nullable.
+-- ADD COLUMN IF NOT EXISTS is a no-op if the column already exists.
 
 -- Make conta_referencial_id nullable (was NOT NULL in ddl-auto schema)
-ALTER TABLE IF EXISTS tb_plano_de_contas ALTER COLUMN conta_referencial_id DROP NOT NULL;
+ALTER TABLE tb_plano_de_contas ALTER COLUMN conta_referencial_id DROP NOT NULL;
 
--- Add 'modelo' column to tb_conta_referencial (if missing)
-ALTER TABLE IF EXISTS tb_conta_referencial ADD COLUMN IF NOT EXISTS modelo VARCHAR(50);
+-- Add 'modelo' column to tb_conta_referencial (missing from ddl-auto schema)
+ALTER TABLE tb_conta_referencial ADD COLUMN IF NOT EXISTS modelo VARCHAR(50);
