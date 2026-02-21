@@ -26,11 +26,14 @@ public interface PlanoDeContasMapper {
   /**
    * Converte PlanoDeContas (domain) para PlanoDeContasEntity.
    *
+   * <p>company e contaReferencial são ignorados aqui e definidos pelo adapter
+   * via getReferenceById() para evitar instâncias transientes.
+   *
    * @param domain modelo de domínio
    * @return entidade JPA
    */
-  @Mapping(source = "companyId", target = "company.id")
-  @Mapping(source = "contaReferencialId", target = "contaReferencial.id")
+  @Mapping(target = "company", ignore = true)
+  @Mapping(target = "contaReferencial", ignore = true)
   PlanoDeContasEntity toEntity(PlanoDeContas domain);
 
   /**
@@ -44,8 +47,8 @@ public interface PlanoDeContasMapper {
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
-  @Mapping(source = "companyId", target = "company.id")
-  @Mapping(source = "contaReferencialId", target = "contaReferencial.id")
+  @Mapping(target = "company", ignore = true)
+  @Mapping(target = "contaReferencial", ignore = true)
   void updateEntity(
       PlanoDeContas domain, @org.mapstruct.MappingTarget PlanoDeContasEntity entity);
 }

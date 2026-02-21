@@ -4,6 +4,8 @@ import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
 import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.PlanoDeContasMapper;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +34,8 @@ public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPo
 
   private final PlanoDeContasJpaRepository jpaRepository;
   private final PlanoDeContasMapper mapper;
+  private final CompanyJpaRepository companyJpaRepository;
+  private final ContaReferencialJpaRepository contaReferencialJpaRepository;
 
   @Override
   public PlanoDeContas save(PlanoDeContas account) {
@@ -50,6 +54,15 @@ public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPo
     } else {
       // Create: converte domain para nova entity
       entity = mapper.toEntity(account);
+    }
+
+    // Definir referências gerenciadas via getReferenceById para evitar instâncias transientes
+    entity.setCompany(companyJpaRepository.getReferenceById(account.getCompanyId()));
+    if (account.getContaReferencialId() != null) {
+      entity.setContaReferencial(
+          contaReferencialJpaRepository.getReferenceById(account.getContaReferencialId()));
+    } else {
+      entity.setContaReferencial(null);
     }
 
     PlanoDeContasEntity savedEntity = jpaRepository.save(entity);
