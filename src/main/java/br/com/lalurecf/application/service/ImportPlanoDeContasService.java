@@ -110,32 +110,36 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
             continue;
           }
 
-          // Buscar Conta Referencial por código RFB
-          Optional<ContaReferencial> contaReferencialOpt =
-              contaReferencialRepository.findByCodigoRfb(parsedLine.contaReferencialCodigo);
-          if (contaReferencialOpt.isEmpty()) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error(
-                        "Conta Referencial '"
-                            + parsedLine.contaReferencialCodigo
-                            + "' not found")
-                    .build());
-            continue;
-          }
-
-          ContaReferencial contaReferencial = contaReferencialOpt.get();
-          if (contaReferencial.getStatus() != Status.ACTIVE) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error(
-                        "Conta Referencial '"
-                            + parsedLine.contaReferencialCodigo
-                            + "' is not ACTIVE")
-                    .build());
-            continue;
+          // Buscar Conta Referencial por código RFB (opcional)
+          Long contaReferencialId = null;
+          if (parsedLine.contaReferencialCodigo != null
+              && !parsedLine.contaReferencialCodigo.isBlank()) {
+            Optional<ContaReferencial> contaReferencialOpt =
+                contaReferencialRepository.findByCodigoRfb(parsedLine.contaReferencialCodigo);
+            if (contaReferencialOpt.isEmpty()) {
+              errors.add(
+                  ImportError.builder()
+                      .lineNumber(lineNumber)
+                      .error(
+                          "Conta Referencial '"
+                              + parsedLine.contaReferencialCodigo
+                              + "' not found")
+                      .build());
+              continue;
+            }
+            ContaReferencial contaReferencial = contaReferencialOpt.get();
+            if (contaReferencial.getStatus() != Status.ACTIVE) {
+              errors.add(
+                  ImportError.builder()
+                      .lineNumber(lineNumber)
+                      .error(
+                          "Conta Referencial '"
+                              + parsedLine.contaReferencialCodigo
+                              + "' is not ACTIVE")
+                      .build());
+              continue;
+            }
+            contaReferencialId = contaReferencial.getId();
           }
 
           // Criar PlanoDeContas
@@ -146,7 +150,7 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
                   .name(parsedLine.name)
                   .fiscalYear(fiscalYear)
                   .accountType(parsedLine.accountType)
-                  .contaReferencialId(contaReferencial.getId())
+                  .contaReferencialId(contaReferencialId)
                   .classe(parsedLine.classe)
                   .nivel(parsedLine.nivel)
                   .natureza(parsedLine.natureza)
@@ -245,7 +249,7 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
     String code = getField(record, "code", lineNumber);
     String name = getField(record, "name", lineNumber);
     String accountTypeStr = getField(record, "accountType", lineNumber);
-    String contaReferencialCodigo = getField(record, "contaReferencialCodigo", lineNumber);
+    String contaReferencialCodigo = getOptionalField(record, "contaReferencialCodigo");
     String classeStr = getField(record, "classe", lineNumber);
     String nivelStr = getField(record, "nivel", lineNumber);
     String naturezaStr = getField(record, "natureza", lineNumber);
@@ -274,6 +278,15 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
         natureza,
         afetaResultado,
         dedutivel);
+  }
+
+  private String getOptionalField(CSVRecord record, String fieldName) {
+    try {
+      String value = record.get(fieldName);
+      return (value == null || value.trim().isEmpty()) ? null : value.trim();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 
   private String getField(CSVRecord record, String fieldName, int lineNumber) {

@@ -1,0 +1,6 @@
+code;name;accountType;contaReferencialCodigo;classe;nivel;natureza;afetaResultado;dedutivel
+1.1.01.001;Caixa;ATIVO;;ATIVO_CIRCULANTE;1;DEVEDORA;false;false
+1.1.01.002;Bancos Conta Movimento;ATIVO;;ATIVO_CIRCULANTE;1;DEVEDORA;false;false
+1.1.02.001;Estoques de Mercadorias;ATIVO;;ATIVO_CIRCULANTE;2;DEVEDORA;false;false
+3.1.01.001;Receita de Vendas de Mercadorias;RECEITA;;RECEITA_BRUTA;1;CREDORA;true;false
+4.1.01.001;Custo das Mercadorias Vendidas;CUSTO;1.01.01.01.01-7;CUSTOS;1;DEVEDORA;true;true

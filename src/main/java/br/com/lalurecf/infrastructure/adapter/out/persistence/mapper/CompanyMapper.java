@@ -52,7 +52,7 @@ public interface CompanyMapper {
    */
   @Named("stringToCnpj")
   default CNPJ stringToCnpj(String cnpj) {
-    return cnpj != null ? CNPJ.of(cnpj) : null;
+    return CNPJ.ofRaw(cnpj);
   }
 
   /**

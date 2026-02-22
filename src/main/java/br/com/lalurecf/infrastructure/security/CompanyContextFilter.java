@@ -90,6 +90,13 @@ public class CompanyContextFilter implements Filter {
               e.getMessage()
           );
           return;
+        } catch (Exception e) {
+          log.error("Unexpected error loading company {}: {}", companyIdHeader, e.getMessage(), e);
+          httpResponse.sendError(
+              HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+              "Erro ao carregar empresa com ID " + companyIdHeader
+          );
+          return;
         }
       }
 

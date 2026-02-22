@@ -16,6 +16,21 @@ public final class CNPJ {
   }
 
   /**
+   * Creates a CNPJ from a database value, skipping check digit validation.
+   * Use only when loading trusted data from the database.
+   * For user input, use {@link #of(String)} which performs full validation.
+   *
+   * @param cnpj the raw CNPJ string from the database
+   * @return a CNPJ instance, or null if the input is null or blank
+   */
+  public static CNPJ ofRaw(String cnpj) {
+    if (cnpj == null || cnpj.isBlank()) {
+      return null;
+    }
+    return new CNPJ(cnpj.replaceAll("[./-]", ""));
+  }
+
+  /**
    * Creates a CNPJ from a string value.
    * Accepts both formatted (00.000.000/0000-00) and unformatted (00000000000000) strings.
    *
