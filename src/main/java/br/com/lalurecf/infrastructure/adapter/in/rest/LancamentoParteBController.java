@@ -2,25 +2,30 @@ package br.com.lalurecf.infrastructure.adapter.in.rest;
 
 import br.com.lalurecf.application.port.in.lancamentoparteb.CreateLancamentoParteBUseCase;
 import br.com.lalurecf.application.port.in.lancamentoparteb.GetLancamentoParteBUseCase;
+import br.com.lalurecf.application.port.in.lancamentoparteb.ImportLancamentoParteBUseCase;
 import br.com.lalurecf.application.port.in.lancamentoparteb.ListLancamentoParteBUseCase;
 import br.com.lalurecf.application.port.in.lancamentoparteb.ToggleLancamentoParteBStatusUseCase;
 import br.com.lalurecf.application.port.in.lancamentoparteb.UpdateLancamentoParteBUseCase;
 import br.com.lalurecf.domain.enums.TipoAjuste;
 import br.com.lalurecf.domain.enums.TipoApuracao;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.CreateLancamentoParteBRequest;
+import br.com.lalurecf.infrastructure.dto.lancamentoparteb.ImportLancamentoParteBResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.LancamentoParteBResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.UpdateLancamentoParteBRequest;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusResponse;
+import br.com.lalurecf.infrastructure.security.CompanyContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Controller para gerenciamento de Lançamentos da Parte B (e-Lalur/e-Lacs).
@@ -41,6 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/lancamento-parte-b")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(
     name = "Lançamentos Parte B",
     description = "Gerenciamento de lançamentos da Parte B (e-Lalur/e-Lacs)")
@@ -52,6 +59,61 @@ public class LancamentoParteBController {
   private final GetLancamentoParteBUseCase getLancamentoParteBUseCase;
   private final UpdateLancamentoParteBUseCase updateLancamentoParteBUseCase;
   private final ToggleLancamentoParteBStatusUseCase toggleLancamentoParteBStatusUseCase;
+  private final ImportLancamentoParteBUseCase importLancamentoParteBUseCase;
+
+  /**
+   * Importa lançamentos da Parte B via arquivo CSV/TXT em lote.
+   *
+   * <p>Formato esperado (10 colunas):
+   * mesReferencia;anoReferencia;tipoApuracao;tipoRelacionamento;contaContabilCode;
+   * contaParteBCode;parametroTributarioCodigo;tipoAjuste;descricao;valor
+   *
+   * <p>Separador: auto-detectado (; ou ,)
+   *
+   * <p>Validações:
+   *
+   * <ul>
+   *   <li>tipoApuracao: IRPJ | CSLL
+   *   <li>tipoRelacionamento: CONTA_CONTABIL | CONTA_PARTE_B | AMBOS
+   *   <li>tipoAjuste: ADICAO | EXCLUSAO
+   *   <li>contaContabilCode/contaParteBCode condicionais ao tipoRelacionamento
+   *   <li>parametroTributarioCodigo deve existir e estar ACTIVE
+   *   <li>valor > 0
+   * </ul>
+   *
+   * @param file arquivo CSV/TXT (max 50MB)
+   * @param dryRun se true, apenas retorna preview sem persistir (default: false)
+   * @return relatório da importação
+   */
+  @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasRole('CONTADOR')")
+  @Operation(
+      summary = "Importar lançamentos Parte B via CSV",
+      description =
+          "Importa lançamentos da Parte B em lote via arquivo CSV/TXT. "
+              + "Requer header X-Company-Id. "
+              + "Formato: mesReferencia;anoReferencia;tipoApuracao;tipoRelacionamento;"
+              + "contaContabilCode;contaParteBCode;parametroTributarioCodigo;tipoAjuste;descricao;valor")
+  public ResponseEntity<ImportLancamentoParteBResponse> importLancamentos(
+      @RequestParam("file") MultipartFile file,
+      @RequestParam(value = "dryRun", required = false, defaultValue = "false") boolean dryRun) {
+
+    log.info(
+        "POST /api/v1/lancamento-parte-b/import - dryRun: {}, file: {}",
+        dryRun,
+        file.getOriginalFilename());
+
+    Long companyId = CompanyContext.getCurrentCompanyId();
+    if (companyId == null) {
+      throw new IllegalArgumentException(
+          "Company context is required (header X-Company-Id missing)");
+    }
+
+    ImportLancamentoParteBResponse response =
+        importLancamentoParteBUseCase.importLancamentos(file, companyId, dryRun);
+
+    return ResponseEntity.ok(response);
+  }
 
   /**
    * Cria um novo lançamento da Parte B.
