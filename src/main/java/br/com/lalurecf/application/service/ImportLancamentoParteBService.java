@@ -256,7 +256,8 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
           }
 
           // Validar parâmetro tributário por código
-          Optional<TaxParameter> parametroOpt = taxParameterRepository.findByCode(parametroTributarioCodigo);
+          Optional<TaxParameter> parametroOpt =
+              taxParameterRepository.findByCode(parametroTributarioCodigo);
           if (parametroOpt.isEmpty()) {
             errors.add(
                 ImportError.builder()
@@ -295,7 +296,8 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                     ImportError.builder()
                         .lineNumber(lineNumber)
                         .error(
-                            "contaContabilCode é obrigatório quando tipoRelacionamento = CONTA_CONTABIL")
+                            "contaContabilCode é obrigatório quando"
+                                + " tipoRelacionamento = CONTA_CONTABIL")
                         .build());
                 skippedLines++;
                 continue;
@@ -325,7 +327,8 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                     ImportError.builder()
                         .lineNumber(lineNumber)
                         .error(
-                            "contaParteBCode é obrigatório quando tipoRelacionamento = CONTA_PARTE_B")
+                            "contaParteBCode é obrigatório quando"
+                                + " tipoRelacionamento = CONTA_PARTE_B")
                         .build());
                 skippedLines++;
                 continue;

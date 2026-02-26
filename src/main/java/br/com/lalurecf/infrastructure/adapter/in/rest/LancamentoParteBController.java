@@ -93,7 +93,8 @@ public class LancamentoParteBController {
           "Importa lançamentos da Parte B em lote via arquivo CSV/TXT. "
               + "Requer header X-Company-Id. "
               + "Formato: mesReferencia;anoReferencia;tipoApuracao;tipoRelacionamento;"
-              + "contaContabilCode;contaParteBCode;parametroTributarioCodigo;tipoAjuste;descricao;valor")
+              + "contaContabilCode;contaParteBCode;parametroTributarioCodigo;"
+              + "tipoAjuste;descricao;valor")
   public ResponseEntity<ImportLancamentoParteBResponse> importLancamentos(
       @RequestParam("file") MultipartFile file,
       @RequestParam(value = "dryRun", required = false, defaultValue = "false") boolean dryRun) {
