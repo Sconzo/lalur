@@ -14,8 +14,6 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: '0'
 
 jwt:
   secret: dev-secret-key-change-in-production-minimum-256-bits
