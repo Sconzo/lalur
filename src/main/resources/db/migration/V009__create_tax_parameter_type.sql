@@ -32,7 +32,7 @@ WHERE tipo IS NOT NULL;
 ALTER TABLE tb_parametros_tributarios
 ADD COLUMN tipo_parametro_id BIGINT REFERENCES tb_tipos_parametros_tributarios(id);
 
--- 4. Popular FK com base no mapeamento tipo → tipo_parametro_id
+-- 4. Popular FK com base no mapeamento tipo -> tipo_parametro_id
 UPDATE tb_parametros_tributarios p
 SET tipo_parametro_id = t.id
 FROM tb_tipos_parametros_tributarios t
