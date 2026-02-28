@@ -14,6 +14,53 @@
 --
 -- ============================================================================
 
+-- Step 0: Ensure base tables exist (defensive - V000 may have been skipped by baseline)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS tb_usuario (
+    id BIGSERIAL PRIMARY KEY,
+    primeiro_nome VARCHAR(255) NOT NULL,
+    sobrenome VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    senha VARCHAR(255) NOT NULL,
+    funcao VARCHAR(20) NOT NULL CHECK (funcao IN ('ADMIN', 'CONTADOR')),
+    deve_mudar_senha BOOLEAN NOT NULL DEFAULT true,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
+    criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP,
+    criado_por BIGINT NOT NULL DEFAULT 1,
+    atualizado_por BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_usuario_email ON tb_usuario(email);
+CREATE INDEX IF NOT EXISTS idx_usuario_status ON tb_usuario(status);
+CREATE INDEX IF NOT EXISTS idx_usuario_funcao ON tb_usuario(funcao);
+
+INSERT INTO tb_usuario (
+    id, primeiro_nome, sobrenome, email, senha, funcao, status, deve_mudar_senha, criado_em, criado_por
+) VALUES (
+    1, 'Sistema', 'Automático', 'system@lalurecf.com.br',
+    '$2a$12$disabled.password.hash.not.usable', 'ADMIN', 'ACTIVE', false, CURRENT_TIMESTAMP, 1
+) ON CONFLICT (id) DO NOTHING;
+
+SELECT setval('tb_usuario_id_seq', (SELECT COALESCE(MAX(id), 1) FROM tb_usuario), true);
+
+CREATE TABLE IF NOT EXISTS tb_empresa (
+    id BIGSERIAL PRIMARY KEY,
+    cnpj VARCHAR(14) NOT NULL UNIQUE,
+    razao_social VARCHAR(255) NOT NULL,
+    periodo_contabil DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE')),
+    criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP,
+    criado_por BIGINT NOT NULL DEFAULT 1,
+    atualizado_por BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_empresa_cnpj ON tb_empresa(cnpj);
+CREATE INDEX IF NOT EXISTS idx_empresa_status ON tb_empresa(status);
+CREATE INDEX IF NOT EXISTS idx_empresa_razao_social ON tb_empresa(razao_social);
+
 -- Step 1: Create tb_parametros_tributarios if it doesn't exist
 -- ============================================================================
 
