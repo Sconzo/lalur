@@ -81,7 +81,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
 
     try (BufferedReader reader =
             new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
+                new InputStreamReader(file.getInputStream(), StandardCharsets.ISO_8859_1));
         CSVParser csvParser = createCsvParser(reader)) {
 
       for (CSVRecord record : csvParser) {

@@ -86,7 +86,7 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
 
     try (BufferedReader reader =
             new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8));
+                new InputStreamReader(file.getInputStream(), StandardCharsets.ISO_8859_1));
         CSVParser csvParser = createCsvParser(reader, file)) {
 
       for (CSVRecord record : csvParser) {
