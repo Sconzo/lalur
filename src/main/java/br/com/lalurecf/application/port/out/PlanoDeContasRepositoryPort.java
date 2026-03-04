@@ -51,6 +51,14 @@ public interface PlanoDeContasRepositoryPort {
       Long companyId, String code, Integer fiscalYear);
 
   /**
+   * Salva uma lista de contas contábeis em batch.
+   *
+   * @param accounts lista de contas a salvar
+   * @return lista de contas salvas com IDs gerados
+   */
+  List<PlanoDeContas> saveAll(List<PlanoDeContas> accounts);
+
+  /**
    * Deleta conta contábil por ID.
    *
    * @param id ID da conta a deletar

@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -71,6 +72,12 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
     int totalLines = 0;
     int processedLines = 0;
 
+    // Precarregar códigos existentes para este company+year (1 SELECT antes do loop)
+    Set<String> existingCodes =
+        planoDeContasRepository.findByCompanyIdAndFiscalYear(companyId, fiscalYear).stream()
+            .map(PlanoDeContas::getCode)
+            .collect(Collectors.toSet());
+
     try (BufferedReader reader =
             new BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.ISO_8859_1));
@@ -94,11 +101,8 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
             continue;
           }
 
-          // Verificar duplicata no banco
-          Optional<PlanoDeContas> existing =
-              planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-                  companyId, parsedLine.code, fiscalYear);
-          if (existing.isPresent()) {
+          // Verificar duplicata no banco (Set precarregado — sem roundtrip adicional)
+          if (existingCodes.contains(parsedLine.code)) {
             errors.add(
                 ImportError.builder()
                     .lineNumber(lineNumber)
@@ -187,11 +191,9 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
         }
       }
 
-      // Persistir se não for dry-run
+      // Persistir em batch se não for dry-run (1 INSERT em vez de N)
       if (!dryRun && !accountsToSave.isEmpty()) {
-        for (PlanoDeContas account : accountsToSave) {
-          planoDeContasRepository.save(account);
-        }
+        planoDeContasRepository.saveAll(accountsToSave);
       }
 
       // Montar response

@@ -70,6 +70,26 @@ public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPo
   }
 
   @Override
+  public List<PlanoDeContas> saveAll(List<PlanoDeContas> accounts) {
+    List<PlanoDeContasEntity> entities =
+        accounts.stream()
+            .map(
+                account -> {
+                  PlanoDeContasEntity entity = mapper.toEntity(account);
+                  entity.setCompany(
+                      companyJpaRepository.getReferenceById(account.getCompanyId()));
+                  if (account.getContaReferencialId() != null) {
+                    entity.setContaReferencial(
+                        contaReferencialJpaRepository.getReferenceById(
+                            account.getContaReferencialId()));
+                  }
+                  return entity;
+                })
+            .toList();
+    return jpaRepository.saveAll(entities).stream().map(mapper::toDomain).toList();
+  }
+
+  @Override
   public Optional<PlanoDeContas> findById(Long id) {
     return jpaRepository.findById(id).map(mapper::toDomain);
   }
