@@ -51,12 +51,11 @@ public interface PlanoDeContasRepositoryPort {
       Long companyId, String code, Integer fiscalYear);
 
   /**
-   * Salva uma lista de contas contábeis em batch.
+   * Salva uma lista de contas contábeis em batch via JDBC (sem overhead do JPA por linha).
    *
    * @param accounts lista de contas a salvar
-   * @return lista de contas salvas com IDs gerados
    */
-  List<PlanoDeContas> saveAll(List<PlanoDeContas> accounts);
+  void saveAll(List<PlanoDeContas> accounts);
 
   /**
    * Deleta conta contábil por ID.

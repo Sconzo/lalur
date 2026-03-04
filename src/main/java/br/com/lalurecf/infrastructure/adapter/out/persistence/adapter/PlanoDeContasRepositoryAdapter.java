@@ -7,12 +7,18 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.PlanoDeCont
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
+import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,10 +38,19 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPort {
 
+  private static final String BATCH_INSERT_SQL =
+      "INSERT INTO tb_plano_de_contas "
+          + "(company_id, conta_referencial_id, code, name, fiscal_year, "
+          + "account_type, classe, nivel, natureza, afeta_resultado, dedutivel, "
+          + "status, criado_em, atualizado_em, criado_por, atualizado_por) "
+          + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', NOW(), NOW(), ?, ?)";
+
   private final PlanoDeContasJpaRepository jpaRepository;
   private final PlanoDeContasMapper mapper;
   private final CompanyJpaRepository companyJpaRepository;
   private final ContaReferencialJpaRepository contaReferencialJpaRepository;
+  private final JdbcTemplate jdbcTemplate;
+  private final SpringSecurityAuditorAware auditorAware;
 
   @Override
   public PlanoDeContas save(PlanoDeContas account) {
@@ -70,23 +85,38 @@ public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPo
   }
 
   @Override
-  public List<PlanoDeContas> saveAll(List<PlanoDeContas> accounts) {
-    List<PlanoDeContasEntity> entities =
-        accounts.stream()
-            .map(
-                account -> {
-                  PlanoDeContasEntity entity = mapper.toEntity(account);
-                  entity.setCompany(
-                      companyJpaRepository.getReferenceById(account.getCompanyId()));
-                  if (account.getContaReferencialId() != null) {
-                    entity.setContaReferencial(
-                        contaReferencialJpaRepository.getReferenceById(
-                            account.getContaReferencialId()));
-                  }
-                  return entity;
-                })
-            .toList();
-    return jpaRepository.saveAll(entities).stream().map(mapper::toDomain).toList();
+  public void saveAll(List<PlanoDeContas> accounts) {
+    final long auditorId = auditorAware.getCurrentAuditor().orElse(1L);
+    jdbcTemplate.batchUpdate(
+        BATCH_INSERT_SQL,
+        new BatchPreparedStatementSetter() {
+          @Override
+          public void setValues(PreparedStatement ps, int i) throws SQLException {
+            PlanoDeContas a = accounts.get(i);
+            ps.setLong(1, a.getCompanyId());
+            if (a.getContaReferencialId() != null) {
+              ps.setLong(2, a.getContaReferencialId());
+            } else {
+              ps.setNull(2, Types.BIGINT);
+            }
+            ps.setString(3, a.getCode());
+            ps.setString(4, a.getName());
+            ps.setInt(5, a.getFiscalYear());
+            ps.setString(6, a.getAccountType().name());
+            ps.setString(7, a.getClasse().name());
+            ps.setInt(8, a.getNivel());
+            ps.setString(9, a.getNatureza().name());
+            ps.setBoolean(10, a.getAfetaResultado());
+            ps.setBoolean(11, a.getDedutivel());
+            ps.setLong(12, auditorId);
+            ps.setLong(13, auditorId);
+          }
+
+          @Override
+          public int getBatchSize() {
+            return accounts.size();
+          }
+        });
   }
 
   @Override
