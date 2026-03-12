@@ -68,6 +68,7 @@ public class ValidateEcfFileService implements ValidateEcfFileUseCase {
     try {
       return objectMapper.writeValueAsString(errors);
     } catch (JsonProcessingException e) {
+      log.warn("Falha ao serializar erros de validação: {}", e.getMessage());
       return "[\"Erro ao serializar erros de validação\"]";
     }
   }

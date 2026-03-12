@@ -114,6 +114,9 @@ public class EcfValidatorService {
           BigDecimal valor = parseBigDecimal(valorStr);
           if (valor == null) {
             result.addError(tipo + " conta " + codigo + ": valor inválido '" + valorStr + "'");
+          } else if ("2".equals(indicadorAtual)) {
+            // indicador=2: apenas filhos M310/M360 — acumular para comparar com totalValor
+            somaFilhos = somaFilhos.add(valor);
           }
           if (!VALID_DC.contains(dc)) {
             result.addError(tipo + " conta " + codigo + ": D/C inválido '" + dc + "'");

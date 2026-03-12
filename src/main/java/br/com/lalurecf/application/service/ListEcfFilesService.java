@@ -65,6 +65,13 @@ public class ListEcfFilesService implements ListEcfFilesUseCase {
     if (fileType == null || fileType.isBlank()) {
       return;
     }
+    try {
+      EcfFileType.valueOf(fileType);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "fileType inválido: '" + fileType + "'. Valores aceitos: ARQUIVO_PARCIAL, "
+              + "IMPORTED_ECF, COMPLETE_ECF");
+    }
     if (!EcfFileType.ARQUIVO_PARCIAL.name().equals(fileType)) {
       response.setArquivoParcial(null);
     }
