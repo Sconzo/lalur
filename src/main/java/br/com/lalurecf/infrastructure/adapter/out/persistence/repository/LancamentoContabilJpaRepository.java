@@ -57,8 +57,8 @@ public interface LancamentoContabilJpaRepository
   @Query(
       "DELETE FROM LancamentoContabilEntity l "
           + "WHERE l.company.id = :companyId "
-          + "AND FUNCTION('EXTRACT', 'MONTH', l.data) = :mes "
-          + "AND FUNCTION('EXTRACT', 'YEAR', l.data) = :ano")
+          + "AND EXTRACT(MONTH FROM l.data) = :mes "
+          + "AND EXTRACT(YEAR FROM l.data) = :ano")
   int deleteByCompanyIdAndMesAndAno(
       @Param("companyId") Long companyId,
       @Param("mes") Integer mes,
@@ -75,8 +75,8 @@ public interface LancamentoContabilJpaRepository
   @Query(
       "SELECT COUNT(l) FROM LancamentoContabilEntity l "
           + "WHERE l.company.id = :companyId "
-          + "AND FUNCTION('EXTRACT', 'MONTH', l.data) = :mes "
-          + "AND FUNCTION('EXTRACT', 'YEAR', l.data) = :ano")
+          + "AND EXTRACT(MONTH FROM l.data) = :mes "
+          + "AND EXTRACT(YEAR FROM l.data) = :ano")
   int countByCompanyIdAndMesAndAno(
       @Param("companyId") Long companyId,
       @Param("mes") Integer mes,
