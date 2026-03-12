@@ -2,448 +2,547 @@
 
 **Objetivo do Epic:**
 
-Implementar a geração completa do arquivo ECF (Escrituração Contábil Fiscal) pronto para transmissão ao SPED, incluindo três tipos distintos de arquivos: (1) **Arquivo M isolado** contendo apenas os registros Lalur/Lacs gerados pelo sistema em **uma única operação atômica**, (2) **ECF importado** pelo usuário contendo a Parte A de sistemas externos, e (3) **ECF completo** resultado da **substituição simples** da Parte M antiga pela nova gerada. Este épico entrega a capacidade de gerar a Parte M (registros M001, M300, M350, M400, M410, M990) a partir das movimentações fiscais em **um único botão/endpoint**, importar ECF existente via upload, fazer **substituição simples** preservando toda a Parte A (tudo antes de `|M001|`) e substituindo a Parte M antiga pela nova gerada, validar campos obrigatórios conforme layout oficial da Receita Federal, e permitir download dos três tipos de arquivos. Ao final deste épico, contadores poderão gerar arquivos ECF validados e prontos para transmissão SPED sem necessidade de ferramentas externas, usando abordagem simples e direta sem parsers complexos.
+Implementar a geração do **Arquivo Parcial** (bloco M do LALUR/ECF) a partir dos lançamentos da Parte B cadastrados no sistema, permitir importação do ECF completo gerado por sistema externo, e executar o **merge inteligente por chave** entre o ECF Importado e o Arquivo Parcial para produzir o ECF Completo pronto para transmissão SPED. O merge substitui linhas do ECF Importado onde houver chave correspondente no Parcial, preserva o restante do Importado intacto, e recalcula os totalizadores (M300 valor e M990 contagem). Ao final, contadores poderão gerar o Arquivo Parcial com um único botão, importar o ECF da Receita Federal, combinar os dois e baixar o ECF Completo validado.
+
+---
+
+## Formato Real dos Registros ECF Bloco M
+
+O Arquivo Parcial gerado pelo sistema contém os registros do bloco M em **três grupos distintos**:
+
+### Grupo 1 — Ajustes IRPJ (Parte A do LALUR)
+
+```
+|M030|{dataInicio}|{dataFim}|{codigoApuracao}|   ← cabeçalho de período (A01=Jan ... A12=Dez)
+|M300|{codigoEnq}|{descricao}|{A/E}|{indicador}|{totalValor}|{historico}|  ← ajuste LALUR, pai dos filhos
+  |M305|{codigoContaParteB}|{valor}|{D/C}|       ← filho: conta Parte B
+  |M310|{codigoContabil}||{valor}|{D/C}|          ← filho: conta contábil (campo vazio entre conta e valor)
+```
+
+### Grupo 2 — Ajustes CSLL (Parte A do LACS)
+
+```
+|M030|{dataInicio}|{dataFim}|{codigoApuracao}|   ← mesmo cabeçalho de período
+|M350|{codigoEnq}|{descricao}|{A/E}|{indicador}|{totalValor}|{historico}|  ← ajuste LACS, pai dos filhos
+  |M355|{codigoContaParteB}|{valor}|{D/C}|       ← filho: conta Parte B (equivalente do M305)
+  |M360|{codigoContabil}||{valor}|{D/C}|          ← filho: conta contábil (equivalente do M310)
+```
+
+### Grupo 3 — Contas da Parte B (LALUR e LACS)
+
+```
+|M400|{codigoConta}|{descricao}|{codigoTabela}|...|  ← natureza da conta (definição/cadastro)
+  |M410|{codigoConta}|{periodo}|{tipoLanc}|{valor}|...|  ← lançamento na conta (movimento)
+|M405|{codigoConta}|{saldoAnterior}|{totalAdic}|{totalExcl}|{saldoAtual}|...|  ← resumo/saldo final
+```
+
+> **Nota:** Os campos exatos de M400/M410/M405 devem ser confirmados contra o layout oficial SPED ECF (Manual de Orientação do Leiaute).
+
+---
+
+**Relação pai-filho:**
+- M300 é pai de M305 e M310 (IRPJ)
+- M350 é pai de M355 e M360 (CSLL)
+- M400 é independente; M410 são seus filhos; M405 é o resumo por conta
+
+**Agregação por chave:** Múltiplos lançamentos com o mesmo `codigoEnquadramento` dentro de um mesmo período M030 são **somados** em um único M300/M350. Exemplo:
+```
+Lançamento 1: |M300|6|...|123|   →  agregado em →  |M300|6|...|333|
+Lançamento 2: |M300|6|...|210|
+```
+
+**Indicadores do M300/M350:**
+- `1` = Parte B only → gera apenas M305/M355
+- `2` = Conta Contábil only → gera apenas M310/M360
+- `3` = Parte B e Conta Contábil → gera M305/M355 + M310/M360
+
+**Indicador D/C:**
+- ADICAO → `D` (Débito)
+- EXCLUSAO → `C` (Crédito)
+
+**Totalizador M300/M350:** `totalValor` = soma dos campos `valor` de todos os `LancamentoParteB` do grupo, independente do `tipoRelacionamento`. Cada lançamento contribui seu `valor` uma única vez (M305/M355 e M310/M360 são a decomposição contábil do mesmo lançamento, não valores adicionais).
+
+**Formato de datas:** `DDMMYYYY` sem separadores (padrão SPED). Ex: `01012024` = 01/01/2024.
+
+**Exemplo de estrutura completa (IRPJ — um período):**
+```
+|M030|01012024|31012024|A01|
+|M300|6|Provisoes nao dedutiveis|A|3|186877,58|Provisoes no periodo|
+|M305|2130306|44249,63|D|
+|M305|21405|142627,95|D|
+|M310|3210205||44249,63|D|
+|M310|3210201||142627,95|D|
+|M300|8|Despesas nao dedutiveis|A|2|30614,68|Despesas nao dedutiveis no periodo|
+|M310|3211005||30614,68|D|
+```
+
+**Exemplo de estrutura completa (CSLL — mesmo período):**
+```
+|M030|01012024|31012024|A01|
+|M350|6|Provisoes nao dedutiveis|A|3|186877,58|Provisoes no periodo|
+|M355|2130306|44249,63|D|
+|M355|21405|142627,95|D|
+|M360|3210205||44249,63|D|
+|M360|3210201||142627,95|D|
+```
 
 ---
 
 ## Story 5.1: Entidade EcfFile (Três Tipos de Arquivo)
 
 Como desenvolvedor,
-Eu quero entidade EcfFile para armazenar metadados dos três tipos de arquivos ECF (Arquivo M, ECF Importado, ECF Completo),
-Para que possamos rastrear histórico de geração, uploads, status de validação e permitir download posterior.
+Eu quero entidade EcfFile para armazenar os três tipos de arquivo ECF com seu conteúdo diretamente no banco de dados,
+Para que possamos gerar, consultar e exportar os arquivos sem depender de filesystem externo.
 
 **Acceptance Criteria:**
 
-1. Entidade JPA `EcfFileEntity` criada estendendo `BaseEntity`:
-   - `@ManyToOne @JoinColumn(nullable=false) CompanyEntity company`
-   - `@Column(nullable=false) Integer fiscalYear`
-   - `@Enumerated(STRING) @Column(nullable=false) EcfFileType fileType` (M_FILE_ONLY, IMPORTED_ECF, COMPLETE_ECF)
-   - `@Column(nullable=false, length=255) String fileName` (ex: "Arquivo_M_2024_12345678000100.txt", "ECF_Importado_2024.txt", "ECF_Completo_2024.txt")
-   - `@Column(nullable=false) String filePath` (caminho de armazenamento no servidor/storage)
-   - `@Column(nullable=false) Long fileSizeBytes`
-   - `@Enumerated(STRING) @Column(nullable=false) EcfFileStatus status` (DRAFT, VALIDATED, ERROR, FINALIZED)
-   - `@Column(columnDefinition="TEXT") String validationErrors` (JSON array de erros se status ERROR)
-   - `@Column(nullable=false) LocalDateTime createdAt` (data de geração ou upload)
-   - `@Column(nullable=false) String createdBy` (email do usuário que gerou ou fez upload)
-   - `@ManyToOne @JoinColumn(nullable=true) EcfFileEntity sourceImportedEcf` (referência ao ECF importado usado no merge, apenas para fileType COMPLETE_ECF)
-   - `@ManyToOne @JoinColumn(nullable=true) EcfFileEntity sourceMFile` (referência ao Arquivo M usado no merge, apenas para fileType COMPLETE_ECF)
-2. Enum `EcfFileType` criado:
-   - **M_FILE_ONLY**: Arquivo contendo apenas registros M (M001, M300, M350, M400, M410, M990) gerados pelo sistema
-   - **IMPORTED_ECF**: Arquivo ECF completo importado pelo usuário (contém Parte A e possivelmente outras partes)
-   - **COMPLETE_ECF**: Arquivo ECF completo resultado do merge (Parte A do importado + Parte M gerada)
-3. Enum `EcfFileStatus` criado: DRAFT, VALIDATED, ERROR, FINALIZED
-4. Domain model `EcfFile` criado
+1. Entidade JPA `EcfFileEntity` criada estendendo `BaseEntity` com **4 colunas principais**:
+   - `@Enumerated(STRING) @Column(nullable=false) EcfFileType fileType` (ARQUIVO_PARCIAL, IMPORTED_ECF, COMPLETE_ECF)
+   - `@ManyToOne @JoinColumn(nullable=false) CompanyEntity company` (FK para empresa)
+   - `@Column(nullable=false) Integer fiscalYear` (ano fiscal)
+   - `@Column(nullable=false, columnDefinition="TEXT") String content` (conteúdo completo do arquivo ECF como string)
+   - Campos auxiliares: `fileName` (String), `fileStatus` (EcfFileStatus), `validationErrors` (TEXT, JSON array), `generatedAt` (LocalDateTime), `generatedBy` (String)
+   - `@ManyToOne @JoinColumn(nullable=true) EcfFileEntity sourceImportedEcf` (apenas COMPLETE_ECF)
+   - `@ManyToOne @JoinColumn(nullable=true) EcfFileEntity sourceParcialFile` (apenas COMPLETE_ECF)
+   - **`@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"file_type", "company_id", "fiscal_year"}))`**: constraint garante no máximo 1 registro por tipo+empresa+ano
+2. Enum `EcfFileType`:
+   - `ARQUIVO_PARCIAL`: bloco M gerado pelo sistema (M030/M300/M305/M310) a partir dos Lançamentos da Parte B
+   - `IMPORTED_ECF`: ECF completo importado pelo usuário de sistema externo
+   - `COMPLETE_ECF`: ECF completo resultado do merge (Importado com bloco M atualizado pelo Parcial)
+3. Enum `EcfFileStatus`: DRAFT, VALIDATED, ERROR, FINALIZED
+4. Domain model `EcfFile` criado com campo `content: String`
 5. `EcfFileRepositoryPort` criado:
-   - `EcfFile save(EcfFile ecfFile)`
+   - `EcfFile saveOrReplace(EcfFile ecfFile)`: upsert — se já existir registro com mesmo `(fileType, companyId, fiscalYear)`, atualiza o existente (content, status, fileName, generatedAt, generatedBy, sourceRefs); caso contrário insere novo
    - `Optional<EcfFile> findById(Long id)`
    - `List<EcfFile> findByCompanyAndFiscalYear(Long companyId, Integer fiscalYear)`
-   - `List<EcfFile> findByCompanyAndFiscalYearAndType(Long companyId, Integer fiscalYear, EcfFileType type)`
-   - `Optional<EcfFile> findLatestByCompanyAndFiscalYearAndTypeAndStatus(Long companyId, Integer fiscalYear, EcfFileType type, EcfFileStatus status)`
-6. Adapter implementado com JPA + MapStruct
-7. Teste de integração valida salvamento e recuperação
-8. Teste valida que findLatest retorna arquivo mais recente (por createdAt DESC) do tipo e status especificados
-9. Teste valida relacionamento source (COMPLETE_ECF referencia IMPORTED_ECF e M_FILE_ONLY usados no merge)
+   - `Optional<EcfFile> findByCompanyAndFiscalYearAndType(Long companyId, Integer fiscalYear, EcfFileType type)` (retorna `Optional` pois é unique)
+6. Adapter implementado com JPA + MapStruct; `saveOrReplace` implementado via `findByCompanyAndFiscalYearAndType` + update de campos (evita duplicata e respeita o constraint)
+7. Migration Flyway adiciona o unique constraint na tabela `ecf_files`
+8. Teste valida salvamento e recuperação por tipo e empresa (incluindo campo `content`)
+9. Teste valida comportamento de upsert: salvar duas vezes o mesmo `(fileType, companyId, fiscalYear)` resulta em **1 único registro** com o conteúdo mais recente
+10. Teste valida que o `content` do ARQUIVO_PARCIAL é recuperado íntegro (sem truncamento)
+11. Teste valida que tipos distintos do mesmo ano/empresa coexistem (ARQUIVO_PARCIAL e IMPORTED_ECF são registros separados)
 
 ---
 
-## Story 5.2: Serviço Interno de Geração de Registros da Parte M
+## Story 5.2: Serviço de Geração dos Registros M (Lógica Interna)
 
 Como desenvolvedor,
-Eu quero serviço interno que gere todos os registros da Parte M (M001, M300, M350, M400, M410, M990),
-Para que a funcionalidade de geração do Arquivo M possa montar o arquivo completo em uma única operação.
+Eu quero serviço interno que gere todos os registros do bloco M (M030/M300/M305/M310 para IRPJ, M030/M350/M355/M360 para CSLL, e M400/M410/M405 para Contas da Parte B) a partir dos dados cadastrados no sistema,
+Para que o Arquivo Parcial possa ser montado em uma única operação.
 
 **Acceptance Criteria:**
 
-1. Service `PartMGeneratorService` criado com métodos internos (não são endpoints separados):
-   - `generateM001Record()`: gera abertura do bloco M
-   - `generateM300Records(Long companyId, Integer fiscalYear)`: gera registros Lalur Parte A
-   - `generateM350Records(Long companyId, Integer fiscalYear)`: gera registros Lalur Parte B (conta gráfica)
-   - `generateM400Records(Long companyId, Integer fiscalYear)`: gera registros Lacs
-   - `generateM410Records(Long companyId, Integer fiscalYear)`: gera registros Lacs conta gráfica
-   - `generateM990Record(int recordCount)`: gera encerramento do bloco M
-2. **Método M001 (Abertura)**:
-   - Retorna string: `|M001|0|` (indicador de movimento: 0 = com movimento)
-   - Se não houver movimentos fiscais (nem LALUR nem LACS), retorna `|M001|1|` (sem movimento)
-3. **Método M300 (Lalur Parte A - Movimentações)**:
-   - Busca todas `FiscalMovement` ACTIVE da empresa, ano fiscal e `movementBook = LALUR`
-   - Para cada movimento, gera linha M300 conforme layout oficial: `|M300|{movementType}|{codigoEnquadramento}|{description}|{amount}|`
-   - Mapeamento de `MovementType` para código oficial RFB (ADDITION → "A", EXCLUSION → "E", COMPENSATION → "C")
-   - Formatação de valores: 2 casas decimais, sem separador de milhares (ex: 50000.00)
-   - Validação: lança exceção se description vazio ou amount <= 0
-4. **Método M350 (Lalur Parte B - Conta Gráfica)**:
-   - Busca último `TaxCalculationResult` ACTIVE tipo IRPJ da empresa e ano fiscal
-   - Busca `CompanyParameter` para obter prejuízo fiscal anterior (saldo inicial)
-   - Gera registro M350 de abertura: `|M350|SALDO_INICIAL|{prejuizoFiscalAnterior}|`
-   - Gera registros M350 de movimentações (adições de prejuízo, compensações aplicadas)
-   - Gera registro M350 de encerramento: `|M350|SALDO_FINAL|{remainingLossCarryforward}|`
-   - Validação: se não houver TaxCalculationResult, lança exceção "Cálculo IRPJ não encontrado"
-5. **Método M400 (Lacs - Movimentações)**:
-   - Busca todas `FiscalMovement` ACTIVE da empresa, ano fiscal e `movementBook = LACS`
-   - Para cada movimento, gera linha M400 análoga a M300: `|M400|{movementType}|{codigoEnquadramento}|{description}|{amount}|`
-6. **Método M410 (Lacs - Conta Gráfica)**:
-   - Busca último `TaxCalculationResult` ACTIVE tipo CSLL para obter saldos de base negativa
-   - Gera registro M410 com saldo inicial, movimentações, saldo final
-   - Validação: se não houver TaxCalculationResult CSLL, lança exceção
-7. **Método M990 (Encerramento)**:
-   - Retorna string: `|M990|{recordCount}|` onde recordCount é total de registros do bloco M (incluindo M001 e M990)
-8. Teste valida geração de M001 com indicador correto (0 se houver movimentos, 1 se não houver)
-9. Teste valida geração correta de 3 movimentos LALUR → 3 linhas M300
-10. Teste valida que movimentos INACTIVE são ignorados
-11. Teste valida geração de M350 com saldo inicial 100k, compensações 30k, saldo final 70k
-12. Teste valida geração de M400 apenas com movimentos LACS
-13. Teste valida geração de M410 com saldos iniciais e finais
-14. Teste valida M990 contém contagem correta de registros
-15. Teste valida formatação de valores com 2 decimais
-16. Teste valida que exceção é lançada se cálculo IRPJ ou CSLL ausente
+1. Service `PartMGeneratorService` criado com método principal:
+   - `String generateArquivoParcial(Long companyId, Integer fiscalYear)`: retorna o conteúdo completo do arquivo com os três grupos de registros
 
-**Nota Importante:** Esta story implementa métodos internos do serviço. A funcionalidade exposta ao usuário (endpoint) está na Story 5.3.
+2. **Grupo 1 — Ajustes IRPJ: algoritmo M030/M300/M305/M310**
+
+   **Fonte**: `LancamentoParteB` com status ACTIVE, `anoReferencia = fiscalYear`, `tipoApuracao = IRPJ`.
+
+   **Passo 1 — Agrupar por período (mês):**
+   - Para cada `mesReferencia` distinto com lançamentos IRPJ ativos, ordenado crescentemente (jan → dez):
+     - `dataInicio = primeiro dia do mês` (ex: `01012024` para janeiro)
+     - `dataFim = último dia do mês` (ex: `31012024` para janeiro, `29022024` para fevereiro em ano bissexto)
+     - `codigoApuracao` = A01 para mês 1, ..., A12 para mês 12
+     - Gera linha: `|M030|{dataInicio}|{dataFim}|{codigoApuracao}|`
+
+   **Passo 2 — Dentro de cada período, agrupar por codigoEnquadramento:**
+   - **`codigoEnquadramento`**: confirmar com Epic 3 se campo direto em `LancamentoParteB` ou derivado via `parametroTributarioId` → `ParametroTributario.codigoEnquadramento`
+   - **Chave de agrupamento**: `codigoEnquadramento`
+   - Lançamentos com mesma chave dentro do mesmo período são **agregados em um único M300**
+
+   **Passo 3 — Para cada grupo, gera o registro pai M300:**
+   ```
+   |M300|{codigoEnquadramento}|{descricao}|{A/E}|{indicador}|{somaValores}|{historico}|
+   ```
+   - `A/E` = "A" se `tipoAjuste = ADICAO`, "E" se `EXCLUSAO`
+   - `somaValores` = soma dos `valor` de todos os lançamentos do grupo
+   - `indicador` = derivado do `tipoRelacionamento` do grupo: todos `CONTA_PARTE_B` → `1` / todos `CONTA_CONTABIL` → `2` / mix ou algum `AMBOS` → `3`
+   - `descricao` = `ParametroTributario.descricao`
+   - `historico` = `LancamentoParteB.descricao` do primeiro lançamento do grupo
+
+   **Passo 4 — Para cada lançamento do grupo, gera os filhos M305/M310:**
+   - Se `tipoRelacionamento ∈ {CONTA_PARTE_B, AMBOS}`: gera `|M305|{contaParteB.codigoConta}|{valor}|{D/C}|`
+   - Se `tipoRelacionamento ∈ {CONTA_CONTABIL, AMBOS}`: gera `|M310|{planoDeContas.code}||{valor}|{D/C}|`
+   - `D/C` = "D" se ADICAO, "C" se EXCLUSAO
+
+3. **Grupo 2 — Ajustes CSLL: algoritmo M030/M350/M355/M360**
+
+   **Idêntico ao Grupo 1**, mas para `tipoApuracao = CSLL` e usando:
+   - M350 no lugar de M300
+   - M355 no lugar de M305
+   - M360 no lugar de M310
+
+   Os blocos M030/M350/M355/M360 são gerados após os blocos M030/M300/M305/M310 no arquivo.
+
+4. **Grupo 3 — Contas da Parte B: algoritmo M400/M410/M405**
+
+   **Fonte**: `ContaParteB` com lançamentos ACTIVE no `fiscalYear` da empresa.
+
+   **Passo 1 — Para cada `ContaParteB` com atividade no ano, gera M400 (natureza/definição da conta):**
+   ```
+   |M400|{codigoConta}|{descricao}|{codigoTabela}|...|
+   ```
+   - Campos exatos a confirmar contra layout oficial SPED ECF
+   - `codigoConta` = `ContaParteB.codigoConta`
+   - `descricao` = `ContaParteB.descricao`
+
+   **Passo 2 — Para cada `LancamentoParteB` da conta, gera M410 (movimento/lançamento na conta):**
+   ```
+   |M410|{codigoConta}|{periodo}|{tipoLanc}|{valor}|...|
+   ```
+   - Campos exatos a confirmar contra layout oficial SPED ECF
+   - Um M410 por `LancamentoParteB` (visão por conta, diferente do M305/M355 que é visão por ajuste)
+
+   **Passo 3 — Para cada `ContaParteB`, gera M405 (resumo/saldo final da conta):**
+   ```
+   |M405|{codigoConta}|{saldoAnterior}|{totalAdic}|{totalExcl}|{saldoAtual}|...|
+   ```
+   - `saldoAnterior` = `ContaParteB.saldoInicial`
+   - `totalAdic` = soma dos `valor` dos lançamentos com `tipoAjuste = ADICAO` da conta no ano
+   - `totalExcl` = soma dos `valor` dos lançamentos com `tipoAjuste = EXCLUSAO` da conta no ano
+   - `saldoAtual` = `saldoAnterior + totalAdic - totalExcl`
+   - Campos exatos a confirmar contra layout oficial SPED ECF
+
+5. **Ordem das seções no arquivo gerado:**
+   ```
+   [blocos M030/M300/M305/M310 — IRPJ — um por mês]
+   [blocos M030/M350/M355/M360 — CSLL — um por mês]
+   [registros M400/M410/M405 — Contas da Parte B]
+   ```
+
+6. **Formatação de valores:**
+   - Decimais com vírgula: `1234,56` (padrão SPED brasileiro)
+   - Sem separador de milhares
+   - 2 casas decimais
+
+7. **Validações:**
+   - Lança exceção se não existirem `LancamentoParteB` ACTIVE para o `fiscalYear` especificado
+   - Ignora lançamentos com status INACTIVE
+
+8. Teste valida geração correta de M030 para um mês com lançamentos IRPJ
+9. Teste valida que ADICAO → A no M300 e D no M305/M310; EXCLUSAO → E no M300 e C no M305/M310
+10. Teste valida que `tipoRelacionamento = AMBOS` gera tanto M305 quanto M310 para o mesmo lançamento
+11. Teste valida que `tipoRelacionamento = CONTA_CONTABIL` não gera M305
+12. Teste valida que `tipoRelacionamento = CONTA_PARTE_B` não gera M310
+13. Teste valida que lançamentos IRPJ vão para M300/M305/M310 e CSLL para M350/M355/M360
+14. Teste valida formatação de valor com vírgula decimal
+15. Teste valida que `somaValores` no M300 = soma dos `valor` dos lançamentos do grupo
+16. Teste valida que lançamentos INACTIVE são ignorados
+17. Teste valida separação por mês: lançamentos de meses diferentes geram M030 separados
+18. Teste valida que M405.saldoAtual = saldoInicial + totalAdic - totalExcl da ContaParteB
+19. Teste valida que ContaParteB sem lançamentos no ano não gera M400/M410/M405
 
 ---
 
-## Story 5.3: Geração do Arquivo M Completo - UM ÚNICO BOTÃO (Tipo M_FILE_ONLY)
+## Story 5.3: Geração do Arquivo Parcial (Um Único Botão)
 
 Como CONTADOR,
-Eu quero clicar em UM ÚNICO BOTÃO para gerar o arquivo M completo contendo todos os registros (M001, M300, M350, M400, M410, M990) de uma só vez,
-Para que eu possa exportar e revisar as movimentações fiscais geradas pelo sistema sem precisar gerar cada parte separadamente.
+Eu quero clicar em um único botão para gerar o Arquivo Parcial contendo todos os registros M dos Lançamentos da Parte B do ano fiscal,
+Para que eu possa revisar o arquivo antes de fazer o merge com o ECF Importado.
 
 **Acceptance Criteria:**
 
-1. **FUNCIONALIDADE ÚNICA**: Um único endpoint `POST /api/v1/ecf/generate-m-file` gera o arquivo M completo em uma única operação atômica
-2. Use case `GenerateMFileUseCase` criado com método `generate(Long companyId, Integer fiscalYear, String requestedBy)`
-3. Service `MFileAssemblerService` implementa lógica que chama os métodos internos do `PartMGeneratorService` (Story 5.2) e monta o arquivo completo:
-   - **Passo 1**: Valida pré-requisitos (existem cálculos IRPJ/CSLL finalizados?)
-   - **Passo 2**: Chama `partMGeneratorService.generateM001Record()` → adiciona ao arquivo
-   - **Passo 3**: Chama `partMGeneratorService.generateM300Records(...)` → adiciona todos M300 ao arquivo
-   - **Passo 4**: Chama `partMGeneratorService.generateM350Records(...)` → adiciona todos M350 ao arquivo
-   - **Passo 5**: Chama `partMGeneratorService.generateM400Records(...)` → adiciona todos M400 ao arquivo
-   - **Passo 6**: Chama `partMGeneratorService.generateM410Records(...)` → adiciona todos M410 ao arquivo
-   - **Passo 7**: Conta total de registros e chama `partMGeneratorService.generateM990Record(recordCount)` → adiciona M990 ao arquivo
-   - **Passo 8**: Monta arquivo .txt completo com todas linhas separadas por quebras de linha `\n`
-   - **Passo 9**: Salva arquivo em storage (filesystem ou S3)
-   - **Passo 10**: Cria `EcfFile` com tipo **M_FILE_ONLY**, status DRAFT
-4. DTO `GenerateMFileRequest`: `fiscalYear` (obrigatório)
-5. DTO `GenerateMFileResponse`: `success`, `message`, `ecfFileId`, `fileName`, `fileSizeBytes`, `fileType` (sempre M_FILE_ONLY), `recordCount` (total de registros gerados)
-6. Endpoint `POST /api/v1/ecf/generate-m-file` (autenticado, requer X-Company-Id)
-7. Validação: requer que cálculos IRPJ e CSLL estejam finalizados e ACTIVE
-8. Validação: CONTADOR só pode gerar para sua empresa
-9. Response 200 OK com metadados do arquivo gerado
-10. Response 400 Bad Request se cálculos ausentes: "Cálculo IRPJ não encontrado para o ano fiscal 2024"
-11. Response 403 Forbidden se empresa não pertence ao CONTADOR
-12. Nome do arquivo gerado: `Arquivo_M_{fiscalYear}_{cnpj}.txt` (ex: `Arquivo_M_2024_12345678000100.txt`)
-13. Teste valida geração completa em uma única chamada: M001 → M300 → M350 → M400 → M410 → M990
-14. Teste valida contagem de registros em M990 está correta
-15. Teste valida que arquivo salvo contém todas linhas separadas por `\n`
-16. Teste valida que `EcfFile.fileType = M_FILE_ONLY`
-17. Teste valida que operação é atômica (se falhar em qualquer passo, nenhum arquivo é salvo)
-
-**IMPORTANTE:** Esta é a ÚNICA funcionalidade exposta ao usuário para gerar o arquivo M. Não existem botões ou endpoints separados para gerar M300, M350, M400 ou M410 individualmente. A geração é sempre completa e atômica.
+1. Use case `GenerateArquivoParcialUseCase` criado
+2. Endpoint: `POST /api/v1/ecf/generate-parcial` (autenticado, requer X-Company-Id)
+3. Service `ArquivoParcialAssemblerService` implementa:
+   - **Passo 1**: Valida que existem `LancamentoParteB` ACTIVE para o `fiscalYear` e companyId
+   - **Passo 2**: Chama `partMGeneratorService.generateArquivoParcial(companyId, fiscalYear)` → retorna `String` com o conteúdo completo
+   - **Passo 3**: Cria ou atualiza `EcfFile` com `fileType = ARQUIVO_PARCIAL`, `fileStatus = DRAFT`, **`content = string gerada`**, `fileName = "Parcial_M_{fiscalYear}_{cnpj}.txt"`
+   - **Passo 4**: Persiste via `saveOrReplace` — se já existir ARQUIVO_PARCIAL para esta empresa e ano, **substitui o conteúdo no mesmo registro** (upsert)
+   - **Passo 5**: Se existir COMPLETE_ECF para esta empresa e ano com status VALIDATED ou FINALIZED, **rebaixa para DRAFT** e limpa `validationErrors` (o Parcial mudou, o ECF Completo está desatualizado)
+4. DTO `GenerateArquivoParcialRequest`: `fiscalYear` (obrigatório)
+5. DTO `GenerateArquivoParcialResponse`: `success`, `message`, `ecfFileId`, `fileName`, `periodoCount` (número de M030 gerados), `lancamentosCount` (total de lançamentos processados)
+6. Nome do arquivo: `Parcial_M_{fiscalYear}_{cnpj}.txt`
+7. Response 200 OK com metadados
+8. Response 400 Bad Request se não existirem lançamentos: "Nenhum Lançamento da Parte B encontrado para o ano fiscal {fiscalYear}"
+9. Response 403 Forbidden se empresa não pertence ao CONTADOR
+10. Teste valida geração bem-sucedida com múltiplos lançamentos e períodos
+11. Teste valida que `EcfFile.fileType = ARQUIVO_PARCIAL`
+12. Teste valida que arquivo salvo contém registros M030/M300/M305/M310 corretos
+13. Teste valida que tentativa sem lançamentos retorna 400
 
 ---
 
-## Story 5.4: Upload e Armazenamento de ECF Importado (Tipo IMPORTED_ECF)
+## Story 5.4: Upload e Armazenamento do ECF Importado
 
 Como CONTADOR,
-Eu quero fazer upload de arquivo ECF existente gerado por sistema externo,
-Para que o sistema armazene o ECF importado e permita posteriormente adicionar a Parte M gerada pelo sistema.
+Eu quero fazer upload do ECF completo gerado por sistema externo (Receita Federal / outro sistema),
+Para que o sistema armazene o ECF Importado e permita posteriormente fazer o merge com o Arquivo Parcial.
 
 **Acceptance Criteria:**
 
-1. Use case `UploadImportedEcfUseCase` criado com método `upload(Long companyId, Integer fiscalYear, InputStream fileInputStream, String originalFileName, String uploadedBy)`
+1. Use case `UploadImportedEcfUseCase` criado
 2. Service `EcfUploadService` implementa:
    - **Passo 1**: Valida extensão do arquivo (deve ser `.txt`)
-   - **Passo 2**: Valida tamanho do arquivo (máximo 10MB)
-   - **Passo 3**: Valida formato básico SPED (linhas devem iniciar e terminar com `|`)
-   - **Passo 4**: Valida que arquivo contém ao menos um registro (não está vazio)
-   - **Passo 5**: Salva arquivo completo em storage (ex: `uploads/{companyId}/{fiscalYear}/ecf_importado.txt`)
-   - **Passo 6**: Cria registro `EcfFile` com tipo **IMPORTED_ECF**, status DRAFT
-3. Controller endpoint `POST /api/v1/ecf/upload-imported` (autenticado, requer X-Company-Id):
-   - Aceita multipart/form-data com arquivo `.txt`
-   - Query param `fiscalYear` obrigatório
-4. DTO `UploadImportedEcfRequest`: multipart file
-5. DTO `UploadImportedEcfResponse`: `success`, `message`, `ecfFileId`, `fileName`, `fileSizeBytes`, `fileType` (sempre IMPORTED_ECF), `lineCount`
-6. Validação: arquivo deve ter tamanho < 10MB
-7. Validação: apenas um arquivo ECF importado por empresa/ano fiscal (substituir se já existir)
-8. Nome do arquivo armazenado: `ECF_Importado_{fiscalYear}_{cnpj}.txt`
-9. Response 200 OK com metadados da importação
-10. Response 400 Bad Request se arquivo inválido (formato SPED incorreto ou vazio)
-11. Response 403 Forbidden se empresa não pertence ao CONTADOR
-12. Teste valida upload bem-sucedido de arquivo ECF válido
-13. Teste valida que tentativa de importar arquivo com formato inválido retorna 400
-14. Teste valida que arquivo é salvo corretamente em storage
-15. Teste valida que `EcfFile.fileType = IMPORTED_ECF`
-16. Teste valida que upload substitui arquivo importado anterior se já existir
+   - **Passo 2**: Valida tamanho (máximo 50MB)
+   - **Passo 3**: Valida formato SPED básico (linhas devem iniciar e terminar com `|`)
+   - **Passo 4**: Valida que o arquivo contém bloco M (`|M001|` presente)
+   - **Passo 5**: Lê conteúdo do arquivo como String usando encoding **ISO-8859-1 (LATIN-1)** — padrão SPED ECF
+   - **Passo 6**: Cria ou atualiza `EcfFile` com `fileType = IMPORTED_ECF`, `fileStatus = DRAFT`, **`content = string do arquivo`**, `fileName = "ECF_Importado_{fiscalYear}_{cnpj}.txt"`
+   - **Passo 7**: Persiste via `saveOrReplace` — se já existir IMPORTED_ECF para esta empresa e ano, **substitui o conteúdo no mesmo registro** (upsert)
+   - **Passo 8**: Se existir COMPLETE_ECF para esta empresa e ano com status VALIDATED ou FINALIZED, **rebaixa para DRAFT** e limpa `validationErrors` (o ECF Importado mudou, o ECF Completo está desatualizado)
+3. Endpoint: `POST /api/v1/ecf/upload-importado` (autenticado, multipart/form-data, requer X-Company-Id)
+   - Query param: `fiscalYear` (obrigatório)
+4. DTO `UploadImportedEcfResponse`: `success`, `message`, `ecfFileId`, `fileName`, `fileSizeBytes`, `lineCount`
+5. Se já existir um IMPORTED_ECF para a empresa e ano fiscal: **upsert** (atualiza o registro existente, não cria novo)
+6. Nome armazenado: `ECF_Importado_{fiscalYear}_{cnpj}.txt`
+7. Response 200 OK com metadados
+8. Response 400 Bad Request se arquivo inválido ou sem bloco M
+9. Response 403 Forbidden se empresa não pertence ao CONTADOR
+10. Teste valida upload bem-sucedido de ECF válido
+11. Teste valida que arquivo sem `|M001|` retorna 400
+12. Teste valida que `EcfFile.fileType = IMPORTED_ECF`
+13. Teste valida substituição de upload anterior
 
 ---
 
-## Story 5.5: Geração de ECF Completo - Substituição Simples (Tipo COMPLETE_ECF)
+## Story 5.5: Geração do ECF Completo (Merge por Chave)
 
 Como CONTADOR,
-Eu quero gerar arquivo ECF completo substituindo a Parte M antiga do ECF importado pela Parte M gerada pelo sistema,
-Para que eu possa baixar arquivo ECF final pronto para transmissão SPED contendo toda a Parte A original + Parte M atualizada.
+Eu quero gerar o ECF Completo fazendo o merge do ECF Importado com o Arquivo Parcial,
+Para que o ECF final contenha todos os dados do sistema externo com o bloco M atualizado com os Lançamentos da Parte B.
 
 **Acceptance Criteria:**
 
-1. Use case `GenerateCompleteEcfUseCase` criado com método `generate(Long companyId, Integer fiscalYear, String requestedBy)`
-2. Service `EcfMergerService` implementa **substituição simples por busca de linha**:
-   - **Passo 1**: Busca `EcfFile` tipo **IMPORTED_ECF** da empresa e ano fiscal (se não existir, retorna erro)
-   - **Passo 2**: Busca ou gera `EcfFile` tipo **M_FILE_ONLY** da empresa e ano fiscal
-   - **Passo 3**: Lê arquivo ECF importado de storage linha por linha
-   - **Passo 4**: **Encontra início da Parte M**: busca primeira linha que inicia com `|M001|`
-   - **Passo 5**: **Extrai Parte A**: todas as linhas **antes** de `|M001|` (ou arquivo completo se não houver M001)
-   - **Passo 6**: Lê arquivo M gerado de storage (todas as linhas: M001, M300, M350, M400, M410, M990)
-   - **Passo 7**: **Monta ECF Completo**: Parte A (extraída) + quebra de linha + Arquivo M (completo)
-   - **Passo 8**: Valida estrutura final (tem ao menos uma linha antes de M001, e tem M001 e M990)
-   - **Passo 9**: Salva arquivo final em storage
-   - **Passo 10**: Cria `EcfFile` com tipo **COMPLETE_ECF**, status DRAFT, `sourceImportedEcf` e `sourceMFile` referenciando arquivos usados
-3. DTO `GenerateCompleteEcfRequest`: `fiscalYear` (obrigatório)
-4. DTO `GenerateCompleteEcfResponse`: `success`, `message`, `ecfFileId`, `fileName`, `fileSizeBytes`, `fileType` (sempre COMPLETE_ECF), `sourceImportedEcfId`, `sourceMFileId`, `lineCount`
-5. Endpoint `POST /api/v1/ecf/generate-complete` (autenticado, requer X-Company-Id)
-6. Validação: requer que ECF importado exista (tipo IMPORTED_ECF)
-7. Validação: requer que cálculos IRPJ e CSLL estejam finalizados (para gerar Arquivo M)
-8. Nome do arquivo gerado: `ECF_Completo_{fiscalYear}_{cnpj}.txt`
-9. Response 200 OK com metadados do arquivo ECF completo
-10. Response 400 Bad Request se ECF importado não foi feito upload: "ECF importado não encontrado. Faça upload de um arquivo ECF existente primeiro."
-11. Response 400 Bad Request se cálculos ausentes
-12. Response 403 Forbidden se empresa não pertence ao CONTADOR
-13. Teste valida geração bem-sucedida: arquivo final contém Parte A (do importado) + Parte M (gerada)
-14. Teste valida que Parte M antiga do importado é completamente removida e substituída pela nova
-15. Teste valida caso ECF importado não tem Parte M (M001 não existe): Parte M é adicionada ao final
-16. Teste valida caso ECF importado tem Parte M antiga: tudo a partir de M001 é substituído
-17. Teste valida que tentativa sem ECF importado retorna 400
-18. Teste valida contagem total de linhas no arquivo final
-19. Teste valida que `EcfFile.fileType = COMPLETE_ECF`
-20. Teste valida relacionamentos source (`sourceImportedEcf` e `sourceMFile` estão preenchidos)
+1. Use case `GenerateCompleteEcfUseCase` criado
+2. Service `EcfMergerService` implementa o **algoritmo de merge por chave**:
 
-**Algoritmo de Substituição Simples:**
-```
-linhasEcfImportado = lerArquivo(ecfImportado)
-linhasArquivoM = lerArquivo(arquivoM)
+   **Passo 1 — Carregar conteúdos:**
+   - Busca `EcfFile` tipo `IMPORTED_ECF` da empresa e ano fiscal → **erro 400 se não existir** ("ECF Importado não encontrado. Faça upload antes de gerar o ECF Completo.")
+   - Busca `EcfFile` tipo `ARQUIVO_PARCIAL` da empresa e ano fiscal → **erro 400 se não existir** ("Arquivo Parcial não encontrado. Gere o Arquivo Parcial antes de gerar o ECF Completo.")
+   - Usa `ecfFile.content` de cada um (string do banco, sem filesystem)
 
-indexM001 = encontrarPrimeiraLinha(linhasEcfImportado, inicia com "|M001|")
+   **Passo 2 — Parsear o Arquivo Parcial em mapa indexado:**
+   - Percorre o Parcial e indexa cada M300/M400 junto com seus filhos:
+     - Chave: `{codigoApuracao}|{tipoRegistro}|{codigoEnquadramento}` (ex: `"A01|M300|6"`, `"A01|M400|6"`)
+     - Valor: lista de strings — linha do M300/M400 + todas as linhas filhas M305/M310/M405/M410 imediatamente abaixo
+   - Também indexa os M030 presentes no Parcial: `Set<String> periodosParcial` (ex: {"A01", "A03"})
 
-se (indexM001 encontrado):
-    parteA = linhasEcfImportado[0 até indexM001-1]  // Tudo antes de M001
-senão:
-    parteA = linhasEcfImportado  // Arquivo completo (não tinha Parte M)
+   **Passo 3 — Construir bloco M do resultado linha a linha (granularidade M300):**
+   - Percorre o ECF Importado linha a linha:
+     - Linhas **fora do bloco M** (antes de `|M001|` e após `|M990|`) → copiadas sem alteração
+     - `|M001|` e `|M010|` → copiados do Importado sem alteração
+     - `|M030|...|{codigoApuracao}|` → copiada do Importado; atualiza variável "período atual"
+     - **`|M300|{codigoEnq}|...`** ou **`|M400|{codigoEnq}|...`** (período atual):
+       - Constrói chave `"{período atual}|M300|{codigoEnq}"`
+       - Se chave **existe no Parcial** → **substitui**: emite o M300/M400 do Parcial + todos seus filhos; pula as linhas filhas do Importado (M305/M310/M405/M410) até o próximo M300/M400 ou M030
+       - Se chave **não existe no Parcial** → **preserva**: copia M300/M400 do Importado e todos seus filhos filhos sem alteração
+     - `|M990|` → recalculado no Passo 5; placeholder no loop
 
-ecfCompleto = parteA + linhasArquivoM
-salvarArquivo(ecfCompleto)
-```
+   **Passo 4 — Adicionar do Parcial o que não existia no Importado:**
+   - Para cada M030 do Parcial (`periodosParcial`):
+     - Se o M030 **não existia no Importado**: adiciona o M030 inteiro (M030 + todos M300/M305/M310 filhos) ao final do bloco M antes do M990
+   - Para cada M300/M400 do Parcial:
+     - Se o M030 **existia no Importado** mas o `codigoEnquadramento` **não existia** naquele período: adiciona M300/M400 e seus filhos dentro do bloco do período correspondente no resultado
 
-**IMPORTANTE:** Não usa parser complexo. Apenas busca linha que inicia com `|M001|` e substitui tudo a partir dali.
+   **Passo 5 — Recalcular totalizadores:**
+   - Para cada M300/M400 no resultado: `totalValor` = soma dos campos `valor` de todos os `LancamentoParteB` que originaram aquele M300/M400 (para linhas substituídas pelo Parcial); para linhas preservadas do Importado mantém o totalValor original
+   - `M990` = contagem total de **todas** as linhas do bloco M no resultado (incluindo `M001` e o próprio `M990`)
+
+   **Passo 6 — Salvar:**
+   - Cria ou atualiza `EcfFile` com `fileType = COMPLETE_ECF`, `fileStatus = DRAFT`, **`content = string resultante do merge`**, `fileName = "ECF_Completo_{fiscalYear}_{cnpj}.txt"`, `sourceImportedEcf` e `sourceParcialFile` preenchidos
+   - Persiste via `saveOrReplace` — se já existir COMPLETE_ECF para esta empresa e ano, **substitui o conteúdo no mesmo registro** (upsert)
+
+3. Endpoint: `POST /api/v1/ecf/generate-completo` (autenticado, requer X-Company-Id)
+4. DTO `GenerateCompleteEcfRequest`: `fiscalYear` (obrigatório)
+5. DTO `GenerateCompleteEcfResponse`: `success`, `message`, `ecfFileId`, `fileName`, `fileSizeBytes`, `sourceImportedEcfId`, `sourceParcialFileId`, `totalLinhas`
+6. Response 400 se ECF Importado não existe: "ECF Importado não encontrado. Faça upload do arquivo ECF antes de gerar o ECF Completo."
+7. Response 400 se Arquivo Parcial não existe: "Arquivo Parcial não encontrado. Gere o Arquivo Parcial antes de gerar o ECF Completo."
+8. Response 403 Forbidden se empresa não pertence ao CONTADOR
+9. Teste valida merge: M300 com código presente no Parcial é substituído
+10. Teste valida merge: M300 com código ausente no Parcial é preservado do Importado
+11. Teste valida merge: M030 do Parcial (A01-A12) não presente no Importado é adicionado ao final
+12. Teste valida que M010 do Importado é sempre preservado
+13. Teste valida que conteúdo fora do bloco M (antes de M001 e depois de M990) é preservado intacto
+14. Teste valida recálculo: totalValor do M300 = soma dos M305 filhos
+15. Teste valida recálculo: M990 contém contagem total correta de linhas do bloco M
+16. Teste valida que `EcfFile.fileType = COMPLETE_ECF`
+17. Teste valida relacionamentos `sourceImportedEcf` e `sourceParcialFile` preenchidos
 
 ---
 
-## Story 5.6: Validação de Campos Obrigatórios (Arquivo M e ECF Completo)
+## Story 5.6: Validação de Campos Obrigatórios (Arquivo Parcial e ECF Completo)
 
 Como desenvolvedor,
-Eu quero validador que verifique campos obrigatórios de registros M conforme layout SPED,
+Eu quero validador que verifique campos obrigatórios dos registros M conforme layout SPED,
 Para que arquivos gerados não sejam rejeitados pelo validador PVA da RFB.
 
 **Acceptance Criteria:**
 
-1. Service `EcfValidatorService` criado
-2. Método `validateMFile(String mFileContent)` retorna `ValidationResult`:
-   - Valida que M001 existe e tem formato correto
-   - Valida que cada M300 tem campos obrigatórios: movementType, description, amount > 0
-   - Valida que M350 tem saldo inicial, saldo final
-   - Valida que cada M400 tem campos obrigatórios análogos a M300
-   - Valida que M410 tem saldo inicial, saldo final
-   - Valida que M990 existe e contagem de registros está correta
-3. Método `validateCompleteEcf(String completeEcfContent)` retorna `ValidationResult`:
-   - Valida Parte A: registros 0000, J100, J150 existem (mínimo)
-   - Valida Parte M: mesmas validações de `validateMFile`
-   - Valida estrutura geral do arquivo ECF
-4. DTO `ValidationResult`:
-   - `boolean valid`
-   - `List<String> errors` (lista de mensagens de erro)
-   - `List<String> warnings` (lista de avisos não bloqueantes)
-5. Use case `ValidateEcfFileUseCase` com método `validate(Long ecfFileId)`
-6. Endpoint `POST /api/v1/ecf/{ecfFileId}/validate` (autenticado, requer X-Company-Id)
-7. Response 200 OK com `ValidationResult`
-8. Se `valid = false`, atualiza `EcfFile.status = ERROR` e `validationErrors = JSON(errors)`
-9. Se `valid = true`, atualiza `EcfFile.status = VALIDATED`
-10. Validação funciona para os 3 tipos de arquivo:
-    - **M_FILE_ONLY**: valida apenas registros M
-    - **IMPORTED_ECF**: valida Parte A + Parte M se houver
-    - **COMPLETE_ECF**: valida Parte A + Parte M completa
-11. Teste valida que arquivo M correto retorna `valid = true`
-12. Teste valida que arquivo ECF completo correto retorna `valid = true`
-13. Teste valida que arquivo com M300 sem description retorna erro: "M300: campo description é obrigatório"
-14. Teste valida que arquivo com M990 com contagem errada retorna erro
-15. Teste valida que status do EcfFile é atualizado corretamente (VALIDATED ou ERROR)
+1. Service `EcfValidatorService` criado com **3 métodos**, um por tipo de arquivo:
+
+2. Método `validateArquivoParcial(String content)` retorna `ValidationResult` (para `ARQUIVO_PARCIAL`):
+   - Valida que existe ao menos um `|M030|`
+   - Valida que cada M300/M400 tem: codigoEnquadramento não vazio, totalValor numérico, indicadorRelacionamento válido (`1`, `2` ou `3`)
+   - Valida que cada M305/M405 tem: codigoContaParteB não vazio, valor numérico, D/C válido (`D` ou `C`)
+   - Valida que cada M310/M410 tem: codigoContabil não vazio, valor numérico, D/C válido (`D` ou `C`)
+   - Valida consistência do indicador: se `indicador=1`, não deve existir M310 filhos; se `indicador=2`, não deve existir M305 filhos
+   - Avisa (warning) se `totalValor` do M300 divergir da soma dos `valor` dos lançamentos do grupo
+
+3. Método `validateImportedEcf(String content)` retorna `ValidationResult` (para `IMPORTED_ECF`):
+   - Valida que `|M001|` existe
+   - Valida que `|M990|` existe
+   - Valida que todas as linhas iniciam e terminam com `|` (formato SPED básico)
+   - Não valida conteúdo interno do bloco M em detalhes — o arquivo é de sistema externo
+
+4. Método `validateCompleteEcf(String content)` retorna `ValidationResult` (para `COMPLETE_ECF`):
+   - Valida estrutura do bloco M (mesmas validações do `validateArquivoParcial`)
+   - Valida que `|M001|` existe
+   - Valida que `|M990|` existe e que a contagem de linhas do bloco M está correta
+   - Valida que todo o conteúdo (bloco M e demais blocos) tem linhas iniciando e terminando com `|`
+
+5. DTO `ValidationResult`: `boolean valid`, `List<String> errors`, `List<String> warnings`
+6. Use case `ValidateEcfFileUseCase` com método `validate(Long ecfFileId, Long companyId)` — delega ao método correto conforme `EcfFile.fileType`
+7. Endpoint: `POST /api/v1/ecf/{ecfFileId}/validate` (autenticado, requer X-Company-Id)
+8. Response 200 OK com `ValidationResult`
+9. Se `valid = false`: atualiza `EcfFile.fileStatus = ERROR` e `validationErrors = JSON(errors)`
+10. Se `valid = true`: atualiza `EcfFile.fileStatus = VALIDATED`
+11. Funciona para os 3 tipos de arquivo (chama método correspondente ao tipo)
+12. Teste valida que Arquivo Parcial bem formado retorna `valid = true`
+13. Teste valida que M300 com `indicador=1` e linha M310 filha gera erro de inconsistência
+14. Teste valida que M990 com contagem errada gera erro no COMPLETE_ECF
+15. Teste valida que IMPORTED_ECF sem `|M001|` gera erro
+16. Teste valida que status do EcfFile é atualizado corretamente
 
 ---
 
-## Story 5.7: Download de Arquivos ECF (Três Tipos)
+## Story 5.7: Download de Arquivos ECF
 
 Como CONTADOR,
-Eu quero fazer download dos arquivos ECF gerados ou importados,
-Para que eu possa revisar, transmitir ao SPED ou compartilhar com cliente.
+Eu quero fazer download dos três tipos de arquivo ECF,
+Para que eu possa revisar, transmitir ao SPED ou compartilhar.
 
 **Acceptance Criteria:**
 
-1. Use case `DownloadEcfFileUseCase` criado com método `download(Long ecfFileId, Long companyId)`
-2. Service implementa:
-   - Busca `EcfFile` por ID e valida que pertence à companyId
-   - Lê arquivo de storage
-   - Retorna stream de bytes + metadados (fileName, contentType, fileSizeBytes)
-3. Endpoint `GET /api/v1/ecf/{ecfFileId}/download` (autenticado, requer X-Company-Id)
-4. Response com headers:
-   - `Content-Type: text/plain; charset=UTF-8`
-   - `Content-Disposition: attachment; filename="{fileName}"`
-   - `Content-Length: {fileSizeBytes}`
-5. Response 200 OK com arquivo .txt no body
-6. Response 404 Not Found se arquivo não existe
-7. Response 403 Forbidden se arquivo não pertence à empresa do CONTADOR
-8. Validação: CONTADOR só pode baixar arquivos de sua empresa
-9. Download funciona para os 3 tipos de arquivo:
-   - **M_FILE_ONLY**: download do Arquivo M isolado
-   - **IMPORTED_ECF**: download do ECF importado original
-   - **COMPLETE_ECF**: download do ECF completo (Parte A + Parte M)
-10. Teste valida download bem-sucedido de arquivo M_FILE_ONLY
-11. Teste valida download bem-sucedido de arquivo IMPORTED_ECF
-12. Teste valida download bem-sucedido de arquivo COMPLETE_ECF
-13. Teste valida que tentativa de baixar arquivo de outra empresa retorna 403
-14. Teste valida headers Content-Type e Content-Disposition corretos
+1. Use case `DownloadEcfFileUseCase` criado
+2. Service: busca `EcfFile` por ID, valida que pertence à empresa, retorna `ecfFile.content` como stream de bytes (UTF-8)
+3. Endpoint: `GET /api/v1/ecf/{ecfFileId}/download` (autenticado, requer X-Company-Id)
+4. Response headers: `Content-Type: text/plain; charset=UTF-8`, `Content-Disposition: attachment; filename="{fileName}"`, `Content-Length: {fileSizeBytes}`
+5. Response 200 OK com arquivo `.txt` no body
+6. Response 404 se arquivo não existe
+7. Response 403 se arquivo não pertence à empresa do CONTADOR
+8. Funciona para os 3 tipos de arquivo
+9. Teste valida download bem-sucedido de ARQUIVO_PARCIAL
+10. Teste valida download bem-sucedido de IMPORTED_ECF
+11. Teste valida download bem-sucedido de COMPLETE_ECF
+12. Teste valida 403 ao tentar baixar arquivo de outra empresa
 
 ---
 
-## Story 5.8: Listagem de Arquivos ECF (Por Tipo)
+## Story 5.8: Listagem de Arquivos ECF
 
 Como CONTADOR,
-Eu quero visualizar lista de arquivos ECF gerados/importados para uma empresa e ano fiscal,
-Para que eu possa acompanhar histórico de gerações, uploads e downloads.
+Eu quero visualizar lista de arquivos ECF gerados e importados para um ano fiscal,
+Para que eu possa acompanhar o histórico e status de cada arquivo.
 
 **Acceptance Criteria:**
 
 1. Use case `ListEcfFilesUseCase` criado
-2. Endpoint `GET /api/v1/ecf?fiscalYear=2024` (autenticado, requer X-Company-Id)
+2. Endpoint: `GET /api/v1/ecf?fiscalYear=2024` (autenticado, requer X-Company-Id)
 3. DTO `EcfFileListResponse`:
-   - `id`, `fiscalYear`, `fileType`, `fileName`, `fileSizeBytes`
-   - `status`, `createdAt`, `createdBy`
-   - `validationErrors` (se status ERROR)
-   - `sourceImportedEcfId`, `sourceMFileId` (se fileType COMPLETE_ECF)
-4. Listagem agrupa arquivos por tipo:
-   - `mFiles`: lista de arquivos tipo M_FILE_ONLY
-   - `importedEcfs`: lista de arquivos tipo IMPORTED_ECF
-   - `completeEcfs`: lista de arquivos tipo COMPLETE_ECF
-5. Cada lista ordenada por `createdAt DESC` (mais recentes primeiro)
-6. Suporta filtro por tipo: `?fileType=M_FILE_ONLY`
-7. Suporta filtro por status: `?status=VALIDATED`
-8. Response 200 OK com listas agrupadas por tipo
-9. Validação: CONTADOR só visualiza arquivos de sua empresa
-10. Response 403 Forbidden se tentar acessar arquivos de outra empresa
-11. Teste valida listagem retorna arquivos separados por tipo
-12. Teste valida que cada tipo está ordenado por data decrescente
-13. Teste valida filtro por fileType funciona
-14. Teste valida filtro por status funciona
-15. Teste valida que CONTADOR só vê arquivos de sua empresa
+   - `arquivoParcial`: `EcfFileSummary` ou null (único por empresa+ano)
+   - `ecfImportado`: `EcfFileSummary` ou null (único por empresa+ano)
+   - `ecfCompleto`: `EcfFileSummary` ou null (único por empresa+ano)
+   - Nota: a constraint `UNIQUE(fileType, company, fiscalYear)` garante no máximo 1 de cada tipo por ano
+4. DTO `EcfFileSummary`: `id`, `fiscalYear`, `fileType`, `fileName`, `fileSizeBytes`, `fileStatus`, `generatedAt`, `generatedBy`, `validationErrors` (se ERROR), `sourceImportedEcfId`, `sourceParcialFileId` (se COMPLETE_ECF)
+5. Suporte a filtro: `?fileType=ARQUIVO_PARCIAL`
+6. CONTADOR só visualiza arquivos de sua empresa
+7. Response 200 OK
+8. Teste valida que retorna os 3 campos separados por tipo (null se não gerado ainda)
+9. Teste valida que CONTADOR não vê arquivos de outra empresa
 
 ---
 
 ## Story 5.9: Finalização de Arquivo ECF
 
 Como CONTADOR,
-Eu quero marcar arquivo ECF como finalizado,
-Para que eu possa bloquear modificações posteriores e indicar que arquivo foi transmitido ao SPED.
+Eu quero marcar o ECF Completo como finalizado,
+Para que eu indique que o arquivo foi transmitido ao SPED e bloqueie modificações posteriores.
 
 **Acceptance Criteria:**
 
 1. Use case `FinalizeEcfFileUseCase` criado
-2. Endpoint `PATCH /api/v1/ecf/{ecfFileId}/finalize` (autenticado, requer X-Company-Id)
-3. Service valida que arquivo está VALIDATED (não pode finalizar se status ERROR ou DRAFT)
-4. Atualiza `EcfFile.status = FINALIZED`
-5. Registra auditoria (updatedBy, updatedAt)
-6. Finalização funciona para os 3 tipos de arquivo
+2. Endpoint: `PATCH /api/v1/ecf/{ecfFileId}/finalize` (autenticado, requer X-Company-Id)
+3. Service valida que o arquivo é do tipo `COMPLETE_ECF` — **somente ECF Completo pode ser finalizado** (ARQUIVO_PARCIAL e IMPORTED_ECF são intermediários, não são transmitidos ao SPED)
+4. Service valida que arquivo está `VALIDATED` (não pode finalizar se DRAFT ou ERROR)
+5. Atualiza `EcfFile.fileStatus = FINALIZED`
+6. Registra auditoria (`updatedBy`, `updatedAt`)
 7. DTO `FinalizeEcfFileResponse`: `success`, `message`, `newStatus`, `fileType`
 8. Response 200 OK com confirmação
-9. Response 400 Bad Request se arquivo não está VALIDATED: "Apenas arquivos validados podem ser finalizados"
-10. Response 404 Not Found se arquivo não existe
-11. Response 403 Forbidden se arquivo não pertence à empresa do CONTADOR
-12. Teste valida finalização bem-sucedida de arquivo VALIDATED
-13. Teste valida que tentativa de finalizar arquivo DRAFT retorna 400
-14. Teste valida auditoria (updatedBy, updatedAt) está correta
-15. Teste valida finalização para os 3 tipos de arquivo
+9. Response 400 se arquivo não é `COMPLETE_ECF`: "Apenas o ECF Completo pode ser finalizado"
+10. Response 400 se arquivo não está VALIDATED: "Apenas arquivos validados podem ser finalizados"
+11. Response 404 se arquivo não existe
+12. Response 403 se arquivo não pertence ao CONTADOR
+13. Teste valida finalização de COMPLETE_ECF com status VALIDATED
+14. Teste valida que tentativa de finalizar ARQUIVO_PARCIAL retorna 400
+15. Teste valida que tentativa de finalizar DRAFT retorna 400
 
 ---
 
 ## Story 5.10: Testes End-to-End do Fluxo de Geração ECF
 
 Como desenvolvedor,
-Eu quero testes E2E cobrindo fluxo completo de geração ECF com os três tipos de arquivo,
-Para garantir que todo pipeline (geração M, upload ECF, merge, validação, download) funciona corretamente.
+Eu quero testes E2E cobrindo o fluxo completo de geração do Arquivo Parcial, upload do ECF Importado e merge para ECF Completo,
+Para garantir que o pipeline funciona corretamente de ponta a ponta.
 
 **Acceptance Criteria:**
 
-1. Teste E2E `GenerateMFileFlowTest` (valida Story 5.3 - Geração do Arquivo M completo em uma única operação):
-   - Setup: cria empresa, parâmetros, dados contábeis, movimentos fiscais (LALUR e LACS), cálculos IRPJ/CSLL
-   - Executa: gera Arquivo M (POST /ecf/generate-m-file) → UM ÚNICO BOTÃO gera tudo
-   - Valida: arquivo gerado existe em storage
-   - Valida: `EcfFile` criado com tipo M_FILE_ONLY, status DRAFT
-   - Valida: arquivo contém registros M001, M300, M350, M400, M410, M990 (todos gerados de uma só vez)
-   - Valida: não foi necessário chamar endpoints separados para M300, M350, M400 (não existem)
-   - Executa: valida arquivo (POST /ecf/{id}/validate)
-   - Valida: status atualizado para VALIDATED
-   - Executa: download (GET /ecf/{id}/download)
+1. **Teste E2E `GenerateArquivoParcialFlowTest`:**
+   - Setup: cria empresa, ContasParteB, LancamentosParteB (IRPJ e CSLL, meses Jan-Dez, tipoRelacionamento variados)
+   - Executa: gera Arquivo Parcial (`POST /ecf/generate-parcial`)
+   - Valida: `EcfFile.fileType = ARQUIVO_PARCIAL`, `fileStatus = DRAFT`
+   - Valida: arquivo contém M030 para cada mês com lançamentos
+   - Valida: lançamentos IRPJ geraram M300/M305/M310, CSLL geraram M400/M405/M410
+   - Valida: lançamento com `tipoRelacionamento = AMBOS` gerou tanto M305 quanto M310
+   - Valida: totalValor no M300 = soma dos M305 filhos
+   - Executa: valida arquivo (`POST /ecf/{id}/validate`)
+   - Valida: `fileStatus = VALIDATED`
+   - Executa: download (`GET /ecf/{id}/download`)
    - Valida: arquivo baixado é idêntico ao gerado
-   - Valida: apenas registros M estão presentes (sem Parte A)
-2. Teste E2E `UploadImportedEcfFlowTest`:
-   - Setup: prepara arquivo ECF mock com Parte A (0000, J100, J150, J800) + Parte M antiga
-   - Executa: upload (POST /ecf/upload-imported)
-   - Valida: `EcfFile` criado com tipo IMPORTED_ECF, status DRAFT
-   - Valida: arquivo salvo em storage
-   - Valida: `lineCount` correto
+
+2. **Teste E2E `UploadImportedEcfFlowTest`:**
+   - Setup: prepara arquivo ECF mock com bloco M (M001, M010, M030|A01, M300|6, M305, M310, M990)
+   - Executa: upload (`POST /ecf/upload-importado?fiscalYear=2024`)
+   - Valida: `EcfFile.fileType = IMPORTED_ECF`, `fileStatus = DRAFT`
    - Executa: download
-   - Valida: arquivo baixado é idêntico ao uploadado
-3. Teste E2E `GenerateCompleteEcfFlowTest` (valida Story 5.5 - Substituição Simples):
-   - Setup: mesmo setup de GenerateMFileFlowTest + upload ECF importado
-   - Executa: gera Arquivo M (POST /ecf/generate-m-file)
-   - Executa: upload ECF importado com Parte A + Parte M antiga
-   - Executa: gera ECF completo (POST /ecf/generate-complete) → usa algoritmo de substituição simples
-   - Valida: arquivo gerado contém Parte A completa (do importado, tudo antes de |M001|)
-   - Valida: arquivo gerado contém Parte M nova (gerada pelo sistema)
-   - Valida: Parte M antiga foi completamente removida (tudo a partir de |M001| do importado foi descartado)
-   - Valida: `EcfFile` criado com tipo COMPLETE_ECF, status DRAFT
-   - Valida: `sourceImportedEcf` e `sourceMFile` estão preenchidos corretamente
-   - Valida: não houve parsing complexo, apenas busca de linha |M001|
-   - Executa: valida arquivo
-   - Valida: status VALIDATED
-   - Executa: finaliza (PATCH /ecf/{id}/finalize)
-   - Valida: status FINALIZED
-4. Teste E2E `ValidationErrorFlowTest`:
-   - Setup: cria movimentos fiscais com description vazio (simula erro)
-   - Executa: gera Arquivo M
-   - Executa: valida
-   - Valida: status ERROR, validationErrors contém mensagem de erro
-   - Valida: tentativa de finalizar retorna 400 Bad Request
-5. Teste E2E `ListAndDownloadMultipleFilesTest`:
-   - Setup: gera 2 Arquivos M, faz upload de 1 ECF importado, gera 1 ECF completo
-   - Executa: lista arquivos (GET /ecf?fiscalYear=2024)
-   - Valida: retorna 2 M_FILE_ONLY, 1 IMPORTED_ECF, 1 COMPLETE_ECF agrupados por tipo
-   - Valida: cada grupo ordenado por createdAt DESC
-   - Executa: baixa cada arquivo
-   - Valida: todos downloads bem-sucedidos
-6. Teste E2E `SimpleReplacementTest` (valida algoritmo de substituição simples):
-   - Setup: upload ECF importado com Parte A + Parte M antiga desatualizada
-   - Setup: cria novos movimentos fiscais e recalcula IRPJ/CSLL
-   - Executa: gera Arquivo M novo
-   - Executa: gera ECF completo (substituição simples por busca de |M001|)
-   - Valida: algoritmo encontrou corretamente a linha |M001| no ECF importado
-   - Valida: Parte A foi extraída corretamente (todas linhas antes de |M001|)
-   - Valida: ECF completo contém Parte M nova (registros refletem novos movimentos)
-   - Valida: Parte M antiga foi completamente removida (não mesclada, substituída)
-   - Valida: quantidade de linhas corretas (linhas Parte A + linhas Parte M nova)
-7. Teste E2E `AppendWhenNoM001Test` (valida caso onde ECF importado não tem Parte M):
-   - Setup: upload ECF importado contendo APENAS Parte A (sem |M001|)
-   - Executa: gera Arquivo M
-   - Executa: gera ECF completo
-   - Valida: algoritmo não encontrou |M001|
-   - Valida: Parte M foi adicionada ao final do arquivo (append)
-   - Valida: ECF completo = ECF importado completo + Arquivo M
-7. Todos testes usam TestContainers PostgreSQL
-8. Todos testes criam contexto completo (usuário CONTADOR, empresa, X-Company-Id header)
-9. Cobertura de código do Epic 5 deve ser >= 80%
+   - Valida: arquivo baixado idêntico ao uploadado
+
+3. **Teste E2E `MergeByKeyFlowTest` (validação principal do algoritmo de merge):**
+   - Setup: LancamentosParteB com código "6" (mesmo que ECF_IMPORTADO tem) e código "99" (não existe no Importado)
+   - Setup: ECF Importado com M300|6 (valor antigo) e M300|8 (sem equivalente no Parcial)
+   - Executa: gera Arquivo Parcial
+   - Executa: upload ECF Importado
+   - Executa: gera ECF Completo (`POST /ecf/generate-completo`)
+   - Valida: **M300|6 no resultado usa valor do Parcial** (replace bem-sucedido)
+   - Valida: **M300|8 no resultado usa valor do Importado** (preservação de código sem match)
+   - Valida: **M300|99 do Parcial foi adicionado** (código novo não existia no Importado)
+   - Valida: **M010 do Importado preservado** (nunca substituído)
+   - Valida: **Conteúdo antes de M001 e após M990 idêntico ao Importado** (resto do ECF intacto)
+   - Valida: **totalValor do M300|6 = soma dos M305 filhos** (totalizador recalculado)
+   - Valida: **M990 count correto** (contagem total de linhas do bloco M)
+   - Valida: M030|A01..A12 do Parcial adicionados ao resultado
+   - Executa: valida ECF Completo
+   - Valida: `fileStatus = VALIDATED`
+   - Executa: finaliza (`PATCH /ecf/{id}/finalize`)
+   - Valida: `fileStatus = FINALIZED`
+
+4. **Teste E2E `M305M310RoutingTest`:**
+   - Setup: lançamentos com os 4 tipos de `tipoRelacionamento`
+   - Valida: `CONTA_PARTE_B` → apenas M305, nenhum M310
+   - Valida: `CONTA_CONTABIL` → apenas M310, nenhum M305
+   - Valida: `AMBOS` → M305 + M310 para o mesmo lançamento
+   - Valida: indicadorRelacionamento no M300 correto para cada caso
+
+5. **Teste E2E `MultiTenantIsolationTest`:**
+   - Setup: duas empresas com lançamentos e arquivos ECF
+   - Valida: CONTADOR da empresa A não acessa arquivos da empresa B (403)
+   - Valida: listagem retorna apenas arquivos da empresa própria
+
+6. Todos os testes usam TestContainers PostgreSQL
+7. Todos os testes criam contexto completo (usuário CONTADOR, empresa, header X-Company-Id)
+8. Cobertura de código do Epic 5 deve ser >= 80%
 
 ---
 
@@ -451,50 +550,317 @@ Para garantir que todo pipeline (geração M, upload ECF, merge, validação, do
 
 Ao final deste épico, o sistema terá:
 
-- Entidade `EcfFile` com suporte para **três tipos de arquivo**: M_FILE_ONLY, IMPORTED_ECF, COMPLETE_ECF
-- **Serviço interno de geração de registros M** (Story 5.2): métodos para gerar M001, M300, M350, M400, M410, M990 (não são endpoints separados)
-- **UM ÚNICO BOTÃO para gerar Arquivo M completo** (Story 5.3): endpoint único que gera todos os registros M de uma só vez em operação atômica
-- **Arquivo M isolado (M_FILE_ONLY)**: contém apenas registros M gerados pelo sistema
-- **Upload de ECF importado (IMPORTED_ECF)**: permite importar ECF completo de sistemas externos com validação básica de formato
-- **Substituição simples de Parte M (COMPLETE_ECF)** (Story 5.5): busca linha |M001| no ECF importado e substitui tudo a partir dali pela Parte M gerada
-- Validador de campos obrigatórios conforme layout SPED para os três tipos
-- Endpoints de download para os três tipos de arquivo
-- Listagem agrupada por tipo de arquivo
-- Finalização de arquivos para bloqueio de modificações
-- Rastreabilidade completa: ECF completo referencia arquivos source usados na substituição
-- Testes E2E cobrindo fluxos completos de geração, upload, substituição simples, validação e download
-- Isolamento multi-tenant via X-Company-Id
-- Auditoria completa (createdBy, updatedBy)
+- Entidade `EcfFile` com 3 tipos: ARQUIVO_PARCIAL, IMPORTED_ECF, COMPLETE_ECF
+- Geração do **Arquivo Parcial** (bloco M) a partir de `LancamentoParteB` e `ContaParteB` (Epic 3), sem dependência de motor de cálculo fiscal
+- Registros gerados:
+  - `M030`/`M300`/`M305`/`M310` — ajustes IRPJ (Parte A LALUR)
+  - `M030`/`M350`/`M355`/`M360` — ajustes CSLL (Parte A LACS)
+  - `M400`/`M410`/`M405` — contas da Parte B (natureza, lançamentos e saldo)
+  - `M990` — totalizador de linhas
+- Upload do ECF Importado com validação de formato SPED
+- **Merge inteligente por chave**: substitui M300/M350 onde código coincide, preserva onde não coincide, adiciona blocos do Parcial, recalcula totalizadores
+- Validação de campos obrigatórios e totalizadores
+- Download dos 3 tipos de arquivo
+- Listagem agrupada por tipo
+- Finalização para bloqueio pós-transmissão SPED
+- Testes E2E cobrindo merge por chave, roteamento M305/M310/M355/M360, e isolamento multi-tenant
 
-**IMPORTANTE - Simplicidade:**
-- **Geração M:** Não existem endpoints ou botões separados para gerar cada parte do arquivo M. Existe apenas UM ÚNICO ENDPOINT (`POST /api/v1/ecf/generate-m-file`) que gera o arquivo M completo de uma só vez.
-- **Merge:** Não usa parser complexo. Usa algoritmo simples de substituição por busca de linha `|M001|`. Tudo antes de |M001| é preservado (Parte A), tudo a partir de |M001| é substituído pela Parte M nova gerada.
+**Entidades utilizadas (todas do Epic 3, sem dependência do Epic 4):**
+- `LancamentoParteB`: fonte dos ajustes fiscais (M300/M350 e sub-registros; M410)
+- `ContaParteB`: definição das contas da Parte B (M305/M355; M400; M405)
+- `PlanoDeContas` (ChartOfAccount): referência para contas contábeis (M310/M360)
 
-**Três Tipos de Arquivo ECF:**
-
-1. **M_FILE_ONLY (Arquivo M isolado)**
-   - Contém: Apenas registros M (M001, M300, M350, M400, M410, M990)
-   - Gerado por: Sistema a partir de movimentações fiscais e cálculos (UM ÚNICO BOTÃO)
-   - Uso: Revisão isolada da Parte M antes de merge, ou envio separado se necessário
-
-2. **IMPORTED_ECF (ECF Importado)**
-   - Contém: ECF completo importado (Parte A + Parte M antiga opcional)
-   - Origem: Upload pelo usuário de arquivo gerado por sistema externo
-   - Uso: Fornece Parte A para substituição, preserva backup do ECF original
-
-3. **COMPLETE_ECF (ECF Completo)**
-   - Contém: Parte A (do IMPORTED_ECF, tudo antes de |M001|) + Parte M (gerada pelo sistema, nova)
-   - Gerado por: **Substituição simples** de IMPORTED_ECF + M_FILE_ONLY (busca |M001| e substitui)
-   - Uso: Arquivo final pronto para transmissão SPED
+**Campos-chave do `LancamentoParteB` usados na geração:**
+- `tipoApuracao` (IRPJ → M300/M305/M310; CSLL → M350/M355/M360)
+- `tipoAjuste` (ADICAO → A e D; EXCLUSAO → E e C)
+- `tipoRelacionamento` (define se gera M305/M355 e/ou M310/M360)
+- `codigoEnquadramento` → campo do M300/M350 (referência ao código RFB)
+- `valor` → valor do sub-registro M305/M355/M310/M360 e do M410
+- `mesReferencia` + `anoReferencia` → período do M030
+- `contaParteBId` → código para M305
+- `contaContabilId` → código para M310
 
 **Dependências de Epics Anteriores:**
 - Epic 1: Autenticação JWT, usuários CONTADOR
 - Epic 2: Entidades Company e CompanyParameter
-- Epic 3: CodigoEnquadramentoLalur
-- Epic 4: Movimentações fiscais (FiscalMovement), TaxCalculationResult
+- Epic 3: LancamentoParteB, ContaParteB, PlanoDeContas
 
-**Próximos Passos (Epic 6):**
-- Dashboard com visão geral de empresas
-- Indicadores de completude (% dados preenchidos)
-- Alertas de pendências e prazos
-- Visualização de status de cálculos e arquivos ECF
+**Próximos Passos:**
+- Este é o último épico funcional do MVP
+- Epic 6 e Epic 7 foram removidos do escopo
+
+---
+
+## Apêndice A: Mapeamento Campo a Campo — Como Cada Registro M É Gerado
+
+Este apêndice serve como referência definitiva para o desenvolvedor implementar a Story 5.2. Para cada tipo de registro, mostra o layout SPED e a origem exata de cada campo.
+
+---
+
+## GRUPO 1 — Ajustes IRPJ (Parte A do LALUR)
+
+---
+
+### M030 — Cabeçalho de Período
+
+**Layout:**
+```
+|M030|{dataInicio}|{dataFim}|{codigoApuracao}|
+```
+
+| Campo | Tipo | Origem |
+|---|---|---|
+| `dataInicio` | DDMMYYYY | Primeiro dia do mês: `01` + `mesReferencia` com 2 dígitos + `anoReferencia` (ex: janeiro/2024 → `01012024`) |
+| `dataFim` | DDMMYYYY | Último dia do mês (considerar ano bissexto em fevereiro) |
+| `codigoApuracao` | String | `"A"` + `mesReferencia` com 2 dígitos (mês 1 → `A01`, mês 12 → `A12`) |
+
+**Gerado**: 1 linha por `mesReferencia` distinto com lançamentos ACTIVE no `fiscalYear`. Aparece tanto na seção IRPJ quanto na seção CSLL.
+
+---
+
+### M300 — Ajuste LALUR, IRPJ (pai de M305/M310)
+
+**Layout:**
+```
+|M300|{codigoEnquadramento}|{descricao}|{tipoAjuste}|{indicador}|{totalValor}|{historico}|
+```
+
+| Campo | Tipo | Origem |
+|---|---|---|
+| `codigoEnquadramento` | String | Confirmar Epic 3: campo direto em `LancamentoParteB.codigoEnquadramento` ou via `ParametroTributario.codigoEnquadramento` |
+| `descricao` | String | `ParametroTributario.descricao` — descrição oficial do código RFB |
+| `tipoAjuste` | `A` ou `E` | `LancamentoParteB.tipoAjuste`: `ADICAO` → `"A"` / `EXCLUSAO` → `"E"` |
+| `indicador` | `1`, `2` ou `3` | Derivado do `tipoRelacionamento` do grupo: todos `CONTA_PARTE_B` → `1` / todos `CONTA_CONTABIL` → `2` / mix ou algum `AMBOS` → `3` |
+| `totalValor` | Decimal BR | Soma de `LancamentoParteB.valor` de todos os lançamentos do grupo (vírgula decimal, 2 casas, sem milhar) |
+| `historico` | String | `LancamentoParteB.descricao` do primeiro lançamento do grupo |
+
+**Gerado**: 1 linha por grupo `{codigoEnquadramento}` dentro de cada período M030 IRPJ. Lançamentos com mesma chave são somados.
+
+---
+
+### M305 — Conta da Parte B, IRPJ (filho de M300)
+
+**Layout:**
+```
+|M305|{codigoContaParteB}|{valor}|{DC}|
+```
+
+| Campo | Tipo | Origem |
+|---|---|---|
+| `codigoContaParteB` | String | `ContaParteB.codigoConta` — via `LancamentoParteB.contaParteBId` |
+| `valor` | Decimal BR | `LancamentoParteB.valor` |
+| `DC` | `D` ou `C` | `LancamentoParteB.tipoAjuste`: `ADICAO` → `"D"` / `EXCLUSAO` → `"C"` |
+
+**Condição**: somente quando `LancamentoParteB.tipoRelacionamento ∈ {CONTA_PARTE_B, AMBOS}` E `tipoApuracao = IRPJ`.
+
+---
+
+### M310 — Conta Contábil, IRPJ (filho de M300)
+
+**Layout:**
+```
+|M310|{codigoContabil}||{valor}|{DC}|
+```
+> Pipes consecutivos `||` = campo vazio obrigatório no layout SPED.
+
+| Campo | Tipo | Origem |
+|---|---|---|
+| `codigoContabil` | String | `PlanoDeContas.code` — via `LancamentoParteB.contaContabilId` |
+| *(vazio)* | — | Sempre vazio |
+| `valor` | Decimal BR | `LancamentoParteB.valor` |
+| `DC` | `D` ou `C` | `LancamentoParteB.tipoAjuste`: `ADICAO` → `"D"` / `EXCLUSAO` → `"C"` |
+
+**Condição**: somente quando `LancamentoParteB.tipoRelacionamento ∈ {CONTA_CONTABIL, AMBOS}` E `tipoApuracao = IRPJ`.
+
+---
+
+## GRUPO 2 — Ajustes CSLL (Parte A do LACS)
+
+Os registros M350/M355/M360 são **estruturalmente idênticos** a M300/M305/M310, mas para lançamentos com `tipoApuracao = CSLL`.
+
+---
+
+### M350 — Ajuste LACS, CSLL (pai de M355/M360)
+
+**Layout:**
+```
+|M350|{codigoEnquadramento}|{descricao}|{tipoAjuste}|{indicador}|{totalValor}|{historico}|
+```
+
+Mesmos campos e mesmas origens que M300. **Condição**: `tipoApuracao = CSLL`.
+
+---
+
+### M355 — Conta da Parte B, CSLL (filho de M350)
+
+**Layout:**
+```
+|M355|{codigoContaParteB}|{valor}|{DC}|
+```
+
+Mesmos campos e mesmas origens que M305. **Condição**: `tipoRelacionamento ∈ {CONTA_PARTE_B, AMBOS}` E `tipoApuracao = CSLL`.
+
+---
+
+### M360 — Conta Contábil, CSLL (filho de M350)
+
+**Layout:**
+```
+|M360|{codigoContabil}||{valor}|{DC}|
+```
+
+Mesmos campos e mesmas origens que M310. **Condição**: `tipoRelacionamento ∈ {CONTA_CONTABIL, AMBOS}` E `tipoApuracao = CSLL`.
+
+---
+
+## GRUPO 3 — Contas da Parte B (LALUR e LACS)
+
+Os registros M400/M410/M405 gerenciam as **contas da Parte B** — são uma visão por conta, complementar à visão por ajuste (M300/M350).
+
+---
+
+### M400 — Natureza da Conta da Parte B (definição/cadastro)
+
+**Função**: define/identifica cada conta da Parte B utilizada no ano. Equivale a cadastrar a "gaveta" antes de movimentá-la.
+
+**Layout:**
+```
+|M400|{codigoConta}|{descricao}|{codigoTabela}|...|
+```
+> ⚠️ Campos exatos a confirmar contra o layout oficial SPED ECF (Manual de Orientação do Leiaute da RFB).
+
+| Campo | Tipo | Origem (estimada) |
+|---|---|---|
+| `codigoConta` | String | `ContaParteB.codigoConta` |
+| `descricao` | String | `ContaParteB.descricao` |
+| `codigoTabela` | String | Referência à tabela dinâmica da RFB — confirmar campo em `ContaParteB` |
+
+**Gerado**: 1 linha por `ContaParteB` com lançamentos ACTIVE no `fiscalYear`.
+
+---
+
+### M410 — Lançamento na Conta da Parte B (movimento)
+
+**Função**: registra cada movimentação que aumenta ou diminui o saldo de uma conta da Parte B. O M410 é a "ficha de movimentação" da conta.
+
+**Layout:**
+```
+|M410|{codigoConta}|{periodo}|{tipoLanc}|{valor}|...|
+```
+> ⚠️ Campos exatos a confirmar contra o layout oficial SPED ECF.
+
+| Campo | Tipo | Origem (estimada) |
+|---|---|---|
+| `codigoConta` | String | `ContaParteB.codigoConta` — via `LancamentoParteB.contaParteBId` |
+| `periodo` | DDMMYYYY ou similar | Derivado de `LancamentoParteB.mesReferencia` + `anoReferencia` |
+| `tipoLanc` | String | Derivado de `LancamentoParteB.tipoAjuste` |
+| `valor` | Decimal BR | `LancamentoParteB.valor` |
+
+**Gerado**: 1 linha por `LancamentoParteB` com `contaParteBId` preenchido (i.e., `tipoRelacionamento ∈ {CONTA_PARTE_B, AMBOS}`).
+
+---
+
+### M405 — Resumo/Saldo Final da Conta da Parte B
+
+**Função**: apresenta o saldo final de cada conta da Parte B após todos os lançamentos do período. É a "conferência" do que sobrou na gaveta.
+
+**Layout:**
+```
+|M405|{codigoConta}|{saldoAnterior}|{totalAdic}|{totalExcl}|{saldoAtual}|...|
+```
+> ⚠️ Campos exatos a confirmar contra o layout oficial SPED ECF.
+
+| Campo | Tipo | Origem |
+|---|---|---|
+| `codigoConta` | String | `ContaParteB.codigoConta` |
+| `saldoAnterior` | Decimal BR | `ContaParteB.saldoInicial` |
+| `totalAdic` | Decimal BR | Soma de `LancamentoParteB.valor` onde `tipoAjuste = ADICAO` para esta conta no `fiscalYear` |
+| `totalExcl` | Decimal BR | Soma de `LancamentoParteB.valor` onde `tipoAjuste = EXCLUSAO` para esta conta no `fiscalYear` |
+| `saldoAtual` | Decimal BR | `saldoAnterior + totalAdic - totalExcl` |
+
+**Gerado**: 1 linha por `ContaParteB` com atividade no `fiscalYear`. Aparece após todos os M410 da conta.
+
+---
+
+## Tabela Resumo de Condições
+
+### Grupo 1 (IRPJ) e Grupo 2 (CSLL) — Registros por Lançamento
+
+| Registro | tipoApuracao | tipoRelacionamento | Gera |
+|---|---|---|---|
+| M300 | IRPJ | qualquer | Sempre (1 por grupo/período) |
+| M305 | IRPJ | CONTA_PARTE_B | sim |
+| M305 | IRPJ | CONTA_CONTABIL | **não** |
+| M305 | IRPJ | AMBOS | sim |
+| M310 | IRPJ | CONTA_PARTE_B | **não** |
+| M310 | IRPJ | CONTA_CONTABIL | sim |
+| M310 | IRPJ | AMBOS | sim |
+| M350 | CSLL | qualquer | Sempre (1 por grupo/período) |
+| M355 | CSLL | CONTA_PARTE_B | sim |
+| M355 | CSLL | CONTA_CONTABIL | **não** |
+| M355 | CSLL | AMBOS | sim |
+| M360 | CSLL | CONTA_PARTE_B | **não** |
+| M360 | CSLL | CONTA_CONTABIL | sim |
+| M360 | CSLL | AMBOS | sim |
+
+### Grupo 3 — Registros por Conta da Parte B
+
+| Registro | Condição | Gera |
+|---|---|---|
+| M400 | ContaParteB com lançamentos no ano | 1 por conta |
+| M410 | LancamentoParteB com contaParteBId preenchido | 1 por lançamento |
+| M405 | ContaParteB com lançamentos no ano | 1 por conta (saldo final) |
+
+---
+
+## Exemplo Completo com Mapeamento
+
+### Dados de entrada
+
+```
+ContaParteB { codigoConta="2130306", descricao="Provisões", saldoInicial=0 }
+PlanoDeContas { code="3210205" }
+
+LancamentoParteB A {
+  tipoApuracao = IRPJ, tipoAjuste = ADICAO, tipoRelacionamento = AMBOS
+  codigoEnquadramento = "6", valor = 44249,63, mesReferencia = 1, anoReferencia = 2024
+  contaParteBId → "2130306", contaContabilId → "3210205"
+  descricao = "Provisões não dedutíveis"
+}
+LancamentoParteB B {
+  tipoApuracao = IRPJ, tipoAjuste = ADICAO, tipoRelacionamento = AMBOS
+  codigoEnquadramento = "6", valor = 142627,95, mesReferencia = 1, anoReferencia = 2024
+  contaParteBId → "21405", contaContabilId → "3210201"
+  descricao = "Provisões não dedutíveis"
+}
+```
+
+### Arquivo Parcial gerado
+
+```
+← GRUPO 1: IRPJ →
+|M030|01012024|31012024|A01|
+|M300|6|Provisoes nao dedutiveis|A|3|186877,58|Provisoes nao dedutiveis|
+|M305|2130306|44249,63|D|
+|M305|21405|142627,95|D|
+|M310|3210205||44249,63|D|
+|M310|3210201||142627,95|D|
+
+← GRUPO 2: CSLL — exemplo com mesmo código "6" para CSLL →
+|M030|01012024|31012024|A01|
+|M350|6|Provisoes nao dedutiveis|A|3|186877,58|Provisoes nao dedutiveis|
+|M355|2130306|44249,63|D|
+|M355|21405|142627,95|D|
+|M360|3210205||44249,63|D|
+|M360|3210201||142627,95|D|
+
+← GRUPO 3: Contas da Parte B →
+|M400|2130306|Provisões|...|
+|M410|2130306|...|44249,63|...|
+|M405|2130306|0,00|186877,58|0,00|186877,58|
+
+|M990|{totalLinhas}|
+```
+
+> `totalValor` do M300 = 44249,63 + 142627,95 = **186877,58** (soma dos dois lançamentos)
+> `M405.saldoAtual` = 0 (saldoInicial) + 186877,58 (totalAdic) - 0 (totalExcl) = **186877,58**

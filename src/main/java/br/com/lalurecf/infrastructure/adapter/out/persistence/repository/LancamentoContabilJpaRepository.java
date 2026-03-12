@@ -5,6 +5,9 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -41,4 +44,41 @@ public interface LancamentoContabilJpaRepository
    * @return página de lançamentos
    */
   Page<LancamentoContabilEntity> findByCompanyId(Long companyId, Pageable pageable);
+
+  /**
+   * Deleta fisicamente todos os lançamentos de uma empresa em um determinado mês e ano.
+   *
+   * @param companyId ID da empresa
+   * @param mes mês (1-12)
+   * @param ano ano (ex: 2024)
+   * @return quantidade de registros deletados
+   */
+  @Modifying
+  @Query(
+      "DELETE FROM LancamentoContabilEntity l "
+          + "WHERE l.company.id = :companyId "
+          + "AND FUNCTION('EXTRACT', 'MONTH', l.data) = :mes "
+          + "AND FUNCTION('EXTRACT', 'YEAR', l.data) = :ano")
+  int deleteByCompanyIdAndMesAndAno(
+      @Param("companyId") Long companyId,
+      @Param("mes") Integer mes,
+      @Param("ano") Integer ano);
+
+  /**
+   * Conta lançamentos de uma empresa em um determinado mês e ano.
+   *
+   * @param companyId ID da empresa
+   * @param mes mês (1-12)
+   * @param ano ano (ex: 2024)
+   * @return quantidade de registros
+   */
+  @Query(
+      "SELECT COUNT(l) FROM LancamentoContabilEntity l "
+          + "WHERE l.company.id = :companyId "
+          + "AND FUNCTION('EXTRACT', 'MONTH', l.data) = :mes "
+          + "AND FUNCTION('EXTRACT', 'YEAR', l.data) = :ano")
+  int countByCompanyIdAndMesAndAno(
+      @Param("companyId") Long companyId,
+      @Param("mes") Integer mes,
+      @Param("ano") Integer ano);
 }

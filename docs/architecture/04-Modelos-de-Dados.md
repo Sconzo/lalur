@@ -91,7 +91,7 @@
 | `code` | `codigo` | String | Código da conta (ex: "1.01.01.001") |
 | `name` | `nome` | String | Nome da conta (ex: "Caixa") |
 | `accountType` | `tipo` | String | ATIVO, PASSIVO, PATRIMONIO_LIQUIDO, RECEITA, DESPESA, CUSTO, RESULTADO, COMPENSACAO, ATIVO_RETIFICADORA, PASSIVO_RETIFICADORA |
-| `classe` | `classe` | String | Classe contábil ECF (ex: "ATIVO_CIRCULANTE", "RECEITA_BRUTA") |
+| `classe` | `classe` | String | Tipo hierárquico: ANALITICO (folha, recebe lançamentos) ou SINTETICO (agregadora, totaliza filhas) |
 | `nivel` | `nivel` | Integer | Nível hierárquico (1-5) para estruturação ECF |
 | `natureza` | `natureza` | String | Natureza da conta: "DEVEDORA" ou "CREDORA" |
 | `afetaResultado` | `afeta_resultado` | Boolean | Indica se conta afeta DRE/resultado |

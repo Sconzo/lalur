@@ -141,7 +141,7 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
     planoDeContas.setContaReferencial(contaReferencial);
     planoDeContas.setFiscalYear(2024);
     planoDeContas.setAccountType(br.com.lalurecf.domain.enums.AccountType.DESPESA);
-    planoDeContas.setClasse(br.com.lalurecf.domain.enums.ClasseContabil.DESPESAS_OPERACIONAIS);
+    planoDeContas.setClasse(br.com.lalurecf.domain.enums.ClasseContabil.ANALITICO);
     planoDeContas.setNivel(4);
     planoDeContas.setNatureza(br.com.lalurecf.domain.enums.NaturezaConta.DEVEDORA);
     planoDeContas.setAfetaResultado(true);
@@ -534,7 +534,7 @@ class LancamentoParteBControllerTest extends IntegrationTestBase {
     otherConta.setContaReferencial(contaRef);
     otherConta.setFiscalYear(2024);
     otherConta.setAccountType(br.com.lalurecf.domain.enums.AccountType.PASSIVO);
-    otherConta.setClasse(br.com.lalurecf.domain.enums.ClasseContabil.PASSIVO_CIRCULANTE);
+    otherConta.setClasse(br.com.lalurecf.domain.enums.ClasseContabil.SINTETICO);
     otherConta.setNivel(4);
     otherConta.setNatureza(br.com.lalurecf.domain.enums.NaturezaConta.CREDORA);
     otherConta.setAfetaResultado(false);

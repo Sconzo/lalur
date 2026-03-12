@@ -148,11 +148,9 @@ public class ImportContaReferencialService implements ImportContaReferencialUseC
         }
       }
 
-      // Persistir se não for dry-run
+      // Persistir em batch se não for dry-run
       if (!dryRun && !contasToSave.isEmpty()) {
-        for (ContaReferencial conta : contasToSave) {
-          contaReferencialRepository.save(conta);
-        }
+        contaReferencialRepository.saveAll(contasToSave);
       }
 
       // Montar response

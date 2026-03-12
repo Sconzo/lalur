@@ -10,12 +10,19 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.LancamentoC
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoContabilJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
+import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -34,10 +41,19 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRepositoryPort {
 
+  private static final String BATCH_INSERT_SQL =
+      "INSERT INTO tb_lancamento_contabil "
+          + "(company_id, conta_debito_id, conta_credito_id, data, valor, historico, "
+          + "numero_documento, fiscal_year, "
+          + "status, criado_em, atualizado_em, criado_por, atualizado_por) "
+          + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', NOW(), NOW(), ?, ?)";
+
   private final LancamentoContabilJpaRepository jpaRepository;
   private final CompanyJpaRepository companyRepository;
   private final PlanoDeContasJpaRepository planoDeContasRepository;
   private final LancamentoContabilMapper mapper;
+  private final JdbcTemplate jdbcTemplate;
+  private final SpringSecurityAuditorAware auditorAware;
 
   @Override
   public LancamentoContabil save(LancamentoContabil lancamento) {
@@ -61,25 +77,34 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
                         "Company not found with id: " + lancamento.getCompanyId()));
     entity.setCompany(company);
 
-    // Resolver FK: contaDebito
-    PlanoDeContasEntity contaDebito =
-        planoDeContasRepository
-            .findById(lancamento.getContaDebitoId())
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Conta de débito not found with id: " + lancamento.getContaDebitoId()));
-    entity.setContaDebito(contaDebito);
+    // Resolver FK: contaDebito (opcional)
+    if (lancamento.getContaDebitoId() != null) {
+      PlanoDeContasEntity contaDebito =
+          planoDeContasRepository
+              .findById(lancamento.getContaDebitoId())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "Conta de débito not found with id: " + lancamento.getContaDebitoId()));
+      entity.setContaDebito(contaDebito);
+    } else {
+      entity.setContaDebito(null);
+    }
 
-    // Resolver FK: contaCredito
-    PlanoDeContasEntity contaCredito =
-        planoDeContasRepository
-            .findById(lancamento.getContaCreditoId())
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Conta de crédito not found with id: " + lancamento.getContaCreditoId()));
-    entity.setContaCredito(contaCredito);
+    // Resolver FK: contaCredito (opcional)
+    if (lancamento.getContaCreditoId() != null) {
+      PlanoDeContasEntity contaCredito =
+          planoDeContasRepository
+              .findById(lancamento.getContaCreditoId())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "Conta de crédito not found with id: "
+                              + lancamento.getContaCreditoId()));
+      entity.setContaCredito(contaCredito);
+    } else {
+      entity.setContaCredito(null);
+    }
 
     // Copiar campos do domain para entity
     entity.setData(lancamento.getData());
@@ -94,6 +119,38 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
 
     log.debug("LancamentoContabil saved with id: {}", saved.getId());
     return mapper.toDomain(saved);
+  }
+
+  @Override
+  public void saveAll(List<LancamentoContabil> lancamentos) {
+    final long auditorId = auditorAware.getCurrentAuditor().orElse(1L);
+    jdbcTemplate.batchUpdate(
+        BATCH_INSERT_SQL,
+        new BatchPreparedStatementSetter() {
+          @Override
+          public void setValues(PreparedStatement ps, int i) throws SQLException {
+            LancamentoContabil l = lancamentos.get(i);
+            ps.setLong(1, l.getCompanyId());
+            ps.setLong(2, l.getContaDebitoId());
+            ps.setLong(3, l.getContaCreditoId());
+            ps.setDate(4, Date.valueOf(l.getData()));
+            ps.setBigDecimal(5, l.getValor());
+            ps.setString(6, l.getHistorico());
+            if (l.getNumeroDocumento() != null) {
+              ps.setString(7, l.getNumeroDocumento());
+            } else {
+              ps.setNull(7, Types.VARCHAR);
+            }
+            ps.setInt(8, l.getFiscalYear());
+            ps.setLong(9, auditorId);
+            ps.setLong(10, auditorId);
+          }
+
+          @Override
+          public int getBatchSize() {
+            return lancamentos.size();
+          }
+        });
   }
 
   @Override
@@ -121,6 +178,13 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
   public Page<LancamentoContabil> findByCompanyId(Long companyId, Pageable pageable) {
     log.debug("Finding LancamentosContabeis by companyId: {} with pagination", companyId);
     return jpaRepository.findByCompanyId(companyId, pageable).map(mapper::toDomain);
+  }
+
+  @Override
+  public int deleteByCompanyIdAndMesAndAno(Long companyId, Integer mes, Integer ano) {
+    log.debug(
+        "Deleting LancamentosContabeis for companyId: {}, mes: {}, ano: {}", companyId, mes, ano);
+    return jpaRepository.deleteByCompanyIdAndMesAndAno(companyId, mes, ano);
   }
 
   @Override

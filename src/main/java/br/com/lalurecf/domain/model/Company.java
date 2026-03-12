@@ -16,6 +16,7 @@ public class Company {
   private CNPJ cnpj;
   private String razaoSocial;
   private LocalDate periodoContabil;
+  private String mascaraNiveis;
   private Status status;
   // CNAE, Qualificação PJ e Natureza Jurídica são gerenciados como
   // parâmetros tributários (ADR-001 v2.0)
@@ -34,13 +35,14 @@ public class Company {
    * Full constructor with all fields.
    */
   public Company(Long id, CNPJ cnpj, String razaoSocial,
-                 LocalDate periodoContabil, Status status,
+                 LocalDate periodoContabil, String mascaraNiveis, Status status,
                  Long createdBy, LocalDateTime createdAt,
                  Long updatedBy, LocalDateTime updatedAt) {
     this.id = id;
     this.cnpj = cnpj;
     this.razaoSocial = razaoSocial;
     this.periodoContabil = periodoContabil;
+    this.mascaraNiveis = mascaraNiveis;
     this.status = status;
     this.createdBy = createdBy;
     this.createdAt = createdAt;
@@ -78,6 +80,14 @@ public class Company {
 
   public void setPeriodoContabil(LocalDate periodoContabil) {
     this.periodoContabil = periodoContabil;
+  }
+
+  public String getMascaraNiveis() {
+    return mascaraNiveis;
+  }
+
+  public void setMascaraNiveis(String mascaraNiveis) {
+    this.mascaraNiveis = mascaraNiveis;
   }
 
   public Status getStatus() {

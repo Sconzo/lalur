@@ -61,6 +61,13 @@ public interface LancamentoParteBRepositoryPort {
       Long companyId, Integer anoReferencia, Integer mesReferencia);
 
   /**
+   * Salva uma lista de lançamentos Parte B em batch via JDBC.
+   *
+   * @param lancamentos lista de lançamentos a salvar
+   */
+  void saveAll(List<LancamentoParteB> lancamentos);
+
+  /**
    * Deleta lançamento por ID.
    *
    * @param id ID do lançamento

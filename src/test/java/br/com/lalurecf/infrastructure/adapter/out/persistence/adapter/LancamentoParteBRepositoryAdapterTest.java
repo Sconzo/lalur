@@ -133,7 +133,7 @@ class LancamentoParteBRepositoryAdapterTest {
         .name("Receita de Vendas")
         .fiscalYear(2024)
         .accountType(br.com.lalurecf.domain.enums.AccountType.RECEITA)
-        .classe(br.com.lalurecf.domain.enums.ClasseContabil.RECEITA_BRUTA)
+        .classe(br.com.lalurecf.domain.enums.ClasseContabil.ANALITICO)
         .nivel(3)
         .natureza(br.com.lalurecf.domain.enums.NaturezaConta.CREDORA)
         .status(Status.ACTIVE)

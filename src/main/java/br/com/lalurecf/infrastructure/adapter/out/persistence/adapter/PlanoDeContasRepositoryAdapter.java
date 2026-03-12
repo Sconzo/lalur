@@ -1,6 +1,7 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 
 import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
+import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.PlanoDeContasMapper;
@@ -147,5 +148,10 @@ public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPo
   @Override
   public Page<PlanoDeContas> findByCompanyId(Long companyId, Pageable pageable) {
     return jpaRepository.findByCompanyId(companyId, pageable).map(mapper::toDomain);
+  }
+
+  @Override
+  public boolean existsActiveByCompanyId(Long companyId) {
+    return jpaRepository.existsByCompanyIdAndStatus(companyId, Status.ACTIVE);
   }
 }

@@ -1,5 +1,6 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.repository;
 
+import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
 import java.util.List;
 import java.util.Optional;
@@ -45,4 +46,13 @@ public interface PlanoDeContasJpaRepository
    * @return página de contas
    */
   Page<PlanoDeContasEntity> findByCompanyId(Long companyId, Pageable pageable);
+
+  /**
+   * Verifica se existe ao menos uma conta com determinado status para uma empresa.
+   *
+   * @param companyId ID da empresa
+   * @param status status a verificar
+   * @return true se existir ao menos uma conta
+   */
+  boolean existsByCompanyIdAndStatus(Long companyId, Status status);
 }

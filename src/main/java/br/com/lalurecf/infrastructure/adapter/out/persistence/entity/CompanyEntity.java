@@ -31,6 +31,9 @@ public class CompanyEntity extends BaseEntity {
   @Column(name = "periodo_contabil", nullable = false)
   private LocalDate periodoContabil;
 
+  @Column(name = "mascara_niveis", length = 50)
+  private String mascaraNiveis;
+
   // CNAE, Qualificação PJ e Natureza Jurídica são gerenciados como parâmetros tributários
   // via tabela tb_empresa_parametros_tributarios (ADR-001 v2.0)
 }

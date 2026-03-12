@@ -234,7 +234,7 @@ class Epic3EndToEndTest {
           .append(i)
           .append(";1.01.0")
           .append(refIndex)
-          .append(";ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n");
+          .append(";ATIVO;ANALITICO;4;DEVEDORA;false;false\n");
     }
 
     MockMultipartFile file =
@@ -291,7 +291,7 @@ class Epic3EndToEndTest {
     // Tenta importar conta com contaReferencialCodigo inexistente
     String invalidCsv =
         "code;name;contaReferencialCodigo;accountType;classe;nivel;natureza;afetaResultado;dedutivel\n"
-            + "1.1.01.999;Conta Inválida;9.99.99;ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n";
+            + "1.1.01.999;Conta Inválida;9.99.99;ATIVO;ANALITICO;4;DEVEDORA;false;false\n";
 
     MockMultipartFile invalidFile =
         new MockMultipartFile(
@@ -334,7 +334,7 @@ class Epic3EndToEndTest {
           .append(i)
           .append(";1.01.0")
           .append(refIndex)
-          .append(";ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n");
+          .append(";ATIVO;ANALITICO;4;DEVEDORA;false;false\n");
     }
 
     MockMultipartFile planoFile =
@@ -572,8 +572,8 @@ class Epic3EndToEndTest {
     // Importar plano
     String planoCsv =
         "code;name;contaReferencialCodigo;accountType;classe;nivel;natureza;afetaResultado;dedutivel\n"
-            + "1.1.01.001;Conta 1;1.01.01;ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n"
-            + "1.1.01.002;Conta 2;1.01.02;ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n";
+            + "1.1.01.001;Conta 1;1.01.01;ATIVO;ANALITICO;4;DEVEDORA;false;false\n"
+            + "1.1.01.002;Conta 2;1.01.02;ATIVO;ANALITICO;4;DEVEDORA;false;false\n";
 
     MockMultipartFile planoFile =
         new MockMultipartFile(
@@ -631,8 +631,8 @@ class Epic3EndToEndTest {
 
     String planoCsv =
         "code;name;contaReferencialCodigo;accountType;classe;nivel;natureza;afetaResultado;dedutivel\n"
-            + "1.1.01.001;Conta 1;1.01.01;ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n"
-            + "1.1.01.002;Conta 2;1.01.02;ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n";
+            + "1.1.01.001;Conta 1;1.01.01;ATIVO;ANALITICO;4;DEVEDORA;false;false\n"
+            + "1.1.01.002;Conta 2;1.01.02;ATIVO;ANALITICO;4;DEVEDORA;false;false\n";
 
     MockMultipartFile planoFile =
         new MockMultipartFile(
@@ -727,7 +727,7 @@ class Epic3EndToEndTest {
     // Dry run de plano de contas
     String planoCsv =
         "code;name;contaReferencialCodigo;accountType;classe;nivel;natureza;afetaResultado;dedutivel\n"
-            + "1.1.01.001;Conta 1;1.01.01;ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n";
+            + "1.1.01.001;Conta 1;1.01.01;ATIVO;ANALITICO;4;DEVEDORA;false;false\n";
 
     MockMultipartFile planoFile =
         new MockMultipartFile(
@@ -782,7 +782,7 @@ class Epic3EndToEndTest {
     // Importar dados para empresa 1
     String planoCsv =
         "code;name;contaReferencialCodigo;accountType;classe;nivel;natureza;afetaResultado;dedutivel\n"
-            + "1.1.01.001;Conta Emp1;1.01.01;ATIVO;ATIVO_CIRCULANTE;4;DEVEDORA;false;false\n";
+            + "1.1.01.001;Conta Emp1;1.01.01;ATIVO;ANALITICO;4;DEVEDORA;false;false\n";
 
     MockMultipartFile planoFile1 =
         new MockMultipartFile(

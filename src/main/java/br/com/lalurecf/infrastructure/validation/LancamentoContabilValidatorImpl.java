@@ -8,13 +8,13 @@ import java.math.BigDecimal;
 /**
  * Implementação do validador customizado para Lançamento Contábil.
  *
- * <p>Valida regras de negócio de partidas dobradas usando reflexão para acessar
- * os campos do DTO anotado.
+ * <p>Valida regras de negócio usando reflexão para acessar os campos do DTO anotado.
  *
  * <p>Validações realizadas:
  *
  * <ul>
- *   <li>contaDebitoId != contaCreditoId (contas devem ser diferentes)
+ *   <li>Ao menos uma conta (contaDebitoId ou contaCreditoId) deve ser informada
+ *   <li>Se ambas informadas, contaDebitoId != contaCreditoId
  *   <li>valor > 0 (valor deve ser positivo)
  * </ul>
  */
@@ -29,18 +29,26 @@ public class LancamentoContabilValidatorImpl
   @Override
   public boolean isValid(Object value, ConstraintValidatorContext context) {
     if (value == null) {
-      return true; // null values são tratados por @NotNull
+      return true;
     }
 
     try {
-      // Obter campos via reflexão
       Long contaDebitoId = getFieldValue(value, "contaDebitoId", Long.class);
       Long contaCreditoId = getFieldValue(value, "contaCreditoId", Long.class);
       BigDecimal valor = getFieldValue(value, "valor", BigDecimal.class);
 
-      // Validar contas diferentes
-      if (contaDebitoId != null
-          && contaCreditoId != null
+      // Ao menos uma conta obrigatória
+      if (contaDebitoId == null && contaCreditoId == null) {
+        context.disableDefaultConstraintViolation();
+        context
+            .buildConstraintViolationWithTemplate(
+                "Ao menos uma conta (débito ou crédito) deve ser informada")
+            .addConstraintViolation();
+        return false;
+      }
+
+      // Se ambas informadas, devem ser diferentes
+      if (contaDebitoId != null && contaCreditoId != null
           && contaDebitoId.equals(contaCreditoId)) {
         context.disableDefaultConstraintViolation();
         context
@@ -62,8 +70,6 @@ public class LancamentoContabilValidatorImpl
       return true;
 
     } catch (Exception e) {
-      // Se falhar ao acessar campos, considera válido (campos serão validados por outras
-      // anotações)
       return true;
     }
   }

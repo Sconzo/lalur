@@ -18,6 +18,7 @@ import br.com.lalurecf.domain.enums.ParameterNature;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.CompanyStatus;
 import br.com.lalurecf.domain.model.valueobject.CNPJ;
+import br.com.lalurecf.domain.util.MascaraNiveisUtils;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyTaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.EmpresaParametrosTributariosEntity;
@@ -27,6 +28,7 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ValorParame
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyTaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PeriodoContabilAuditJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ValorParametroTemporalJpaRepository;
 import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
@@ -92,6 +94,7 @@ public class CompanyService implements
   private final CompanyTaxParameterJpaRepository companyTaxParameterRepository;
   private final PeriodoContabilAuditJpaRepository periodoContabilAuditRepository;
   private final ValorParametroTemporalJpaRepository valorParametroTemporalRepository;
+  private final PlanoDeContasJpaRepository planoDeContasRepository;
 
   @Override
   @Transactional
@@ -123,11 +126,16 @@ public class CompanyService implements
         : Collections.emptyList();
     validateParametersExistAndActive(periodicIds);
 
+    // Validar máscara de níveis
+    MascaraNiveisUtils.validarFormato(request.mascaraNiveis());
+    MascaraNiveisUtils.validarNumNiveis(request.mascaraNiveis(), request.numNiveis());
+
     // Criar entidade
     CompanyEntity entity = new CompanyEntity();
     entity.setCnpj(cnpj.getValue());
     entity.setRazaoSocial(request.razaoSocial());
     entity.setPeriodoContabil(request.periodoContabil());
+    entity.setMascaraNiveis(request.mascaraNiveis());
     entity.setStatus(Status.ACTIVE);
 
     CompanyEntity saved = companyRepository.save(entity);
@@ -265,9 +273,24 @@ public class CompanyService implements
           return new EntityNotFoundException("Empresa não encontrada com ID: " + id);
         });
 
+    // Validar máscara de níveis
+    MascaraNiveisUtils.validarFormato(request.mascaraNiveis());
+    MascaraNiveisUtils.validarNumNiveis(request.mascaraNiveis(), request.numNiveis());
+
+    // Verificar se máscara está sendo alterada: só é permitido sem contas ativas
+    String mascaraAtual = entity.getMascaraNiveis();
+    if (mascaraAtual != null && !mascaraAtual.equals(request.mascaraNiveis())) {
+      if (planoDeContasRepository.existsByCompanyIdAndStatus(id, Status.ACTIVE)) {
+        throw new IllegalStateException(
+            "Não é possível alterar a máscara de níveis enquanto existem contas ativas "
+                + "no plano de contas da empresa");
+      }
+    }
+
     // Atualizar campos (CNPJ é imutável)
     entity.setRazaoSocial(request.razaoSocial());
     entity.setPeriodoContabil(request.periodoContabil());
+    entity.setMascaraNiveis(request.mascaraNiveis());
 
     // Remover todas as associações existentes (incluindo valores temporais em cascata)
     companyTaxParameterRepository.deleteAllByCompanyId(id);
@@ -649,6 +672,7 @@ public class CompanyService implements
         CompanyStatus.fromStatus(entity.getStatus()),
         entity.getRazaoSocial(),
         entity.getPeriodoContabil(),
+        entity.getMascaraNiveis(),
         cnae,
         qualificacaoPj,
         naturezaJuridica,

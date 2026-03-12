@@ -21,6 +21,8 @@ public record CompanyDetailResponse(
     @JsonFormat(pattern = "yyyy-MM-dd")
     LocalDate periodoContabil,
 
+    String mascaraNiveis,
+
     TaxParameterSummary cnae,
     TaxParameterSummary qualificacaoPj,
     TaxParameterSummary naturezaJuridica,

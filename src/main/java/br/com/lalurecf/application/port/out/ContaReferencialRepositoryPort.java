@@ -66,6 +66,13 @@ public interface ContaReferencialRepositoryPort {
   Page<ContaReferencial> findByAnoValidade(Integer anoValidade, Pageable pageable);
 
   /**
+   * Salva uma lista de contas referenciais em batch via JDBC.
+   *
+   * @param contas lista de contas a salvar
+   */
+  void saveAll(List<ContaReferencial> contas);
+
+  /**
    * Busca todas contas referenciais (sem paginação).
    *
    * @return lista completa de contas

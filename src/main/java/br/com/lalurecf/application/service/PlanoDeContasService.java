@@ -5,14 +5,17 @@ import br.com.lalurecf.application.port.in.planodecontas.GetPlanoDeContasUseCase
 import br.com.lalurecf.application.port.in.planodecontas.ListPlanoDeContasUseCase;
 import br.com.lalurecf.application.port.in.planodecontas.TogglePlanoDeContasStatusUseCase;
 import br.com.lalurecf.application.port.in.planodecontas.UpdatePlanoDeContasUseCase;
+import br.com.lalurecf.application.port.out.CompanyRepositoryPort;
 import br.com.lalurecf.application.port.out.ContaReferencialRepositoryPort;
 import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
+import br.com.lalurecf.domain.model.Company;
 import br.com.lalurecf.domain.model.ContaReferencial;
 import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.domain.util.MascaraNiveisUtils;
 import br.com.lalurecf.infrastructure.dto.mapper.PlanoDeContasDtoMapper;
 import br.com.lalurecf.infrastructure.dto.planodecontas.CreatePlanoDeContasRequest;
 import br.com.lalurecf.infrastructure.dto.planodecontas.PlanoDeContasResponse;
@@ -48,6 +51,7 @@ public class PlanoDeContasService
 
   private final PlanoDeContasRepositoryPort planoDeContasRepository;
   private final ContaReferencialRepositoryPort contaReferencialRepository;
+  private final CompanyRepositoryPort companyRepository;
   private final PlanoDeContasDtoMapper dtoMapper;
 
   @Override
@@ -69,6 +73,18 @@ public class PlanoDeContasService
     if (request.getCode() == null || request.getCode().trim().isEmpty()) {
       throw new IllegalArgumentException("Code cannot be empty");
     }
+
+    // Buscar empresa e validar code contra máscara de níveis
+    Company company = companyRepository.findById(companyId)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Company not found with id: " + companyId));
+
+    if (company.getMascaraNiveis() != null) {
+      MascaraNiveisUtils.validarCodigoContraMascara(request.getCode(), company.getMascaraNiveis());
+    }
+
+    // Derivar nível do código
+    int nivelDerivado = MascaraNiveisUtils.derivarNivel(request.getCode());
 
     // Validar contaReferencialId existe e está ACTIVE (se informado)
     ContaReferencial contaReferencial = null;
@@ -110,7 +126,7 @@ public class PlanoDeContasService
             .accountType(request.getAccountType())
             .contaReferencialId(request.getContaReferencialId())
             .classe(request.getClasse())
-            .nivel(request.getNivel())
+            .nivel(nivelDerivado)
             .natureza(request.getNatureza())
             .afetaResultado(request.getAfetaResultado())
             .dedutivel(request.getDedutivel())
@@ -283,12 +299,11 @@ public class PlanoDeContasService
       }
     }
 
-    // Atualizar campos (code e fiscalYear são imutáveis)
+    // Atualizar campos (code e fiscalYear são imutáveis; nivel é derivado do code)
     account.setName(request.getName());
     account.setAccountType(request.getAccountType());
     account.setContaReferencialId(request.getContaReferencialId());
     account.setClasse(request.getClasse());
-    account.setNivel(request.getNivel());
     account.setNatureza(request.getNatureza());
     account.setAfetaResultado(request.getAfetaResultado());
     account.setDedutivel(request.getDedutivel());

@@ -1,5 +1,6 @@
 package br.com.lalurecf.infrastructure.dto.lancamentocontabil;
 
+import br.com.lalurecf.infrastructure.validation.LancamentoContabilValidator;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -13,18 +14,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO para criação de lançamento contábil com partidas dobradas.
+ * DTO para criação de lançamento contábil.
+ *
+ * <p>Ao menos uma das contas (débito ou crédito) deve ser informada.
+ * Se ambas forem informadas, devem ser contas distintas e da classe ANALITICO.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@LancamentoContabilValidator
 public class CreateLancamentoContabilRequest {
 
-  @NotNull(message = "Conta de débito é obrigatória")
   private Long contaDebitoId;
 
-  @NotNull(message = "Conta de crédito é obrigatória")
   private Long contaCreditoId;
 
   @NotNull(message = "Data é obrigatória")

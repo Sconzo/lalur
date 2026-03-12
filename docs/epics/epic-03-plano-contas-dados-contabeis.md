@@ -21,14 +21,14 @@ Implementar cadastro e importação de plano de contas contábeis (estrutura pla
    - `@Column(nullable=false) String name` (nome da conta, ex: "Caixa")
    - `@Column(nullable=false) Integer fiscalYear` (ano fiscal, ex: 2024)
    - `@Enumerated(STRING) AccountType accountType` (ATIVO, PASSIVO, PATRIMONIO_LIQUIDO, RECEITA, DESPESA, CUSTO, RESULTADO, COMPENSACAO, ATIVO_RETIFICADORA, PASSIVO_RETIFICADORA)
-   - `@Enumerated(STRING) ClasseContabil classe` (ATIVO_CIRCULANTE, ATIVO_NAO_CIRCULANTE, PASSIVO_CIRCULANTE, PASSIVO_NAO_CIRCULANTE, PATRIMONIO_LIQUIDO, RECEITA_BRUTA, DEDUCOES_RECEITA, CUSTOS, DESPESAS_OPERACIONAIS, OUTRAS_RECEITAS, OUTRAS_DESPESAS, RESULTADO_FINANCEIRO)
+   - `@Enumerated(STRING) ClasseContabil classe` (ANALITICO, SINTETICO)
    - `@Column(nullable=false) Integer nivel` (nível hierárquico 1-5 para estruturação ECF)
    - `@Enumerated(STRING) NaturezaConta natureza` (DEVEDORA, CREDORA)
    - `@Column(nullable=false) Boolean afetaResultado` (indica se conta afeta DRE/resultado)
    - `@Column(nullable=false) Boolean dedutivel` (indica se despesa é dedutível fiscalmente)
 2. Enums criados:
    - `AccountType`: ATIVO, PASSIVO, PATRIMONIO_LIQUIDO, RECEITA, DESPESA, CUSTO, RESULTADO, COMPENSACAO, ATIVO_RETIFICADORA, PASSIVO_RETIFICADORA
-   - `ClasseContabil`: ATIVO_CIRCULANTE, ATIVO_NAO_CIRCULANTE, PASSIVO_CIRCULANTE, PASSIVO_NAO_CIRCULANTE, PATRIMONIO_LIQUIDO, RECEITA_BRUTA, DEDUCOES_RECEITA, CUSTOS, DESPESAS_OPERACIONAIS, OUTRAS_RECEITAS, OUTRAS_DESPESAS, RESULTADO_FINANCEIRO
+   - `ClasseContabil`: ANALITICO, SINTETICO
    - `NaturezaConta`: DEVEDORA, CREDORA
 3. Constraint de unicidade: `@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"company_id", "code", "fiscal_year"}))`
    - Garante que não existam contas duplicadas para mesma empresa + código + ano

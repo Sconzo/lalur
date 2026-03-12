@@ -5,12 +5,18 @@ import br.com.lalurecf.domain.model.ContaReferencial;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaReferencialEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.ContaReferencialMapper;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
+import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -30,8 +36,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ContaReferencialRepositoryAdapter implements ContaReferencialRepositoryPort {
 
+  private static final String BATCH_INSERT_SQL =
+      "INSERT INTO tb_conta_referencial "
+          + "(codigo_rfb, descricao, ano_validade, "
+          + "status, criado_em, atualizado_em, criado_por, atualizado_por) "
+          + "VALUES (?, ?, ?, 'ACTIVE', NOW(), NOW(), ?, ?)";
+
   private final ContaReferencialJpaRepository jpaRepository;
   private final ContaReferencialMapper mapper;
+  private final JdbcTemplate jdbcTemplate;
+  private final SpringSecurityAuditorAware auditorAware;
 
   @Override
   public ContaReferencial save(ContaReferencial conta) {
@@ -54,6 +68,33 @@ public class ContaReferencialRepositoryAdapter implements ContaReferencialReposi
 
     ContaReferencialEntity savedEntity = jpaRepository.save(entity);
     return mapper.toDomain(savedEntity);
+  }
+
+  @Override
+  public void saveAll(List<ContaReferencial> contas) {
+    final long auditorId = auditorAware.getCurrentAuditor().orElse(1L);
+    jdbcTemplate.batchUpdate(
+        BATCH_INSERT_SQL,
+        new BatchPreparedStatementSetter() {
+          @Override
+          public void setValues(PreparedStatement ps, int i) throws SQLException {
+            ContaReferencial c = contas.get(i);
+            ps.setString(1, c.getCodigoRfb());
+            ps.setString(2, c.getDescricao());
+            if (c.getAnoValidade() != null) {
+              ps.setInt(3, c.getAnoValidade());
+            } else {
+              ps.setNull(3, Types.INTEGER);
+            }
+            ps.setLong(4, auditorId);
+            ps.setLong(5, auditorId);
+          }
+
+          @Override
+          public int getBatchSize() {
+            return contas.size();
+          }
+        });
   }
 
   @Override

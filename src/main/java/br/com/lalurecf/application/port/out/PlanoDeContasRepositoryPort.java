@@ -65,6 +65,14 @@ public interface PlanoDeContasRepositoryPort {
   void deleteById(Long id);
 
   /**
+   * Verifica se existe ao menos uma conta ACTIVE para uma empresa.
+   *
+   * @param companyId ID da empresa
+   * @return true se existir ao menos uma conta ativa
+   */
+  boolean existsActiveByCompanyId(Long companyId);
+
+  /**
    * Busca todas contas contábeis de uma empresa com paginação.
    *
    * @param companyId ID da empresa

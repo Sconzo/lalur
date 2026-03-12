@@ -13,12 +13,18 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaPa
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoParteBJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -41,12 +47,22 @@ import org.springframework.stereotype.Component;
 @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
 public class LancamentoParteBRepositoryAdapter implements LancamentoParteBRepositoryPort {
 
+  private static final String BATCH_INSERT_SQL =
+      "INSERT INTO tb_lancamento_parte_b "
+          + "(company_id, mes_referencia, ano_referencia, tipo_apuracao, tipo_relacionamento, "
+          + "conta_contabil_id, conta_parte_b_id, parametro_tributario_id, "
+          + "tipo_ajuste, descricao, valor, "
+          + "status, criado_em, atualizado_em, criado_por, atualizado_por) "
+          + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', NOW(), NOW(), ?, ?)";
+
   private final LancamentoParteBJpaRepository jpaRepository;
   private final CompanyJpaRepository companyJpaRepository;
   private final PlanoDeContasJpaRepository planoDeContasJpaRepository;
   private final ContaParteBJpaRepository contaParteBJpaRepository;
   private final TaxParameterJpaRepository taxParameterJpaRepository;
   private final LancamentoParteBMapper mapper;
+  private final JdbcTemplate jdbcTemplate;
+  private final SpringSecurityAuditorAware auditorAware;
 
   @Override
   public LancamentoParteB save(LancamentoParteB lancamento) {
@@ -115,6 +131,45 @@ public class LancamentoParteBRepositoryAdapter implements LancamentoParteBReposi
 
     LancamentoParteBEntity savedEntity = jpaRepository.save(entity);
     return mapper.toDomain(savedEntity);
+  }
+
+  @Override
+  public void saveAll(List<LancamentoParteB> lancamentos) {
+    final long auditorId = auditorAware.getCurrentAuditor().orElse(1L);
+    jdbcTemplate.batchUpdate(
+        BATCH_INSERT_SQL,
+        new BatchPreparedStatementSetter() {
+          @Override
+          public void setValues(PreparedStatement ps, int i) throws SQLException {
+            LancamentoParteB l = lancamentos.get(i);
+            ps.setLong(1, l.getCompanyId());
+            ps.setInt(2, l.getMesReferencia());
+            ps.setInt(3, l.getAnoReferencia());
+            ps.setString(4, l.getTipoApuracao().name());
+            ps.setString(5, l.getTipoRelacionamento().name());
+            if (l.getContaContabilId() != null) {
+              ps.setLong(6, l.getContaContabilId());
+            } else {
+              ps.setNull(6, Types.BIGINT);
+            }
+            if (l.getContaParteBId() != null) {
+              ps.setLong(7, l.getContaParteBId());
+            } else {
+              ps.setNull(7, Types.BIGINT);
+            }
+            ps.setLong(8, l.getParametroTributarioId());
+            ps.setString(9, l.getTipoAjuste().name());
+            ps.setString(10, l.getDescricao());
+            ps.setBigDecimal(11, l.getValor());
+            ps.setLong(12, auditorId);
+            ps.setLong(13, auditorId);
+          }
+
+          @Override
+          public int getBatchSize() {
+            return lancamentos.size();
+          }
+        });
   }
 
   @Override

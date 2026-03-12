@@ -131,7 +131,7 @@ class LancamentoContabilControllerTest {
             .name(name)
             .fiscalYear(2024)
             .accountType(accountType)
-            .classe(ClasseContabil.ATIVO_CIRCULANTE)
+            .classe(ClasseContabil.ANALITICO)
             .nivel(4)
             .natureza(NaturezaConta.DEVEDORA)
             .afetaResultado(false)

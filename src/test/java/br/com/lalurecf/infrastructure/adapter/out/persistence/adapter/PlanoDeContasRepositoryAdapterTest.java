@@ -103,7 +103,7 @@ class PlanoDeContasRepositoryAdapterTest {
     assertEquals(2024, found.get().getFiscalYear());
     assertEquals(AccountType.ATIVO, found.get().getAccountType());
     assertEquals(testContaReferencial.getId(), found.get().getContaReferencialId());
-    assertEquals(ClasseContabil.ATIVO_CIRCULANTE, found.get().getClasse());
+    assertEquals(ClasseContabil.ANALITICO, found.get().getClasse());
     assertEquals(4, found.get().getNivel());
     assertEquals(NaturezaConta.DEVEDORA, found.get().getNatureza());
     assertEquals(false, found.get().getAfetaResultado());
@@ -234,7 +234,7 @@ class PlanoDeContasRepositoryAdapterTest {
             .name("Receita de Vendas")
             .fiscalYear(2024)
             .accountType(AccountType.RECEITA)
-            .classe(ClasseContabil.RECEITA_BRUTA)
+            .classe(ClasseContabil.ANALITICO)
             .nivel(4)
             .natureza(NaturezaConta.CREDORA)
             .afetaResultado(true)
@@ -249,7 +249,7 @@ class PlanoDeContasRepositoryAdapterTest {
     // Assert
     assertTrue(found.isPresent());
     PlanoDeContas retrieved = found.get();
-    assertEquals(ClasseContabil.RECEITA_BRUTA, retrieved.getClasse());
+    assertEquals(ClasseContabil.ANALITICO, retrieved.getClasse());
     assertEquals(4, retrieved.getNivel());
     assertEquals(NaturezaConta.CREDORA, retrieved.getNatureza());
     assertEquals(true, retrieved.getAfetaResultado());
@@ -285,7 +285,7 @@ class PlanoDeContasRepositoryAdapterTest {
         .name(name)
         .fiscalYear(fiscalYear)
         .accountType(accountType)
-        .classe(ClasseContabil.ATIVO_CIRCULANTE)
+        .classe(ClasseContabil.ANALITICO)
         .nivel(4)
         .natureza(NaturezaConta.DEVEDORA)
         .afetaResultado(false)

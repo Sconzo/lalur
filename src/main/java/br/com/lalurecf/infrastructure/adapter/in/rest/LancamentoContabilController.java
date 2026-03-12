@@ -3,12 +3,14 @@ package br.com.lalurecf.infrastructure.adapter.in.rest;
 import br.com.lalurecf.application.port.in.ExportLancamentoContabilUseCase;
 import br.com.lalurecf.application.port.in.ImportLancamentoContabilUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.CreateLancamentoContabilUseCase;
+import br.com.lalurecf.application.port.in.lancamentocontabil.DeleteLancamentoContabilBatchUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.GetLancamentoContabilUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.ListLancamentoContabilUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.ToggleLancamentoContabilStatusUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.UpdateLancamentoContabilUseCase;
 import br.com.lalurecf.domain.model.LancamentoContabil;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.CreateLancamentoContabilRequest;
+import br.com.lalurecf.infrastructure.dto.lancamentocontabil.DeleteLancamentoContabilBatchResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.ImportLancamentoContabilResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.LancamentoContabilResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.UpdateLancamentoContabilRequest;
@@ -32,6 +34,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -63,6 +66,7 @@ public class LancamentoContabilController {
   private final GetLancamentoContabilUseCase getLancamentoContabilUseCase;
   private final UpdateLancamentoContabilUseCase updateLancamentoContabilUseCase;
   private final ToggleLancamentoContabilStatusUseCase toggleLancamentoContabilStatusUseCase;
+  private final DeleteLancamentoContabilBatchUseCase deleteLancamentoContabilBatchUseCase;
   private final LancamentoContabilDtoMapper lancamentoContabilDtoMapper;
 
   /**
@@ -377,6 +381,34 @@ public class LancamentoContabilController {
             .newStatus(updated.getStatus())
             .message("Status toggled successfully")
             .build();
+
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Deleta em lote todos os lançamentos contábeis de um mês e ano específicos.
+   *
+   * <p>A deleção é física (hard delete) e irreversível.
+   *
+   * @param mes mês (1-12)
+   * @param ano ano (ex: 2024)
+   * @return quantidade de registros deletados
+   */
+  @DeleteMapping("/batch")
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<DeleteLancamentoContabilBatchResponse> deleteBatch(
+      @RequestParam("mes") Integer mes, @RequestParam("ano") Integer ano) {
+
+    log.info("DELETE /api/v1/lancamento-contabil/batch - mes: {}, ano: {}", mes, ano);
+
+    Long companyId = CompanyContext.getCurrentCompanyId();
+    if (companyId == null) {
+      throw new IllegalArgumentException(
+          "Company context is required (header X-Company-Id missing)");
+    }
+
+    DeleteLancamentoContabilBatchResponse response =
+        deleteLancamentoContabilBatchUseCase.deleteBatch(companyId, mes, ano);
 
     return ResponseEntity.ok(response);
   }

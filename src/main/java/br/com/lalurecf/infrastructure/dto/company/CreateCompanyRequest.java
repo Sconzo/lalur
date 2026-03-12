@@ -2,6 +2,8 @@ package br.com.lalurecf.infrastructure.dto.company;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -38,6 +40,17 @@ public record CreateCompanyRequest(
     @PastOrPresent(message = "Período Contábil não pode ser no futuro")
     @JsonFormat(pattern = "yyyy-MM-dd")
     LocalDate periodoContabil,
+
+    @NotBlank(message = "Máscara de níveis é obrigatória")
+    @Pattern(
+        regexp = "^9+(\\.9+){0,5}$",
+        message = "Máscara de níveis inválida. Use apenas '9' e '.', ex: '99.999.99.999999'")
+    String mascaraNiveis,
+
+    @NotNull(message = "Número de níveis é obrigatório")
+    @Min(value = 1, message = "Número de níveis deve ser entre 1 e 6")
+    @Max(value = 6, message = "Número de níveis deve ser entre 1 e 6")
+    Integer numNiveis,
 
     @NotEmpty(message = "Lista de parâmetros globais é obrigatória")
     List<Long> globalParameterIds,

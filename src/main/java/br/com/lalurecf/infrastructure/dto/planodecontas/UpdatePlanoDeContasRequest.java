@@ -3,8 +3,6 @@ package br.com.lalurecf.infrastructure.dto.planodecontas;
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -37,12 +35,6 @@ public class UpdatePlanoDeContasRequest {
   /** Classe contábil ECF (ATIVO_CIRCULANTE, RECEITA_BRUTA, etc.). */
   @NotNull(message = "Classe is required")
   private ClasseContabil classe;
-
-  /** Nível hierárquico (1-5) para estruturação ECF. */
-  @NotNull(message = "Nivel is required")
-  @Min(value = 1, message = "Nivel must be between 1 and 5")
-  @Max(value = 5, message = "Nivel must be between 1 and 5")
-  private Integer nivel;
 
   /** Natureza da conta (DEVEDORA ou CREDORA). */
   @NotNull(message = "Natureza is required")

@@ -266,11 +266,9 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
         }
       }
 
-      // Persistir lançamentos se não for dry run
-      if (!dryRun) {
-        for (LancamentoContabil lancamento : lancamentosToSave) {
-          lancamentoContabilRepository.save(lancamento);
-        }
+      // Persistir lançamentos em batch se não for dry run
+      if (!dryRun && !lancamentosToSave.isEmpty()) {
+        lancamentoContabilRepository.saveAll(lancamentosToSave);
         log.info("Persisted {} lançamentos contábeis", lancamentosToSave.size());
       }
 

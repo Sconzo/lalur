@@ -52,21 +52,21 @@ public class LancamentoContabilEntity extends BaseEntity {
   private CompanyEntity company;
 
   /**
-   * Conta de débito.
+   * Conta de débito (opcional — ao menos uma das contas deve ser informada).
    *
-   * <p>FK obrigatória - representa a conta que será debitada neste lançamento.
+   * <p>Quando presente, deve ser uma conta da classe ANALITICO.
    */
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "conta_debito_id", nullable = false)
+  @JoinColumn(name = "conta_debito_id", nullable = true)
   private PlanoDeContasEntity contaDebito;
 
   /**
-   * Conta de crédito.
+   * Conta de crédito (opcional — ao menos uma das contas deve ser informada).
    *
-   * <p>FK obrigatória - representa a conta que será creditada neste lançamento.
+   * <p>Quando presente, deve ser uma conta da classe ANALITICO.
    */
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "conta_credito_id", nullable = false)
+  @JoinColumn(name = "conta_credito_id", nullable = true)
   private PlanoDeContasEntity contaCredito;
 
   /**
@@ -117,7 +117,8 @@ public class LancamentoContabilEntity extends BaseEntity {
    *
    * <ul>
    *   <li>Valor deve ser maior que zero
-   *   <li>Conta de débito deve ser diferente da conta de crédito
+   *   <li>Ao menos uma conta (débito ou crédito) deve ser informada
+   *   <li>Se ambas informadas, devem ser contas diferentes
    * </ul>
    *
    * @throws IllegalStateException se alguma validação falhar
@@ -125,19 +126,18 @@ public class LancamentoContabilEntity extends BaseEntity {
   @PrePersist
   @PreUpdate
   public void validateLancamentoContabil() {
-    // Validar valor positivo
     if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
       throw new IllegalStateException(
           "Valor do lançamento contábil deve ser maior que zero. Valor atual: " + valor);
     }
 
-    // Validar contas diferentes
-    if (contaDebito == null || contaCredito == null) {
+    if (contaDebito == null && contaCredito == null) {
       throw new IllegalStateException(
-          "Conta de débito e conta de crédito são obrigatórias para lançamento contábil");
+          "Ao menos uma conta (débito ou crédito) deve ser informada no lançamento contábil");
     }
 
-    if (contaDebito.getId().equals(contaCredito.getId())) {
+    if (contaDebito != null && contaCredito != null
+        && contaDebito.getId().equals(contaCredito.getId())) {
       throw new IllegalStateException(
           "Conta de débito e conta de crédito devem ser diferentes. "
               + "Conta informada: "

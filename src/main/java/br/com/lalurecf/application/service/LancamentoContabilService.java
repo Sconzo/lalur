@@ -1,6 +1,7 @@
 package br.com.lalurecf.application.service;
 
 import br.com.lalurecf.application.port.in.lancamentocontabil.CreateLancamentoContabilUseCase;
+import br.com.lalurecf.application.port.in.lancamentocontabil.DeleteLancamentoContabilBatchUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.GetLancamentoContabilUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.ListLancamentoContabilUseCase;
 import br.com.lalurecf.application.port.in.lancamentocontabil.ToggleLancamentoContabilStatusUseCase;
@@ -8,11 +9,13 @@ import br.com.lalurecf.application.port.in.lancamentocontabil.UpdateLancamentoCo
 import br.com.lalurecf.application.port.out.CompanyRepositoryPort;
 import br.com.lalurecf.application.port.out.LancamentoContabilRepositoryPort;
 import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
+import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.exception.BusinessRuleViolationException;
 import br.com.lalurecf.domain.model.Company;
 import br.com.lalurecf.domain.model.LancamentoContabil;
 import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.infrastructure.dto.lancamentocontabil.DeleteLancamentoContabilBatchResponse;
 import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import br.com.lalurecf.infrastructure.validation.EnforcePeriodoContabil;
@@ -39,7 +42,8 @@ public class LancamentoContabilService
         ListLancamentoContabilUseCase,
         GetLancamentoContabilUseCase,
         UpdateLancamentoContabilUseCase,
-        ToggleLancamentoContabilStatusUseCase {
+        ToggleLancamentoContabilStatusUseCase,
+        DeleteLancamentoContabilBatchUseCase {
 
   private final LancamentoContabilRepositoryPort lancamentoContabilRepository;
   private final PlanoDeContasRepositoryPort planoDeContasRepository;
@@ -69,10 +73,11 @@ public class LancamentoContabilService
     // Validar campos obrigatórios
     validateMandatoryFields(lancamento);
 
-    // Validar partidas dobradas (débito != crédito)
-    if (lancamento.getContaDebitoId().equals(lancamento.getContaCreditoId())) {
+    // Validar que contas informadas são diferentes
+    if (lancamento.getContaDebitoId() != null && lancamento.getContaCreditoId() != null
+        && lancamento.getContaDebitoId().equals(lancamento.getContaCreditoId())) {
       throw new BusinessRuleViolationException(
-          "Debit and credit accounts must be different (partidas dobradas)");
+          "Conta de débito e conta de crédito devem ser diferentes");
     }
 
     // Validar valor > 0
@@ -80,42 +85,52 @@ public class LancamentoContabilService
       throw new BusinessRuleViolationException("Valor must be greater than zero");
     }
 
-    // Buscar e validar conta débito
-    PlanoDeContas contaDebito =
-        planoDeContasRepository
-            .findById(lancamento.getContaDebitoId())
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Conta débito not found with id: " + lancamento.getContaDebitoId()));
+    // Buscar e validar conta débito (se informada)
+    if (lancamento.getContaDebitoId() != null) {
+      PlanoDeContas contaDebito =
+          planoDeContasRepository
+              .findById(lancamento.getContaDebitoId())
+              .orElseThrow(
+                  () ->
+                      new ResourceNotFoundException(
+                          "Conta débito not found with id: " + lancamento.getContaDebitoId()));
 
-    if (!contaDebito.getCompanyId().equals(companyId)) {
-      throw new BusinessRuleViolationException(
-          "Conta débito does not belong to the company in context");
+      if (!contaDebito.getCompanyId().equals(companyId)) {
+        throw new BusinessRuleViolationException(
+            "Conta débito does not belong to the company in context");
+      }
+      if (!contaDebito.getFiscalYear().equals(lancamento.getFiscalYear())) {
+        throw new BusinessRuleViolationException(
+            "Conta débito fiscal year does not match lancamento fiscal year");
+      }
+      if (contaDebito.getClasse() != ClasseContabil.ANALITICO) {
+        throw new BusinessRuleViolationException(
+            "Conta débito deve ser da classe ANALITICO. Conta informada é SINTETICO.");
+      }
     }
 
-    if (!contaDebito.getFiscalYear().equals(lancamento.getFiscalYear())) {
-      throw new BusinessRuleViolationException(
-          "Conta débito fiscal year does not match lancamento fiscal year");
-    }
+    // Buscar e validar conta crédito (se informada)
+    if (lancamento.getContaCreditoId() != null) {
+      PlanoDeContas contaCredito =
+          planoDeContasRepository
+              .findById(lancamento.getContaCreditoId())
+              .orElseThrow(
+                  () ->
+                      new ResourceNotFoundException(
+                          "Conta crédito not found with id: " + lancamento.getContaCreditoId()));
 
-    // Buscar e validar conta crédito
-    PlanoDeContas contaCredito =
-        planoDeContasRepository
-            .findById(lancamento.getContaCreditoId())
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Conta crédito not found with id: " + lancamento.getContaCreditoId()));
-
-    if (!contaCredito.getCompanyId().equals(companyId)) {
-      throw new BusinessRuleViolationException(
-          "Conta crédito does not belong to the company in context");
-    }
-
-    if (!contaCredito.getFiscalYear().equals(lancamento.getFiscalYear())) {
-      throw new BusinessRuleViolationException(
-          "Conta crédito fiscal year does not match lancamento fiscal year");
+      if (!contaCredito.getCompanyId().equals(companyId)) {
+        throw new BusinessRuleViolationException(
+            "Conta crédito does not belong to the company in context");
+      }
+      if (!contaCredito.getFiscalYear().equals(lancamento.getFiscalYear())) {
+        throw new BusinessRuleViolationException(
+            "Conta crédito fiscal year does not match lancamento fiscal year");
+      }
+      if (contaCredito.getClasse() != ClasseContabil.ANALITICO) {
+        throw new BusinessRuleViolationException(
+            "Conta crédito deve ser da classe ANALITICO. Conta informada é SINTETICO.");
+      }
     }
 
     // Validar Período Contábil (data >= company.periodoContabil)
@@ -175,12 +190,14 @@ public class LancamentoContabilService
       }
 
       // Conta débito filter
-      if (contaDebitoId != null && !lancamento.getContaDebitoId().equals(contaDebitoId)) {
+      if (contaDebitoId != null
+          && !contaDebitoId.equals(lancamento.getContaDebitoId())) {
         matches = false;
       }
 
       // Conta crédito filter
-      if (contaCreditoId != null && !lancamento.getContaCreditoId().equals(contaCreditoId)) {
+      if (contaCreditoId != null
+          && !contaCreditoId.equals(lancamento.getContaCreditoId())) {
         matches = false;
       }
 
@@ -291,10 +308,14 @@ public class LancamentoContabilService
     // Validar campos obrigatórios
     validateMandatoryFields(lancamentoAtualizado);
 
-    // Validar partidas dobradas
-    if (lancamentoAtualizado.getContaDebitoId().equals(lancamentoAtualizado.getContaCreditoId())) {
+    // Validar que contas informadas são diferentes
+    if (lancamentoAtualizado.getContaDebitoId() != null
+        && lancamentoAtualizado.getContaCreditoId() != null
+        && lancamentoAtualizado
+            .getContaDebitoId()
+            .equals(lancamentoAtualizado.getContaCreditoId())) {
       throw new BusinessRuleViolationException(
-          "Debit and credit accounts must be different (partidas dobradas)");
+          "Conta de débito e conta de crédito devem ser diferentes");
     }
 
     // Validar valor > 0
@@ -302,34 +323,46 @@ public class LancamentoContabilService
       throw new BusinessRuleViolationException("Valor must be greater than zero");
     }
 
-    // Buscar e validar conta débito
-    PlanoDeContas contaDebito =
-        planoDeContasRepository
-            .findById(lancamentoAtualizado.getContaDebitoId())
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Conta débito not found with id: "
-                            + lancamentoAtualizado.getContaDebitoId()));
+    // Buscar e validar conta débito (se informada)
+    if (lancamentoAtualizado.getContaDebitoId() != null) {
+      PlanoDeContas contaDebito =
+          planoDeContasRepository
+              .findById(lancamentoAtualizado.getContaDebitoId())
+              .orElseThrow(
+                  () ->
+                      new ResourceNotFoundException(
+                          "Conta débito not found with id: "
+                              + lancamentoAtualizado.getContaDebitoId()));
 
-    if (!contaDebito.getCompanyId().equals(companyId)) {
-      throw new BusinessRuleViolationException(
-          "Conta débito does not belong to the company in context");
+      if (!contaDebito.getCompanyId().equals(companyId)) {
+        throw new BusinessRuleViolationException(
+            "Conta débito does not belong to the company in context");
+      }
+      if (contaDebito.getClasse() != ClasseContabil.ANALITICO) {
+        throw new BusinessRuleViolationException(
+            "Conta débito deve ser da classe ANALITICO. Conta informada é SINTETICO.");
+      }
     }
 
-    // Buscar e validar conta crédito
-    PlanoDeContas contaCredito =
-        planoDeContasRepository
-            .findById(lancamentoAtualizado.getContaCreditoId())
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        "Conta crédito not found with id: "
-                            + lancamentoAtualizado.getContaCreditoId()));
+    // Buscar e validar conta crédito (se informada)
+    if (lancamentoAtualizado.getContaCreditoId() != null) {
+      PlanoDeContas contaCredito =
+          planoDeContasRepository
+              .findById(lancamentoAtualizado.getContaCreditoId())
+              .orElseThrow(
+                  () ->
+                      new ResourceNotFoundException(
+                          "Conta crédito not found with id: "
+                              + lancamentoAtualizado.getContaCreditoId()));
 
-    if (!contaCredito.getCompanyId().equals(companyId)) {
-      throw new BusinessRuleViolationException(
-          "Conta crédito does not belong to the company in context");
+      if (!contaCredito.getCompanyId().equals(companyId)) {
+        throw new BusinessRuleViolationException(
+            "Conta crédito does not belong to the company in context");
+      }
+      if (contaCredito.getClasse() != ClasseContabil.ANALITICO) {
+        throw new BusinessRuleViolationException(
+            "Conta crédito deve ser da classe ANALITICO. Conta informada é SINTETICO.");
+      }
     }
 
     // Validar Período Contábil para NOVA data
@@ -409,12 +442,38 @@ public class LancamentoContabilService
     return updated;
   }
 
+  @Override
+  @Transactional
+  public DeleteLancamentoContabilBatchResponse deleteBatch(
+      Long companyId, Integer mes, Integer ano) {
+    log.info(
+        "Deleting batch lançamentos for companyId: {}, mes: {}, ano: {}", companyId, mes, ano);
+
+    int quantidade =
+        lancamentoContabilRepository.deleteByCompanyIdAndMesAndAno(companyId, mes, ano);
+
+    log.info(
+        "Deleted {} lançamentos for companyId: {}, mes: {}, ano: {}",
+        quantidade,
+        companyId,
+        mes,
+        ano);
+
+    return DeleteLancamentoContabilBatchResponse.builder()
+        .quantidadeDeletada(quantidade)
+        .mes(mes)
+        .ano(ano)
+        .mensagem(
+            quantidade == 0
+                ? "Nenhum lançamento encontrado para o período informado"
+                : quantidade + " lançamento(s) deletado(s) com sucesso")
+        .build();
+  }
+
   private void validateMandatoryFields(LancamentoContabil lancamento) {
-    if (lancamento.getContaDebitoId() == null) {
-      throw new BusinessRuleViolationException("Conta débito is required");
-    }
-    if (lancamento.getContaCreditoId() == null) {
-      throw new BusinessRuleViolationException("Conta crédito is required");
+    if (lancamento.getContaDebitoId() == null && lancamento.getContaCreditoId() == null) {
+      throw new BusinessRuleViolationException(
+          "Ao menos uma conta (débito ou crédito) deve ser informada");
     }
     if (lancamento.getData() == null) {
       throw new BusinessRuleViolationException("Data is required");

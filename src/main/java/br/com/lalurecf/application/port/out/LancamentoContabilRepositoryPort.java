@@ -59,6 +59,13 @@ public interface LancamentoContabilRepositoryPort {
   Page<LancamentoContabil> findByCompanyId(Long companyId, Pageable pageable);
 
   /**
+   * Salva uma lista de lançamentos contábeis em batch via JDBC.
+   *
+   * @param lancamentos lista de lançamentos a salvar
+   */
+  void saveAll(List<LancamentoContabil> lancamentos);
+
+  /**
    * Deleta um lançamento contábil.
    *
    * <p>Nota: Implementação deve usar soft delete via campo status.
@@ -66,4 +73,14 @@ public interface LancamentoContabilRepositoryPort {
    * @param id ID do lançamento a deletar
    */
   void deleteById(Long id);
+
+  /**
+   * Deleta fisicamente todos os lançamentos de uma empresa em um determinado mês e ano.
+   *
+   * @param companyId ID da empresa
+   * @param mes mês (1-12)
+   * @param ano ano (ex: 2024)
+   * @return quantidade de registros deletados
+   */
+  int deleteByCompanyIdAndMesAndAno(Long companyId, Integer mes, Integer ano);
 }

@@ -467,11 +467,9 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
         }
       }
 
-      // Persistir se não for dry run
-      if (!dryRun) {
-        for (LancamentoParteB lancamento : lancamentosToSave) {
-          lancamentoParteBRepository.save(lancamento);
-        }
+      // Persistir em batch se não for dry run
+      if (!dryRun && !lancamentosToSave.isEmpty()) {
+        lancamentoParteBRepository.saveAll(lancamentosToSave);
         log.info("Persisted {} lançamentos Parte B", lancamentosToSave.size());
       }
 
