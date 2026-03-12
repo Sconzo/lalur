@@ -10,17 +10,23 @@ import br.com.lalurecf.infrastructure.dto.contareferencial.ContaReferencialRespo
 import br.com.lalurecf.infrastructure.dto.contareferencial.CreateContaReferencialRequest;
 import br.com.lalurecf.infrastructure.dto.contareferencial.ImportContaReferencialResponse;
 import br.com.lalurecf.infrastructure.dto.contareferencial.UpdateContaReferencialRequest;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportFieldSchema;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportSchemaResponse;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
+import java.time.Year;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -216,5 +222,39 @@ public class ContaReferencialController {
     ToggleStatusResponse response =
         toggleContaReferencialStatusUseCase.toggleStatus(id, request);
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Retorna o schema do arquivo CSV de importação de contas referenciais.
+   */
+  @GetMapping("/import/schema")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<ImportSchemaResponse> importSchema() {
+    int maxAnoValidade = Year.now().getValue() + 5;
+    List<ImportFieldSchema> fields = List.of(
+        new ImportFieldSchema("codigoRfb", "String", true, null, null, null, null,
+            "1.01.01.01.01"),
+        new ImportFieldSchema("descricao", "String", true, null, null, null, 1000,
+            "Disponibilidades"),
+        new ImportFieldSchema("anoValidade", "Integer", false,
+            "2000 até " + maxAnoValidade, null, null, null, "2024")
+    );
+    return ResponseEntity.ok(new ImportSchemaResponse(3, ";", true, fields));
+  }
+
+  /**
+   * Retorna um arquivo CSV de template para importação de contas referenciais.
+   */
+  @GetMapping("/import/template")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<byte[]> importTemplate() {
+    String csv =
+        "codigoRfb;descricao;anoValidade\n"
+        + "1.01.01.01.01;Disponibilidades;2024\n";
+    byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "template-conta-referencial.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 }

@@ -9,6 +9,7 @@ import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.ContaReferencial;
 import br.com.lalurecf.domain.model.PlanoDeContas;
+import br.com.lalurecf.domain.util.MascaraNiveisUtils;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse.ImportError;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse.PlanoDeContasPreview;
@@ -253,7 +254,6 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
     String accountTypeStr = getField(record, "accountType", lineNumber);
     String contaReferencialCodigo = getOptionalField(record, "contaReferencialCodigo");
     String classeStr = getField(record, "classe", lineNumber);
-    String nivelStr = getField(record, "nivel", lineNumber);
     String naturezaStr = getField(record, "natureza", lineNumber);
     String afetaResultadoStr = getField(record, "afetaResultado", lineNumber);
     String dedutivelStr = getField(record, "dedutivel", lineNumber);
@@ -263,8 +263,8 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
     ClasseContabil classe = parseClasseContabil(classeStr, lineNumber);
     NaturezaConta natureza = parseNaturezaConta(naturezaStr, lineNumber);
 
-    // Parse nivel
-    Integer nivel = parseNivel(nivelStr, lineNumber);
+    // Derivar nivel do code (não é enviado no CSV)
+    int nivel = MascaraNiveisUtils.derivarNivel(code);
 
     // Parse booleans
     Boolean afetaResultado = parseBoolean(afetaResultadoStr, "afetaResultado", lineNumber);
@@ -337,18 +337,6 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
               + value
               + "'. Must be one of: "
               + String.join(", ", getNaturezaContaValues()));
-    }
-  }
-
-  private Integer parseNivel(String value, int lineNumber) {
-    try {
-      int nivel = Integer.parseInt(value);
-      if (nivel < 1 || nivel > 5) {
-        throw new IllegalArgumentException("nivel must be between 1 and 5");
-      }
-      return nivel;
-    } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("Invalid nivel: '" + value + "'. Must be an integer");
     }
   }
 

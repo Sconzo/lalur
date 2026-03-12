@@ -48,7 +48,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImportLancamentoParteBService implements ImportLancamentoParteBUseCase {
 
   private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-  private static final int EXPECTED_COLUMNS = 10;
 
   private final LancamentoParteBRepositoryPort lancamentoParteBRepository;
   private final PlanoDeContasRepositoryPort planoDeContasRepository;
@@ -88,52 +87,19 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
         lineNumber++;
 
         try {
-          if (record.size() < EXPECTED_COLUMNS) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error(
-                        "Missing required fields. Expected "
-                            + EXPECTED_COLUMNS
-                            + " columns, got "
-                            + record.size())
-                    .build());
-            skippedLines++;
-            continue;
-          }
-
-          // Extrair campos
-          final String mesReferenciaStr = record.get(0).trim();
-          final String anoReferenciaStr = record.get(1).trim();
-          final String tipoApuracaoStr = record.get(2).trim();
-          final String tipoRelacionamentoStr = record.get(3).trim();
-          final String contaContabilCode = record.get(4).trim();
-          final String contaParteBCode = record.get(5).trim();
-          final String parametroTributarioCodigo = record.get(6).trim();
-          final String tipoAjusteStr = record.get(7).trim();
-          final String descricao = record.get(8).trim();
-          final String valorStr = record.get(9).trim();
-
-          // Validar campos obrigatórios não-nulos
-          if (mesReferenciaStr.isEmpty()
-              || anoReferenciaStr.isEmpty()
-              || tipoApuracaoStr.isEmpty()
-              || tipoRelacionamentoStr.isEmpty()
-              || parametroTributarioCodigo.isEmpty()
-              || tipoAjusteStr.isEmpty()
-              || descricao.isEmpty()
-              || valorStr.isEmpty()) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error(
-                        "One or more required fields are empty"
-                            + " (mesReferencia, anoReferencia, tipoApuracao, tipoRelacionamento,"
-                            + " parametroTributarioCodigo, tipoAjuste, descricao, valor)")
-                    .build());
-            skippedLines++;
-            continue;
-          }
+          // Extrair campos por nome (cabeçalho obrigatório)
+          final String mesReferenciaStr = getRequiredField(record, "mesReferencia", lineNumber);
+          final String anoReferenciaStr = getRequiredField(record, "anoReferencia", lineNumber);
+          final String tipoApuracaoStr = getRequiredField(record, "tipoApuracao", lineNumber);
+          final String tipoRelacionamentoStr =
+              getRequiredField(record, "tipoRelacionamento", lineNumber);
+          final String contaContabilCode = getField(record, "contaContabilCode");
+          final String contaParteBCode = getField(record, "contaParteBCode");
+          final String parametroTributarioCodigo =
+              getRequiredField(record, "parametroTributarioCodigo", lineNumber);
+          final String tipoAjusteStr = getRequiredField(record, "tipoAjuste", lineNumber);
+          final String descricao = getRequiredField(record, "descricao", lineNumber);
+          final String valorStr = getRequiredField(record, "valor", lineNumber);
 
           // Parse mesReferencia
           int mesReferencia;
@@ -492,6 +458,27 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
     } catch (Exception e) {
       log.error("Error during import: {}", e.getMessage(), e);
       throw new RuntimeException("Error processing CSV file: " + e.getMessage(), e);
+    }
+  }
+
+  private String getRequiredField(CSVRecord record, String fieldName, int lineNumber) {
+    try {
+      String value = record.get(fieldName);
+      if (value == null || value.trim().isEmpty()) {
+        throw new IllegalArgumentException("Field '" + fieldName + "' is required but was empty");
+      }
+      return value.trim();
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Field '" + fieldName + "' not found or empty in header");
+    }
+  }
+
+  private String getField(CSVRecord record, String fieldName) {
+    try {
+      String value = record.get(fieldName);
+      return (value == null || value.trim().isEmpty()) ? null : value.trim();
+    } catch (IllegalArgumentException e) {
+      return null;
     }
   }
 

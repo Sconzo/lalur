@@ -8,6 +8,9 @@ import br.com.lalurecf.application.port.in.lancamentoparteb.ToggleLancamentoPart
 import br.com.lalurecf.application.port.in.lancamentoparteb.UpdateLancamentoParteBUseCase;
 import br.com.lalurecf.domain.enums.TipoAjuste;
 import br.com.lalurecf.domain.enums.TipoApuracao;
+import br.com.lalurecf.domain.enums.TipoRelacionamento;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportFieldSchema;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportSchemaResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.CreateLancamentoParteBRequest;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.ImportLancamentoParteBResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.LancamentoParteBResponse;
@@ -18,12 +21,16 @@ import br.com.lalurecf.infrastructure.security.CompanyContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -220,5 +227,62 @@ public class LancamentoParteBController {
       @PathVariable Long id, @Valid @RequestBody ToggleStatusRequest request) {
     ToggleStatusResponse response = toggleLancamentoParteBStatusUseCase.toggleStatus(id, request);
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Retorna o schema do arquivo CSV de importação de lançamentos da Parte B.
+   */
+  @GetMapping("/import/schema")
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<ImportSchemaResponse> importSchema() {
+    List<String> tipoApuracaoValues = Arrays.stream(TipoApuracao.values())
+        .map(Enum::name).toList();
+    List<String> tipoRelacionamentoValues = Arrays.stream(TipoRelacionamento.values())
+        .map(Enum::name).toList();
+    List<String> tipoAjusteValues = Arrays.stream(TipoAjuste.values())
+        .map(Enum::name).toList();
+
+    List<ImportFieldSchema> fields = List.of(
+        new ImportFieldSchema("mesReferencia", "Integer", true, "1 a 12", null, null, null, "3"),
+        new ImportFieldSchema("anoReferencia", "Integer", true, "Maior ou igual a 2000", null,
+            null, null, "2024"),
+        new ImportFieldSchema("tipoApuracao", "Enum", true, null, tipoApuracaoValues, null, null,
+            "IRPJ"),
+        new ImportFieldSchema("tipoRelacionamento", "Enum", true, null, tipoRelacionamentoValues,
+            null, null, "CONTA_CONTABIL"),
+        new ImportFieldSchema("contaContabilCode", "String", false, null, null,
+            "Obrigatório quando tipoRelacionamento = CONTA_CONTABIL ou AMBOS", null,
+            "1.1.01.001"),
+        new ImportFieldSchema("contaParteBCode", "String", false, null, null,
+            "Obrigatório quando tipoRelacionamento = CONTA_PARTE_B ou AMBOS", null, "P001"),
+        new ImportFieldSchema("parametroTributarioCodigo", "String", true, null, null,
+            "Deve existir e estar ACTIVE no sistema", null, "PARAM-001"),
+        new ImportFieldSchema("tipoAjuste", "Enum", true, null, tipoAjusteValues, null, null,
+            "ADICAO"),
+        new ImportFieldSchema("descricao", "String", true, null, null, null, 2000,
+            "Ajuste de depreciação acelerada"),
+        new ImportFieldSchema("valor", "Decimal", true,
+            "Ponto como separador decimal. Deve ser maior que zero", null, null, null, "5000.00")
+    );
+    return ResponseEntity.ok(new ImportSchemaResponse(10, ";", true, fields));
+  }
+
+  /**
+   * Retorna um arquivo CSV de template para importação de lançamentos da Parte B.
+   */
+  @GetMapping("/import/template")
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<byte[]> importTemplate() {
+    String csv =
+        "mesReferencia;anoReferencia;tipoApuracao;tipoRelacionamento;"
+        + "contaContabilCode;contaParteBCode;parametroTributarioCodigo;"
+        + "tipoAjuste;descricao;valor\n"
+        + "3;2024;IRPJ;CONTA_CONTABIL;1.1.01.001;;PARAM-001;"
+        + "ADICAO;Ajuste de depreciação acelerada;5000.00\n";
+    byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "template-lancamento-parte-b.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 }

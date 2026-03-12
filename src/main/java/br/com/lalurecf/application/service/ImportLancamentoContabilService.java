@@ -93,35 +93,22 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
         lineNumber++;
 
         try {
-          // Validar que record tem todos os campos esperados
-          if (record.size() < 5) {
+          // Extrair campos por nome (cabeçalho obrigatório)
+          final String contaDebitoCode = getField(record, "contaDebitoCode");
+          final String contaCreditoCode = getField(record, "contaCreditoCode");
+          final String dataStr = getRequiredField(record, "data", lineNumber);
+          final String valorStr = getRequiredField(record, "valor", lineNumber);
+          final String historico = getRequiredField(record, "historico", lineNumber);
+          final String numeroDocumento = getField(record, "numeroDocumento");
+
+          // Validar ao menos uma conta informada
+          if ((contaDebitoCode == null || contaDebitoCode.isEmpty())
+              && (contaCreditoCode == null || contaCreditoCode.isEmpty())) {
             errors.add(
                 ImportError.builder()
                     .lineNumber(lineNumber)
-                    .error("Missing required fields. Expected at least 5 columns.")
-                    .build());
-            skippedLines++;
-            continue;
-          }
-
-          // Extrair campos
-          final String contaDebitoCode = record.get(0).trim();
-          final String contaCreditoCode = record.get(1).trim();
-          final String dataStr = record.get(2).trim();
-          final String valorStr = record.get(3).trim();
-          final String historico = record.get(4).trim();
-          final String numeroDocumento = record.size() > 5 ? record.get(5).trim() : null;
-
-          // Validar campos obrigatórios
-          if (contaDebitoCode.isEmpty()
-              || contaCreditoCode.isEmpty()
-              || dataStr.isEmpty()
-              || valorStr.isEmpty()
-              || historico.isEmpty()) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error("One or more required fields are empty")
+                    .error(
+                        "Ao menos contaDebitoCode ou contaCreditoCode deve ser informado")
                     .build());
             skippedLines++;
             continue;
@@ -138,37 +125,35 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
             continue;
           }
 
-          // Buscar contas
-          Optional<PlanoDeContas> contaDebitoOpt =
-              planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-                  companyId, contaDebitoCode, fiscalYear);
-          if (contaDebitoOpt.isEmpty()) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error(
-                        "Account code '"
-                            + contaDebitoCode
-                            + "' not found for company/year")
-                    .build());
-            skippedLines++;
-            continue;
+          // Buscar contas (opcional individualmente, mas ao menos uma deve existir)
+          Optional<PlanoDeContas> contaDebitoOpt = Optional.empty();
+          if (contaDebitoCode != null && !contaDebitoCode.isEmpty()) {
+            contaDebitoOpt = planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
+                companyId, contaDebitoCode, fiscalYear);
+            if (contaDebitoOpt.isEmpty()) {
+              errors.add(
+                  ImportError.builder()
+                      .lineNumber(lineNumber)
+                      .error("Account code '" + contaDebitoCode + "' not found for company/year")
+                      .build());
+              skippedLines++;
+              continue;
+            }
           }
 
-          Optional<PlanoDeContas> contaCreditoOpt =
-              planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-                  companyId, contaCreditoCode, fiscalYear);
-          if (contaCreditoOpt.isEmpty()) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error(
-                        "Account code '"
-                            + contaCreditoCode
-                            + "' not found for company/year")
-                    .build());
-            skippedLines++;
-            continue;
+          Optional<PlanoDeContas> contaCreditoOpt = Optional.empty();
+          if (contaCreditoCode != null && !contaCreditoCode.isEmpty()) {
+            contaCreditoOpt = planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
+                companyId, contaCreditoCode, fiscalYear);
+            if (contaCreditoOpt.isEmpty()) {
+              errors.add(
+                  ImportError.builder()
+                      .lineNumber(lineNumber)
+                      .error("Account code '" + contaCreditoCode + "' not found for company/year")
+                      .build());
+              skippedLines++;
+              continue;
+            }
           }
 
           // Parse data
@@ -227,8 +212,8 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
           LancamentoContabil lancamento =
               LancamentoContabil.builder()
                   .companyId(companyId)
-                  .contaDebitoId(contaDebitoOpt.get().getId())
-                  .contaCreditoId(contaCreditoOpt.get().getId())
+                  .contaDebitoId(contaDebitoOpt.map(PlanoDeContas::getId).orElse(null))
+                  .contaCreditoId(contaCreditoOpt.map(PlanoDeContas::getId).orElse(null))
                   .data(data)
                   .valor(valor)
                   .historico(historico)
@@ -293,6 +278,27 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
     } catch (Exception e) {
       log.error("Error during import: {}", e.getMessage(), e);
       throw new RuntimeException("Error processing CSV file: " + e.getMessage(), e);
+    }
+  }
+
+  private String getRequiredField(CSVRecord record, String fieldName, int lineNumber) {
+    try {
+      String value = record.get(fieldName);
+      if (value == null || value.trim().isEmpty()) {
+        throw new IllegalArgumentException("Field '" + fieldName + "' is required but was empty");
+      }
+      return value.trim();
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Field '" + fieldName + "' not found or empty in header");
+    }
+  }
+
+  private String getField(CSVRecord record, String fieldName) {
+    try {
+      String value = record.get(fieldName);
+      return (value == null || value.trim().isEmpty()) ? null : value.trim();
+    } catch (IllegalArgumentException e) {
+      return null;
     }
   }
 

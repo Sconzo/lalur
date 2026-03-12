@@ -9,6 +9,8 @@ import br.com.lalurecf.application.port.in.planodecontas.UpdatePlanoDeContasUseC
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportFieldSchema;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportSchemaResponse;
 import br.com.lalurecf.infrastructure.dto.planodecontas.CreatePlanoDeContasRequest;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ImportPlanoDeContasResponse;
 import br.com.lalurecf.infrastructure.dto.planodecontas.PlanoDeContasResponse;
@@ -17,12 +19,16 @@ import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.planodecontas.UpdatePlanoDeContasRequest;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -203,5 +209,55 @@ public class PlanoDeContasController {
     log.info("PATCH /api/v1/plano-de-contas/{}/status - Toggling status", id);
     ToggleStatusResponse response = togglePlanoDeContasStatusUseCase.execute(id, request);
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Retorna o schema do arquivo CSV de importação de plano de contas.
+   */
+  @GetMapping("/import/schema")
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<ImportSchemaResponse> importSchema() {
+    List<String> accountTypeValues = Arrays.stream(AccountType.values())
+        .map(Enum::name).toList();
+    List<String> classeValues = Arrays.stream(ClasseContabil.values())
+        .map(Enum::name).toList();
+    List<String> naturezaValues = Arrays.stream(NaturezaConta.values())
+        .map(Enum::name).toList();
+
+    List<ImportFieldSchema> fields = List.of(
+        new ImportFieldSchema("code", "String", true, null, null,
+            "Deve seguir a máscara de níveis configurada na empresa", null, "1.1.01.001"),
+        new ImportFieldSchema("name", "String", true, null, null, null, null, "Caixa"),
+        new ImportFieldSchema("accountType", "Enum", true, null, accountTypeValues, null, null,
+            "ATIVO"),
+        new ImportFieldSchema("contaReferencialCodigo", "String", false, null, null,
+            "Código RFB da Conta Referencial. Deve existir e estar ACTIVE", null,
+            "1.01.01.01.01"),
+        new ImportFieldSchema("classe", "Enum", true, null, classeValues, null, null,
+            "ANALITICO"),
+        new ImportFieldSchema("natureza", "Enum", true, null, naturezaValues, null, null,
+            "DEVEDORA"),
+        new ImportFieldSchema("afetaResultado", "Boolean", true, null,
+            ImportFieldSchema.BOOLEAN_ALLOWED_VALUES, null, null, "false"),
+        new ImportFieldSchema("dedutivel", "Boolean", true, null,
+            ImportFieldSchema.BOOLEAN_ALLOWED_VALUES, null, null, "false")
+    );
+    return ResponseEntity.ok(new ImportSchemaResponse(8, ";", true, fields));
+  }
+
+  /**
+   * Retorna um arquivo CSV de template para importação de plano de contas.
+   */
+  @GetMapping("/import/template")
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<byte[]> importTemplate() {
+    String csv =
+        "code;name;accountType;contaReferencialCodigo;classe;natureza;afetaResultado;dedutivel\n"
+        + "1.1.01.001;Caixa;ATIVO;1.01.01.01.01;ANALITICO;DEVEDORA;false;false\n";
+    byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "template-plano-de-contas.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 }

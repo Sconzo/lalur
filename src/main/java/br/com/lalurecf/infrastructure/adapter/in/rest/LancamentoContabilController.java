@@ -15,6 +15,8 @@ import br.com.lalurecf.infrastructure.dto.lancamentocontabil.ImportLancamentoCon
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.LancamentoContabilResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentocontabil.UpdateLancamentoContabilRequest;
 import br.com.lalurecf.infrastructure.dto.mapper.LancamentoContabilDtoMapper;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportFieldSchema;
+import br.com.lalurecf.infrastructure.dto.importschema.ImportSchemaResponse;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
@@ -22,6 +24,7 @@ import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -411,5 +414,47 @@ public class LancamentoContabilController {
         deleteLancamentoContabilBatchUseCase.deleteBatch(companyId, mes, ano);
 
     return ResponseEntity.ok(response);
+  }
+
+  /**
+   * Retorna o schema do arquivo CSV de importação de lançamentos contábeis.
+   */
+  @GetMapping("/import/schema")
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<ImportSchemaResponse> importSchema() {
+    List<ImportFieldSchema> fields = List.of(
+        new ImportFieldSchema("contaDebitoCode", "String", false, null, null,
+            "Ao menos contaDebitoCode ou contaCreditoCode deve ser informado", null,
+            "1.1.01.001"),
+        new ImportFieldSchema("contaCreditoCode", "String", false, null, null,
+            "Ao menos contaDebitoCode ou contaCreditoCode deve ser informado", null,
+            "3.1.01.001"),
+        new ImportFieldSchema("data", "Date", true, "YYYY-MM-DD", null, null, null,
+            "2024-03-15"),
+        new ImportFieldSchema("valor", "Decimal", true,
+            "Ponto como separador decimal. Deve ser maior que zero", null, null, null,
+            "1500.00"),
+        new ImportFieldSchema("historico", "String", true, null, null, null, 2000,
+            "Pagamento de fornecedor"),
+        new ImportFieldSchema("numeroDocumento", "String", false, null, null, null, 100,
+            "NF-001234")
+    );
+    return ResponseEntity.ok(new ImportSchemaResponse(6, ";", true, fields));
+  }
+
+  /**
+   * Retorna um arquivo CSV de template para importação de lançamentos contábeis.
+   */
+  @GetMapping("/import/template")
+  @PreAuthorize("hasRole('CONTADOR')")
+  public ResponseEntity<byte[]> importTemplate() {
+    String csv =
+        "contaDebitoCode;contaCreditoCode;data;valor;historico;numeroDocumento\n"
+        + "1.1.01.001;3.1.01.001;2024-03-15;1500.00;Pagamento de fornecedor;NF-001234\n";
+    byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "template-lancamento-contabil.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 }
