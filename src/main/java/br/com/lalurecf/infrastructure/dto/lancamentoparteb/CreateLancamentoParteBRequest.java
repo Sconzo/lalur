@@ -33,11 +33,6 @@ public class CreateLancamentoParteBRequest {
   @Max(value = 12, message = "Mês de referência deve ser entre 1 e 12")
   private Integer mesReferencia;
 
-  @NotNull(message = "Ano de referência é obrigatório")
-  @Min(value = 2000, message = "Ano de referência deve ser >= 2000")
-  @Max(value = 2027, message = "Ano de referência deve ser <= ano atual + 1")
-  private Integer anoReferencia;
-
   @NotNull(message = "Tipo de apuração é obrigatório")
   private TipoApuracao tipoApuracao;
 

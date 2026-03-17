@@ -25,6 +25,7 @@ import br.com.lalurecf.infrastructure.dto.user.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
+import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -58,11 +59,18 @@ public class LancamentoParteBService
   @Override
   @Transactional
   public LancamentoParteBResponse createLancamentoParteB(CreateLancamentoParteBRequest request) {
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer anoReferencia = FiscalYearContext.getCurrentFiscalYear();
+    if (anoReferencia == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
+
     log.info(
         "Creating LancamentoParteB for {} {}/{}",
         request.getTipoApuracao(),
         request.getMesReferencia(),
-        request.getAnoReferencia());
+        anoReferencia);
 
     // Obter empresa do contexto
     Long companyId = CompanyContext.getCurrentCompanyId();
@@ -99,7 +107,7 @@ public class LancamentoParteBService
         LancamentoParteB.builder()
             .companyId(companyId)
             .mesReferencia(request.getMesReferencia())
-            .anoReferencia(request.getAnoReferencia())
+            .anoReferencia(anoReferencia)
             .tipoApuracao(request.getTipoApuracao())
             .tipoRelacionamento(request.getTipoRelacionamento())
             .contaContabilId(request.getContaContabilId())
@@ -238,9 +246,16 @@ public class LancamentoParteBService
             .orElseThrow(
                 () -> new ResourceNotFoundException("LancamentoParteB not found with id: " + id));
 
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer anoReferencia = FiscalYearContext.getCurrentFiscalYear();
+    if (anoReferencia == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
+
     // Atualizar campos
     lancamento.setMesReferencia(request.getMesReferencia());
-    lancamento.setAnoReferencia(request.getAnoReferencia());
+    lancamento.setAnoReferencia(anoReferencia);
     lancamento.setTipoApuracao(request.getTipoApuracao());
     lancamento.setTipoRelacionamento(request.getTipoRelacionamento());
     lancamento.setContaContabilId(request.getContaContabilId());

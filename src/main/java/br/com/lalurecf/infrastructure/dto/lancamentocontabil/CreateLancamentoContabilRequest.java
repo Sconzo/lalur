@@ -2,7 +2,6 @@ package br.com.lalurecf.infrastructure.dto.lancamentocontabil;
 
 import br.com.lalurecf.infrastructure.validation.LancamentoContabilValidator;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -43,8 +42,4 @@ public class CreateLancamentoContabilRequest {
 
   @Size(max = 100, message = "Número do documento deve ter no máximo 100 caracteres")
   private String numeroDocumento;
-
-  @NotNull(message = "Ano fiscal é obrigatório")
-  @Min(value = 2000, message = "Ano fiscal deve ser maior ou igual a 2000")
-  private Integer fiscalYear;
 }

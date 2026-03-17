@@ -20,6 +20,7 @@ import br.com.lalurecf.infrastructure.dto.mapper.LancamentoContabilDtoMapper;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
+import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -89,7 +90,6 @@ public class LancamentoContabilController {
    * </ul>
    *
    * @param file arquivo CSV/TXT (max 50MB)
-   * @param fiscalYear ano fiscal dos lançamentos (obrigatório)
    * @param dryRun se true, apenas retorna preview sem persistir (default: false)
    * @return relatório da importação
    */
@@ -97,14 +97,7 @@ public class LancamentoContabilController {
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<ImportLancamentoContabilResponse> importLancamentos(
       @RequestParam("file") MultipartFile file,
-      @RequestParam("fiscalYear") Integer fiscalYear,
       @RequestParam(value = "dryRun", required = false, defaultValue = "false") boolean dryRun) {
-
-    log.info(
-        "POST /api/v1/lancamento-contabil/import - fiscalYear: {}, dryRun: {}, file: {}",
-        fiscalYear,
-        dryRun,
-        file.getOriginalFilename());
 
     // Obter empresa do contexto
     Long companyId = CompanyContext.getCurrentCompanyId();
@@ -113,10 +106,18 @@ public class LancamentoContabilController {
           "Company context is required (header X-Company-Id missing)");
     }
 
-    // Validar fiscal year
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
     if (fiscalYear == null) {
-      throw new IllegalArgumentException("Fiscal year is required");
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
     }
+
+    log.info(
+        "POST /api/v1/lancamento-contabil/import - fiscalYear: {}, dryRun: {}, file: {}",
+        fiscalYear,
+        dryRun,
+        file.getOriginalFilename());
 
     // Executar importação
     ImportLancamentoContabilResponse response =
@@ -135,7 +136,6 @@ public class LancamentoContabilController {
    *
    * <p>Ordenação: data ASC
    *
-   * @param fiscalYear ano fiscal dos lançamentos (obrigatório)
    * @param dataInicio data inicial do filtro (opcional)
    * @param dataFim data final do filtro (opcional)
    * @return arquivo CSV para download
@@ -143,19 +143,12 @@ public class LancamentoContabilController {
   @GetMapping("/export")
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<byte[]> exportLancamentos(
-      @RequestParam("fiscalYear") Integer fiscalYear,
       @RequestParam(value = "dataInicio", required = false)
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           LocalDate dataInicio,
       @RequestParam(value = "dataFim", required = false)
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           LocalDate dataFim) {
-
-    log.info(
-        "GET /api/v1/lancamento-contabil/export - fiscalYear: {}, dataInicio: {}, dataFim: {}",
-        fiscalYear,
-        dataInicio,
-        dataFim);
 
     // Obter empresa do contexto
     Long companyId = CompanyContext.getCurrentCompanyId();
@@ -164,10 +157,18 @@ public class LancamentoContabilController {
           "Company context is required (header X-Company-Id missing)");
     }
 
-    // Validar fiscal year
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
     if (fiscalYear == null) {
-      throw new IllegalArgumentException("Fiscal year is required");
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
     }
+
+    log.info(
+        "GET /api/v1/lancamento-contabil/export - fiscalYear: {}, dataInicio: {}, dataFim: {}",
+        fiscalYear,
+        dataInicio,
+        dataFim);
 
     // Executar exportação
     String csvContent =
@@ -209,6 +210,13 @@ public class LancamentoContabilController {
 
     log.info("POST /api/v1/lancamento-contabil - creating lancamento");
 
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
+
     // Converter DTO para domain
     LancamentoContabil lancamento =
         LancamentoContabil.builder()
@@ -218,7 +226,7 @@ public class LancamentoContabilController {
             .valor(request.getValor())
             .historico(request.getHistorico())
             .numeroDocumento(request.getNumeroDocumento())
-            .fiscalYear(request.getFiscalYear())
+            .fiscalYear(fiscalYear)
             .build();
 
     // Criar
@@ -249,7 +257,6 @@ public class LancamentoContabilController {
    * @param data filtro por data (opcional)
    * @param dataInicio filtro por range - início (opcional)
    * @param dataFim filtro por range - fim (opcional)
-   * @param fiscalYear filtro por ano fiscal (opcional)
    * @param includeInactive incluir inativos (opcional)
    * @param pageable configuração de paginação
    * @return página de lançamentos
@@ -267,12 +274,14 @@ public class LancamentoContabilController {
       @RequestParam(value = "dataFim", required = false)
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           LocalDate dataFim,
-      @RequestParam(value = "fiscalYear", required = false) Integer fiscalYear,
       @RequestParam(value = "includeInactive", required = false) Boolean includeInactive,
       @PageableDefault(size = 100, sort = "data", direction = Sort.Direction.DESC)
           Pageable pageable) {
 
     log.info("GET /api/v1/lancamento-contabil - listing lancamentos");
+
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
 
     // Listar
     Page<LancamentoContabil> lancamentos =

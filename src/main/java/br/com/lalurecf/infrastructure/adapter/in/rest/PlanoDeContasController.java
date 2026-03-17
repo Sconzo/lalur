@@ -18,6 +18,7 @@ import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.planodecontas.UpdatePlanoDeContasRequest;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
+import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -97,7 +98,6 @@ public class PlanoDeContasController {
    * </ul>
    *
    * @param file arquivo CSV/TXT (max 10MB)
-   * @param fiscalYear ano fiscal das contas (obrigatório)
    * @param dryRun se true, apenas retorna preview sem persistir (default: false)
    * @return relatório da importação
    */
@@ -105,14 +105,7 @@ public class PlanoDeContasController {
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<ImportPlanoDeContasResponse> importPlanoDeContas(
       @RequestParam("file") MultipartFile file,
-      @RequestParam("fiscalYear") Integer fiscalYear,
       @RequestParam(value = "dryRun", required = false, defaultValue = "false") boolean dryRun) {
-
-    log.info(
-        "POST /api/v1/plano-de-contas/import - fiscalYear: {}, dryRun: {}, file: {}",
-        fiscalYear,
-        dryRun,
-        file.getOriginalFilename());
 
     // Obter empresa do contexto
     Long companyId = CompanyContext.getCurrentCompanyId();
@@ -121,10 +114,18 @@ public class PlanoDeContasController {
           "Company context is required (header X-Company-Id missing)");
     }
 
-    // Validar fiscal year
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
     if (fiscalYear == null) {
-      throw new IllegalArgumentException("Fiscal year is required");
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
     }
+
+    log.info(
+        "POST /api/v1/plano-de-contas/import - fiscalYear: {}, dryRun: {}, file: {}",
+        fiscalYear,
+        dryRun,
+        file.getOriginalFilename());
 
     // Executar importação
     ImportPlanoDeContasResponse response =
@@ -136,7 +137,6 @@ public class PlanoDeContasController {
   /**
    * Lista contas contábeis com filtros e paginação.
    *
-   * @param fiscalYear filtro por ano fiscal (opcional)
    * @param accountType filtro por tipo de conta (opcional)
    * @param classe filtro por classe contábil (opcional)
    * @param natureza filtro por natureza (opcional)
@@ -148,7 +148,6 @@ public class PlanoDeContasController {
   @GetMapping
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<Page<PlanoDeContasResponse>> list(
-      @RequestParam(required = false) Integer fiscalYear,
       @RequestParam(required = false) AccountType accountType,
       @RequestParam(required = false) ClasseContabil classe,
       @RequestParam(required = false) NaturezaConta natureza,
@@ -157,6 +156,10 @@ public class PlanoDeContasController {
       @PageableDefault(size = 100, sort = "code", direction = Sort.Direction.ASC)
           Pageable pageable) {
     log.info("GET /api/v1/plano-de-contas - Listing plano de contas");
+
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+
     Page<PlanoDeContasResponse> response =
         listPlanoDeContasUseCase.execute(
             fiscalYear, accountType, classe, natureza, search, includeInactive, pageable);

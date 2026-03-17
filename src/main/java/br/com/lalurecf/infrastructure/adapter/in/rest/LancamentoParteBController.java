@@ -18,6 +18,7 @@ import br.com.lalurecf.infrastructure.dto.lancamentoparteb.UpdateLancamentoParte
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusRequest;
 import br.com.lalurecf.infrastructure.dto.user.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
+import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -146,7 +147,6 @@ public class LancamentoParteBController {
   /**
    * Lista lançamentos da Parte B com paginação e filtros.
    *
-   * @param anoReferencia filtro por ano de referência (opcional)
    * @param mesReferencia filtro por mês de referência (opcional)
    * @param tipoApuracao filtro por tipo de apuração (opcional)
    * @param tipoAjuste filtro por tipo de ajuste (opcional)
@@ -162,7 +162,6 @@ public class LancamentoParteBController {
           "Lista lançamentos da Parte B da empresa no contexto com filtros e paginação "
               + "(header X-Company-Id)")
   public ResponseEntity<Page<LancamentoParteBResponse>> listLancamentosParteB(
-      @RequestParam(name = "ano_referencia", required = false) Integer anoReferencia,
       @RequestParam(name = "mes_referencia", required = false) Integer mesReferencia,
       @RequestParam(name = "tipo_apuracao", required = false) TipoApuracao tipoApuracao,
       @RequestParam(name = "tipo_ajuste", required = false) TipoAjuste tipoAjuste,
@@ -170,6 +169,10 @@ public class LancamentoParteBController {
           Boolean includeInactive,
       @PageableDefault(size = 100, sort = "anoReferencia", direction = Sort.Direction.DESC)
           Pageable pageable) {
+
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer anoReferencia = FiscalYearContext.getCurrentFiscalYear();
+
     Page<LancamentoParteBResponse> response =
         listLancamentoParteBUseCase.listLancamentosParteB(
             anoReferencia, mesReferencia, tipoApuracao, tipoAjuste, includeInactive, pageable);
@@ -244,8 +247,6 @@ public class LancamentoParteBController {
 
     List<ImportFieldSchema> fields = List.of(
         new ImportFieldSchema("mesReferencia", "Integer", true, "1 a 12", null, null, null, "3"),
-        new ImportFieldSchema("anoReferencia", "Integer", true, "Maior ou igual a 2000", null,
-            null, null, "2024"),
         new ImportFieldSchema("tipoApuracao", "Enum", true, null, tipoApuracaoValues, null, null,
             "IRPJ"),
         new ImportFieldSchema("tipoRelacionamento", "Enum", true, null, tipoRelacionamentoValues,
@@ -264,7 +265,7 @@ public class LancamentoParteBController {
         new ImportFieldSchema("valor", "Decimal", true,
             "Ponto como separador decimal. Deve ser maior que zero", null, null, null, "5000.00")
     );
-    return ResponseEntity.ok(new ImportSchemaResponse(10, ";", true, fields));
+    return ResponseEntity.ok(new ImportSchemaResponse(9, ";", true, fields));
   }
 
   /**
@@ -274,10 +275,10 @@ public class LancamentoParteBController {
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<byte[]> importTemplate() {
     String csv =
-        "mesReferencia;anoReferencia;tipoApuracao;tipoRelacionamento;"
+        "mesReferencia;tipoApuracao;tipoRelacionamento;"
         + "contaContabilCode;contaParteBCode;parametroTributarioCodigo;"
         + "tipoAjuste;descricao;valor\n"
-        + "3;2024;IRPJ;CONTA_CONTABIL;1.1.01.001;;PARAM-001;"
+        + "3;IRPJ;CONTA_CONTABIL;1.1.01.001;;PARAM-001;"
         + "ADICAO;Ajuste de depreciação acelerada;5000.00\n";
     byte[] bytes = csv.getBytes(StandardCharsets.UTF_8);
     HttpHeaders headers = new HttpHeaders();

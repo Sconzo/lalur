@@ -16,6 +16,7 @@ import br.com.lalurecf.domain.model.TaxParameter;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.ImportLancamentoParteBResponse;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.ImportLancamentoParteBResponse.ImportError;
 import br.com.lalurecf.infrastructure.dto.lancamentoparteb.ImportLancamentoParteBResponse.LancamentoParteBPreview;
+import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -35,9 +36,11 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * Service para importação de lançamentos da Parte B via arquivo CSV/TXT.
  *
- * <p>Formato CSV esperado (10 colunas):
- * mesReferencia;anoReferencia;tipoApuracao;tipoRelacionamento;contaContabilCode;
+ * <p>Formato CSV esperado (9 colunas):
+ * mesReferencia;tipoApuracao;tipoRelacionamento;contaContabilCode;
  * contaParteBCode;parametroTributarioCodigo;tipoAjuste;descricao;valor
+ *
+ * <p>O anoReferencia vem do header X-Fiscal-Year (FiscalYearContext).
  *
  * <p>Separador: auto-detectado (; ou ,)
  */
@@ -88,8 +91,14 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
 
         try {
           // Extrair campos por nome (cabeçalho obrigatório)
+          // anoReferencia vem do header X-Fiscal-Year (FiscalYearContext)
+          final Integer anoReferencia = FiscalYearContext.getCurrentFiscalYear();
+          if (anoReferencia == null) {
+            throw new IllegalArgumentException(
+                "Fiscal year context is required (header X-Fiscal-Year missing)");
+          }
+
           final String mesReferenciaStr = getRequiredField(record, "mesReferencia", lineNumber);
-          final String anoReferenciaStr = getRequiredField(record, "anoReferencia", lineNumber);
           final String tipoApuracaoStr = getRequiredField(record, "tipoApuracao", lineNumber);
           final String tipoRelacionamentoStr =
               getRequiredField(record, "tipoRelacionamento", lineNumber);
@@ -119,29 +128,6 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                 ImportError.builder()
                     .lineNumber(lineNumber)
                     .error("Invalid mesReferencia format: " + mesReferenciaStr)
-                    .build());
-            skippedLines++;
-            continue;
-          }
-
-          // Parse anoReferencia
-          int anoReferencia;
-          try {
-            anoReferencia = Integer.parseInt(anoReferenciaStr);
-            if (anoReferencia < 2000) {
-              errors.add(
-                  ImportError.builder()
-                      .lineNumber(lineNumber)
-                      .error("anoReferencia must be >= 2000, got: " + anoReferenciaStr)
-                      .build());
-              skippedLines++;
-              continue;
-            }
-          } catch (NumberFormatException e) {
-            errors.add(
-                ImportError.builder()
-                    .lineNumber(lineNumber)
-                    .error("Invalid anoReferencia format: " + anoReferenciaStr)
                     .build());
             skippedLines++;
             continue;
@@ -406,7 +392,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
             previews.add(
                 LancamentoParteBPreview.builder()
                     .mesReferencia(mesReferenciaStr)
-                    .anoReferencia(anoReferenciaStr)
+                    .anoReferencia(String.valueOf(anoReferencia))
                     .tipoApuracao(tipoApuracaoStr)
                     .tipoRelacionamento(tipoRelacionamentoStr)
                     .contaContabilCode(contaContabilCode.isEmpty() ? null : contaContabilCode)

@@ -3,7 +3,6 @@ package br.com.lalurecf.infrastructure.dto.planodecontas;
 import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -30,11 +29,6 @@ public class CreatePlanoDeContasRequest {
   /** Nome da conta contábil (ex: "Caixa"). */
   @NotBlank(message = "Name is required")
   private String name;
-
-  /** Ano fiscal da conta (ex: 2024). */
-  @NotNull(message = "Fiscal year is required")
-  @Min(value = 2000, message = "Fiscal year must be >= 2000")
-  private Integer fiscalYear;
 
   /** Tipo da conta (ATIVO, PASSIVO, RECEITA, etc.). */
   @NotNull(message = "Account type is required")

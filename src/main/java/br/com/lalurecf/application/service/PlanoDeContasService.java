@@ -24,6 +24,7 @@ import br.com.lalurecf.infrastructure.dto.planodecontas.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.planodecontas.UpdatePlanoDeContasRequest;
 import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
+import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import java.time.Year;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -66,8 +67,13 @@ public class PlanoDeContasService
           "Company context is required (header X-Company-Id missing)");
     }
 
-    // Validar fiscal year
-    validateFiscalYear(request.getFiscalYear());
+    // Obter ano fiscal do contexto (header X-Fiscal-Year)
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
+    validateFiscalYear(fiscalYear);
 
     // Validar code não vazio
     if (request.getCode() == null || request.getCode().trim().isEmpty()) {
@@ -107,13 +113,13 @@ public class PlanoDeContasService
     // Verificar unicidade (company + code + fiscalYear)
     Optional<PlanoDeContas> existing =
         planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-            companyId, request.getCode(), request.getFiscalYear());
+            companyId, request.getCode(), fiscalYear);
 
     if (existing.isPresent()) {
       throw new IllegalArgumentException(
           String.format(
               "PlanoDeContas with code '%s' already exists for company %d and fiscal year %d",
-              request.getCode(), companyId, request.getFiscalYear()));
+              request.getCode(), companyId, fiscalYear));
     }
 
     // Criar conta
@@ -122,7 +128,7 @@ public class PlanoDeContasService
             .companyId(companyId)
             .code(request.getCode())
             .name(request.getName())
-            .fiscalYear(request.getFiscalYear())
+            .fiscalYear(fiscalYear)
             .accountType(request.getAccountType())
             .contaReferencialId(request.getContaReferencialId())
             .classe(request.getClasse())
