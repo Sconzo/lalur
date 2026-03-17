@@ -10,16 +10,14 @@ import br.com.lalurecf.application.port.in.ecf.ValidateEcfFileUseCase;
 import br.com.lalurecf.domain.model.EcfFileDownloadData;
 import br.com.lalurecf.infrastructure.dto.ecf.EcfFileListResponse;
 import br.com.lalurecf.infrastructure.dto.ecf.FinalizeEcfFileResponse;
-import br.com.lalurecf.infrastructure.dto.ecf.GenerateArquivoParcialRequest;
 import br.com.lalurecf.infrastructure.dto.ecf.GenerateArquivoParcialResponse;
-import br.com.lalurecf.infrastructure.dto.ecf.GenerateCompleteEcfRequest;
 import br.com.lalurecf.infrastructure.dto.ecf.GenerateCompleteEcfResponse;
 import br.com.lalurecf.infrastructure.dto.ecf.UploadImportedEcfResponse;
 import br.com.lalurecf.infrastructure.dto.ecf.ValidationResult;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
+import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +31,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,9 +63,8 @@ public class EcfController {
    * Campos são null quando o arquivo ainda não existe para o tipo. Suporta filtro opcional
    * por fileType.
    *
-   * @param fiscalYear ano fiscal de referência
-   * @param fileType   filtro opcional por tipo de arquivo (ARQUIVO_PARCIAL, IMPORTED_ECF,
-   *                   COMPLETE_ECF)
+   * @param fileType filtro opcional por tipo de arquivo (ARQUIVO_PARCIAL, IMPORTED_ECF,
+   *                 COMPLETE_ECF)
    * @return DTO com sumário de cada tipo de arquivo
    */
   @GetMapping
@@ -78,15 +74,20 @@ public class EcfController {
       description =
           "Retorna sumário dos arquivos ECF (ARQUIVO_PARCIAL, IMPORTED_ECF, COMPLETE_ECF) "
               + "para o ano fiscal informado. Campos null quando arquivo não existe. "
-              + "Requer header X-Company-Id.")
+              + "Requer headers X-Company-Id e X-Fiscal-Year.")
   public ResponseEntity<EcfFileListResponse> listEcfFiles(
-      @RequestParam Integer fiscalYear,
       @RequestParam(required = false) String fileType) {
 
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
       throw new IllegalArgumentException(
           "Company context é obrigatório (header X-Company-Id ausente)");
+    }
+
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
     }
 
     log.info("GET /api/v1/ecf - companyId={}, fiscalYear={}, fileType={}",
@@ -104,7 +105,6 @@ public class EcfController {
    * (um por empresa+tipo+ano). Se existir um COMPLETE_ECF com status VALIDATED ou FINALIZED,
    * ele é rebaixado para DRAFT.
    *
-   * @param request contém o fiscalYear
    * @return metadados do arquivo gerado
    */
   @PostMapping("/generate-parcial")
@@ -113,9 +113,8 @@ public class EcfController {
       summary = "Gerar Arquivo Parcial ECF",
       description =
           "Gera o Arquivo Parcial ECF com registros M (IRPJ/CSLL/Parte B) a partir dos "
-              + "Lançamentos da Parte B ACTIVE. Requer header X-Company-Id.")
-  public ResponseEntity<GenerateArquivoParcialResponse> generateArquivoParcial(
-      @Valid @RequestBody GenerateArquivoParcialRequest request) {
+              + "Lançamentos da Parte B ACTIVE. Requer headers X-Company-Id e X-Fiscal-Year.")
+  public ResponseEntity<GenerateArquivoParcialResponse> generateArquivoParcial() {
 
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
@@ -123,14 +122,20 @@ public class EcfController {
           "Company context é obrigatório (header X-Company-Id ausente)");
     }
 
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
+
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     String generatedBy = authentication != null ? authentication.getName() : "unknown";
 
     log.info("POST /api/v1/ecf/generate-parcial - companyId={}, fiscalYear={}",
-        companyId, request.getFiscalYear());
+        companyId, fiscalYear);
 
     GenerateArquivoParcialResponse response =
-        generateArquivoParcialUseCase.generate(request, companyId, generatedBy);
+        generateArquivoParcialUseCase.generate(fiscalYear, companyId, generatedBy);
 
     return ResponseEntity.ok(response);
   }
@@ -143,7 +148,6 @@ public class EcfController {
    * existente com status VALIDATED ou FINALIZED para DRAFT.
    *
    * @param file arquivo ECF no formato SPED (extensão .txt)
-   * @param fiscalYear ano fiscal de referência
    * @return metadados do arquivo armazenado
    * @throws IOException se ocorrer erro ao ler o arquivo
    */
@@ -154,15 +158,20 @@ public class EcfController {
       description =
           "Armazena o ECF gerado por sistema externo (Receita Federal/outro sistema). "
               + "Valida extensão .txt, tamanho máx 50MB, formato SPED e presença de bloco M. "
-              + "Requer header X-Company-Id.")
+              + "Requer headers X-Company-Id e X-Fiscal-Year.")
   public ResponseEntity<UploadImportedEcfResponse> uploadImportado(
-      @RequestParam("file") MultipartFile file,
-      @RequestParam("fiscalYear") Integer fiscalYear) throws IOException {
+      @RequestParam("file") MultipartFile file) throws IOException {
 
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
       throw new IllegalArgumentException(
           "Company context é obrigatório (header X-Company-Id ausente)");
+    }
+
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
     }
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -185,7 +194,6 @@ public class EcfController {
    * demais registros do Importado são preservados. M030 do Parcial ausentes no Importado são
    * adicionados. M400/M410/M405 do Parcial substituem os do Importado.
    *
-   * @param request contém o fiscalYear
    * @return metadados do ECF Completo gerado
    */
   @PostMapping("/generate-completo")
@@ -195,9 +203,8 @@ public class EcfController {
       description =
           "Faz merge do ECF Importado com o Arquivo Parcial para gerar o ECF Completo. "
               + "Requer upload prévio do ECF Importado e geração do Arquivo Parcial. "
-              + "Requer header X-Company-Id.")
-  public ResponseEntity<GenerateCompleteEcfResponse> generateCompleto(
-      @Valid @RequestBody GenerateCompleteEcfRequest request) {
+              + "Requer headers X-Company-Id e X-Fiscal-Year.")
+  public ResponseEntity<GenerateCompleteEcfResponse> generateCompleto() {
 
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
@@ -205,14 +212,20 @@ public class EcfController {
           "Company context é obrigatório (header X-Company-Id ausente)");
     }
 
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
+
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     String generatedBy = authentication != null ? authentication.getName() : "unknown";
 
     log.info("POST /api/v1/ecf/generate-completo - companyId={}, fiscalYear={}",
-        companyId, request.getFiscalYear());
+        companyId, fiscalYear);
 
     GenerateCompleteEcfResponse response =
-        generateCompleteEcfUseCase.generate(request, companyId, generatedBy);
+        generateCompleteEcfUseCase.generate(fiscalYear, companyId, generatedBy);
 
     return ResponseEntity.ok(response);
   }

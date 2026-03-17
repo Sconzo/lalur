@@ -8,7 +8,6 @@ import br.com.lalurecf.domain.enums.EcfFileType;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.Company;
 import br.com.lalurecf.domain.model.EcfFile;
-import br.com.lalurecf.infrastructure.dto.ecf.GenerateCompleteEcfRequest;
 import br.com.lalurecf.infrastructure.dto.ecf.GenerateCompleteEcfResponse;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,9 +45,8 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
   @Override
   @Transactional
   public GenerateCompleteEcfResponse generate(
-      GenerateCompleteEcfRequest request, Long companyId, String generatedBy) {
+      Integer fiscalYear, Long companyId, String generatedBy) {
 
-    Integer fiscalYear = request.getFiscalYear();
     log.info("Gerando ECF Completo: companyId={}, fiscalYear={}", companyId, fiscalYear);
 
     // Passo 1: Carregar os dois arquivos-fonte

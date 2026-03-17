@@ -10,7 +10,6 @@ import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.Company;
 import br.com.lalurecf.domain.model.EcfFile;
 import br.com.lalurecf.domain.model.LancamentoParteB;
-import br.com.lalurecf.infrastructure.dto.ecf.GenerateArquivoParcialRequest;
 import br.com.lalurecf.infrastructure.dto.ecf.GenerateArquivoParcialResponse;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,9 +47,8 @@ public class ArquivoParcialAssemblerService implements GenerateArquivoParcialUse
   @Override
   @Transactional
   public GenerateArquivoParcialResponse generate(
-      GenerateArquivoParcialRequest request, Long companyId, String generatedBy) {
+      Integer fiscalYear, Long companyId, String generatedBy) {
 
-    Integer fiscalYear = request.getFiscalYear();
     log.info("Gerando Arquivo Parcial ECF: companyId={}, fiscalYear={}", companyId, fiscalYear);
 
     // Passo 1: validar lançamentos ACTIVE

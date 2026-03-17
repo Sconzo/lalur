@@ -1,6 +1,5 @@
 package br.com.lalurecf.application.port.in.ecf;
 
-import br.com.lalurecf.infrastructure.dto.ecf.GenerateCompleteEcfRequest;
 import br.com.lalurecf.infrastructure.dto.ecf.GenerateCompleteEcfResponse;
 
 /**
@@ -14,12 +13,12 @@ public interface GenerateCompleteEcfUseCase {
   /**
    * Gera o ECF Completo fazendo merge do ECF Importado com o Arquivo Parcial.
    *
-   * @param request dados da requisição (fiscalYear)
+   * @param fiscalYear ano fiscal de referência (do contexto X-Fiscal-Year)
    * @param companyId ID da empresa
    * @param generatedBy identificador do usuário autenticado
    * @return metadados do ECF Completo gerado
    * @throws IllegalArgumentException se IMPORTED_ECF ou ARQUIVO_PARCIAL não existirem
    */
   GenerateCompleteEcfResponse generate(
-      GenerateCompleteEcfRequest request, Long companyId, String generatedBy);
+      Integer fiscalYear, Long companyId, String generatedBy);
 }
