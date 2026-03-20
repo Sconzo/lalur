@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * Handler global de exceções.
@@ -232,6 +233,25 @@ public class GlobalExceptionHandler {
             .message("Acesso negado: você não tem permissão para acessar este recurso")
             .build();
     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+  }
+
+  /**
+   * Handler para MaxUploadSizeExceededException.
+   *
+   * @param ex exceção lançada
+   * @return response 400 Bad Request
+   */
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+    log.warn("Arquivo excede o tamanho máximo permitido: {}", ex.getMessage());
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error(BAD_REQUEST)
+            .message("O arquivo excede o tamanho máximo permitido de 50MB")
+            .build();
+    return ResponseEntity.badRequest().body(error);
   }
 
   /**
