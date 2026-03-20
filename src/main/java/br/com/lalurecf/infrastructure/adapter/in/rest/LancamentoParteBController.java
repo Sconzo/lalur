@@ -235,7 +235,7 @@ public class LancamentoParteBController {
   /**
    * Retorna o schema do arquivo CSV de importação de lançamentos da Parte B.
    */
-  @GetMapping("/import/schema")
+  @GetMapping("/import-schema")
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<ImportSchemaResponse> importSchema() {
     List<String> tipoApuracaoValues = Arrays.stream(TipoApuracao.values())
@@ -271,7 +271,7 @@ public class LancamentoParteBController {
   /**
    * Retorna um arquivo CSV de template para importação de lançamentos da Parte B.
    */
-  @GetMapping("/import/template")
+  @GetMapping("/import-template")
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<byte[]> importTemplate() {
     String csv =

@@ -227,7 +227,7 @@ public class ContaReferencialController {
   /**
    * Retorna o schema do arquivo CSV de importação de contas referenciais.
    */
-  @GetMapping("/import/schema")
+  @GetMapping("/import-schema")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<ImportSchemaResponse> importSchema() {
     int maxAnoValidade = Year.now().getValue() + 5;
@@ -245,7 +245,7 @@ public class ContaReferencialController {
   /**
    * Retorna um arquivo CSV de template para importação de contas referenciais.
    */
-  @GetMapping("/import/template")
+  @GetMapping("/import-template")
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<byte[]> importTemplate() {
     String csv =

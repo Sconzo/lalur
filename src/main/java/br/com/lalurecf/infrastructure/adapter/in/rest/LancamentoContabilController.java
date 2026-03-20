@@ -428,7 +428,7 @@ public class LancamentoContabilController {
   /**
    * Retorna o schema do arquivo CSV de importação de lançamentos contábeis.
    */
-  @GetMapping("/import/schema")
+  @GetMapping("/import-schema")
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<ImportSchemaResponse> importSchema() {
     List<ImportFieldSchema> fields = List.of(
@@ -454,7 +454,7 @@ public class LancamentoContabilController {
   /**
    * Retorna um arquivo CSV de template para importação de lançamentos contábeis.
    */
-  @GetMapping("/import/template")
+  @GetMapping("/import-template")
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<byte[]> importTemplate() {
     String csv =

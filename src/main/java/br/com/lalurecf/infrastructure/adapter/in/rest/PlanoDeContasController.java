@@ -217,7 +217,7 @@ public class PlanoDeContasController {
   /**
    * Retorna o schema do arquivo CSV de importação de plano de contas.
    */
-  @GetMapping("/import/schema")
+  @GetMapping("/import-schema")
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<ImportSchemaResponse> importSchema() {
     List<String> accountTypeValues = Arrays.stream(AccountType.values())
@@ -251,7 +251,7 @@ public class PlanoDeContasController {
   /**
    * Retorna um arquivo CSV de template para importação de plano de contas.
    */
-  @GetMapping("/import/template")
+  @GetMapping("/import-template")
   @PreAuthorize("hasRole('CONTADOR')")
   public ResponseEntity<byte[]> importTemplate() {
     String csv =
