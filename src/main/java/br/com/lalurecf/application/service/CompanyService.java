@@ -112,9 +112,6 @@ public class CompanyService implements
               "Já existe uma empresa ativa com o CNPJ: " + cnpj.format());
         });
 
-    // Validar que os 3 tipos obrigatórios estão presentes nos parâmetros globais
-    validateRequiredParameterTypes(request.globalParameterIds());
-
     // Validar que todos os parâmetros globais existem e estão ACTIVE
     validateParametersExistAndActive(request.globalParameterIds());
 
@@ -251,9 +248,6 @@ public class CompanyService implements
   @Transactional
   public CompanyDetailResponse update(Long id, UpdateCompanyRequest request) {
     log.info("Atualizando empresa ID: {}", id);
-
-    // Validar que os 3 tipos obrigatórios estão presentes nos parâmetros globais
-    validateRequiredParameterTypes(request.globalParameterIds());
 
     // Validar que todos os parâmetros globais existem e estão ACTIVE
     validateParametersExistAndActive(request.globalParameterIds());
@@ -999,39 +993,6 @@ public class CompanyService implements
     // Principal agora é userId (Long), retornar formatado
     Long userId = (Long) authentication.getPrincipal();
     return "user-" + userId; // Formato simplificado para logging
-  }
-
-  /**
-   * Valida que os 3 tipos obrigatórios (CNAE, QUALIFICACAO_PJ, NATUREZA_JURIDICA)
-   * estão presentes na lista de IDs de parâmetros globais.
-   *
-   * @param globalParameterIds lista de IDs de parâmetros globais
-   * @throws IllegalArgumentException se algum tipo obrigatório está ausente
-   */
-  private void validateRequiredParameterTypes(List<Long> globalParameterIds) {
-    if (globalParameterIds == null || globalParameterIds.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Lista de parâmetros globais não pode ser vazia");
-    }
-
-    // Buscar todos os parâmetros da lista
-    List<TaxParameterEntity> parameters = taxParameterRepository.findAllById(globalParameterIds);
-
-    // Extrair os tipos presentes
-    java.util.Set<String> presentTypes = parameters.stream()
-        .map(tp -> tp.getTipoParametro().getDescricao())
-        .collect(Collectors.toSet());
-
-    // Verificar tipos obrigatórios
-    List<String> requiredTypes = List.of("CNAE", "QUALIFICACAO_PJ", "NATUREZA_JURIDICA");
-    List<String> missingTypes = requiredTypes.stream()
-        .filter(type -> !presentTypes.contains(type))
-        .collect(Collectors.toList());
-
-    if (!missingTypes.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Parâmetros obrigatórios ausentes. Tipos faltando: " + String.join(", ", missingTypes));
-    }
   }
 
   /**
