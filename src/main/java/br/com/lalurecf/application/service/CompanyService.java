@@ -521,59 +521,14 @@ public class CompanyService implements
    * Converte Entity para CompanyResponse (listagem).
    */
   private CompanyResponse toResponse(CompanyEntity entity) {
-    // Buscar os 3 parâmetros tributários obrigatórios via JOIN
-    List<CompanyTaxParameterEntity> associations =
-        companyTaxParameterRepository.findByCompanyId(entity.getId());
-
-    // Buscar os parâmetros tributários completos
-    List<Long> parameterIds = associations.stream()
-        .map(CompanyTaxParameterEntity::getTaxParameterId)
-        .toList();
-
-    List<TaxParameterEntity> parameters = parameterIds.isEmpty()
-        ? Collections.emptyList()
-        : taxParameterRepository.findAllById(parameterIds);
-
-    // Criar mapa para lookup de informações de auditoria
-    java.util.Map<Long, CompanyTaxParameterEntity> associationMap = associations.stream()
-        .collect(Collectors.toMap(
-            CompanyTaxParameterEntity::getTaxParameterId,
-            assoc -> assoc));
-
-    // Verificar quais parâmetros têm valores temporais
-    java.util.Set<Long> associationsWithTemporalValues = associations.stream()
-        .map(CompanyTaxParameterEntity::getId)
-        .filter(assocId -> {
-          List<ValorParametroTemporalEntity> valores =
-              valorParametroTemporalRepository.findByEmpresaParametrosTributariosId(assocId);
-          return !valores.isEmpty();
-        })
-        .collect(Collectors.toSet());
-
-    // Criar mapa de taxParameterId -> associationId para lookup
-    java.util.Map<Long, Long> taxParamToAssocId = associationMap.entrySet().stream()
-        .collect(Collectors.toMap(
-            e -> e.getKey(),
-            e -> e.getValue().getId()));
-
-    // Encontrar cada parâmetro pelo tipo
-    TaxParameterSummary cnae = findParameterByType(
-        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId, "CNAE");
-    TaxParameterSummary qualificacaoPj = findParameterByType(
-        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
-        "QUALIFICACAO_PJ");
-    TaxParameterSummary naturezaJuridica = findParameterByType(
-        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
-        "NATUREZA_JURIDICA");
+    List<TaxParameterSummary> parameterSummaries = buildParameterSummaries(entity.getId());
 
     return new CompanyResponse(
         entity.getId(),
         formatCnpj(entity.getCnpj()),
         CompanyStatus.fromStatus(entity.getStatus()),
         entity.getRazaoSocial(),
-        cnae,
-        qualificacaoPj,
-        naturezaJuridica
+        parameterSummaries
     );
   }
 
@@ -581,84 +536,7 @@ public class CompanyService implements
    * Converte Entity para CompanyDetailResponse (detalhes).
    */
   private CompanyDetailResponse toDetailResponse(CompanyEntity entity) {
-    // Buscar todos os parâmetros tributários associados
-    List<CompanyTaxParameterEntity> associations =
-        companyTaxParameterRepository.findByCompanyId(entity.getId());
-
-    // Buscar os parâmetros tributários completos
-    List<Long> parameterIds = associations.stream()
-        .map(CompanyTaxParameterEntity::getTaxParameterId)
-        .toList();
-
-    List<TaxParameterEntity> parameters = parameterIds.isEmpty()
-        ? Collections.emptyList()
-        : taxParameterRepository.findAllById(parameterIds);
-
-    // Criar mapa para lookup de informações de auditoria
-    java.util.Map<Long, CompanyTaxParameterEntity> associationMap = associations.stream()
-        .collect(Collectors.toMap(
-            CompanyTaxParameterEntity::getTaxParameterId,
-            assoc -> assoc));
-
-    // Verificar quais parâmetros têm valores temporais
-    java.util.Set<Long> associationsWithTemporalValues = associations.stream()
-        .map(CompanyTaxParameterEntity::getId)
-        .filter(assocId -> {
-          List<ValorParametroTemporalEntity> valores =
-              valorParametroTemporalRepository.findByEmpresaParametrosTributariosId(assocId);
-          return !valores.isEmpty();
-        })
-        .collect(Collectors.toSet());
-
-    // Criar mapa de taxParameterId -> associationId para lookup
-    java.util.Map<Long, Long> taxParamToAssocId = associationMap.entrySet().stream()
-        .collect(Collectors.toMap(
-            e -> e.getKey(),
-            e -> e.getValue().getId()));
-
-    // Encontrar os 3 parâmetros obrigatórios pelo tipo
-    TaxParameterSummary cnae = findParameterByType(
-        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId, "CNAE");
-    TaxParameterSummary qualificacaoPj = findParameterByType(
-        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
-        "QUALIFICACAO_PJ");
-    TaxParameterSummary naturezaJuridica = findParameterByType(
-        parameters, associationMap, associationsWithTemporalValues, taxParamToAssocId,
-        "NATUREZA_JURIDICA");
-
-    // Encontrar outros parâmetros (que não são os 3 obrigatórios)
-    List<TaxParameterSummary> outrosParametros = parameters.stream()
-        .filter(p -> !p.getTipoParametro().getDescricao().equals("CNAE")
-            && !p.getTipoParametro().getDescricao().equals("QUALIFICACAO_PJ")
-            && !p.getTipoParametro().getDescricao().equals("NATUREZA_JURIDICA"))
-        .map(p -> {
-          CompanyTaxParameterEntity assoc = associationMap.get(p.getId());
-          String createdByEmail = "admin@example.com"; // TODO: buscar email do usuário
-          Long assocId = taxParamToAssocId.get(p.getId());
-          boolean hasTemporalValues = assocId != null
-              && associationsWithTemporalValues.contains(assocId);
-
-          // Buscar valores temporais se existirem
-          List<TemporalValueResponse> temporalValues = Collections.emptyList();
-          if (hasTemporalValues && assocId != null) {
-            temporalValues = valorParametroTemporalRepository
-                .findByEmpresaParametrosTributariosId(assocId)
-                .stream()
-                .map(this::toTemporalValueResponse)
-                .collect(Collectors.toList());
-          }
-
-          return new TaxParameterSummary(
-              p.getId(),
-              p.getCodigo(),
-              p.getTipoParametro().getDescricao(),
-              p.getDescricao(),
-              assoc != null ? assoc.getCreatedAt() : null,
-              createdByEmail,
-              hasTemporalValues,
-              temporalValues);
-        })
-        .toList();
+    List<TaxParameterSummary> parameterSummaries = buildParameterSummaries(entity.getId());
 
     return new CompanyDetailResponse(
         entity.getId(),
@@ -667,10 +545,7 @@ public class CompanyService implements
         entity.getRazaoSocial(),
         entity.getPeriodoContabil(),
         entity.getMascaraNiveis(),
-        cnae,
-        qualificacaoPj,
-        naturezaJuridica,
-        outrosParametros,
+        parameterSummaries,
         entity.getCreatedAt(),
         entity.getUpdatedAt()
     );
@@ -1019,25 +894,40 @@ public class CompanyService implements
   }
 
   /**
-   * Encontra um parâmetro tributário pelo tipo na lista fornecida.
-   *
-   * @param parameters lista de parâmetros
-   * @param associationMap mapa de associações para buscar informações de auditoria
-   * @param associationsWithTemporalValues set de IDs de associações com valores temporais
-   * @param taxParamToAssocId mapa de taxParameterId para associationId
-   * @param tipo tipo do parâmetro (ex: "CNAE", "QUALIFICACAO_PJ", "NATUREZA_JURIDICA")
-   * @return TaxParameterSummary ou null se não encontrado
+   * Constrói a lista de TaxParameterSummary para todos os parâmetros associados a uma empresa.
    */
-  private TaxParameterSummary findParameterByType(
-      List<TaxParameterEntity> parameters,
-      java.util.Map<Long, CompanyTaxParameterEntity> associationMap,
-      java.util.Set<Long> associationsWithTemporalValues,
-      java.util.Map<Long, Long> taxParamToAssocId,
-      String tipo) {
+  private List<TaxParameterSummary> buildParameterSummaries(Long companyId) {
+    List<CompanyTaxParameterEntity> associations =
+        companyTaxParameterRepository.findByCompanyId(companyId);
+
+    List<Long> parameterIds = associations.stream()
+        .map(CompanyTaxParameterEntity::getTaxParameterId)
+        .toList();
+
+    List<TaxParameterEntity> parameters = parameterIds.isEmpty()
+        ? Collections.emptyList()
+        : taxParameterRepository.findAllById(parameterIds);
+
+    java.util.Map<Long, CompanyTaxParameterEntity> associationMap = associations.stream()
+        .collect(Collectors.toMap(
+            CompanyTaxParameterEntity::getTaxParameterId,
+            assoc -> assoc));
+
+    java.util.Set<Long> associationsWithTemporalValues = associations.stream()
+        .map(CompanyTaxParameterEntity::getId)
+        .filter(assocId -> {
+          List<ValorParametroTemporalEntity> valores =
+              valorParametroTemporalRepository.findByEmpresaParametrosTributariosId(assocId);
+          return !valores.isEmpty();
+        })
+        .collect(Collectors.toSet());
+
+    java.util.Map<Long, Long> taxParamToAssocId = associationMap.entrySet().stream()
+        .collect(Collectors.toMap(
+            e -> e.getKey(),
+            e -> e.getValue().getId()));
 
     return parameters.stream()
-        .filter(p -> tipo.equals(p.getTipoParametro().getDescricao()))
-        .findFirst()
         .map(p -> {
           CompanyTaxParameterEntity assoc = associationMap.get(p.getId());
           String createdByEmail = "admin@example.com"; // TODO: buscar email do usuário
@@ -1045,7 +935,6 @@ public class CompanyService implements
           boolean hasTemporalValues = assocId != null
               && associationsWithTemporalValues.contains(assocId);
 
-          // Buscar valores temporais se existirem
           List<TemporalValueResponse> temporalValues = Collections.emptyList();
           if (hasTemporalValues && assocId != null) {
             temporalValues = valorParametroTemporalRepository
@@ -1065,7 +954,7 @@ public class CompanyService implements
               hasTemporalValues,
               temporalValues);
         })
-        .orElse(null);
+        .toList();
   }
 
   // ==================================================================================

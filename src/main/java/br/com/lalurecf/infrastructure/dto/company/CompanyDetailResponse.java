@@ -10,7 +10,7 @@ import java.util.List;
  * DTO para resposta detalhada de empresa.
  *
  * <p>Inclui todos os campos da empresa, incluindo dados de auditoria e relacionamentos.
- * CNAE, Qualificação PJ e Natureza Jurídica são retornados via parâmetros tributários.
+ * Parâmetros tributários são retornados como lista genérica agrupável por tipo.
  */
 public record CompanyDetailResponse(
     Long id,
@@ -23,11 +23,7 @@ public record CompanyDetailResponse(
 
     String mascaraNiveis,
 
-    TaxParameterSummary cnae,
-    TaxParameterSummary qualificacaoPj,
-    TaxParameterSummary naturezaJuridica,
-
-    List<TaxParameterSummary> outrosParametros,
+    List<TaxParameterSummary> parameters,
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     LocalDateTime createdAt,
