@@ -33,4 +33,10 @@ public class TaxParameterTypeEntity extends BaseEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "natureza", nullable = false, length = 20)
   private ParameterNature natureza;
+
+  @Column(name = "obrigatorio")
+  private Boolean obrigatorio;
+
+  @Column(name = "ordem_exibicao")
+  private Integer ordemExibicao;
 }

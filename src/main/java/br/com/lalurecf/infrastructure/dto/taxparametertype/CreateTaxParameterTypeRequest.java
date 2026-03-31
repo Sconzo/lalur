@@ -17,5 +17,9 @@ public record CreateTaxParameterTypeRequest(
     String description,
 
     @NotNull(message = "Natureza é obrigatória")
-    ParameterNature nature
+    ParameterNature nature,
+
+    Boolean required,
+
+    Integer displayOrder
 ) {}

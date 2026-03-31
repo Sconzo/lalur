@@ -46,6 +46,8 @@ public class TaxParameterTypeService
         TaxParameterType.builder()
             .description(request.description())
             .nature(request.nature())
+            .required(request.required() != null ? request.required() : false)
+            .displayOrder(request.displayOrder())
             .status(Status.ACTIVE)
             .build();
 
@@ -78,6 +80,8 @@ public class TaxParameterTypeService
         taxParameterType.getDescription(),
         taxParameterType.getNature(),
         taxParameterType.getStatus(),
+        taxParameterType.getRequired(),
+        taxParameterType.getDisplayOrder(),
         taxParameterType.getCreatedAt(),
         taxParameterType.getUpdatedAt());
   }

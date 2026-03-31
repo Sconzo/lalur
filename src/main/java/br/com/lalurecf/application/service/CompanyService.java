@@ -24,12 +24,14 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyTaxP
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.EmpresaParametrosTributariosEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PeriodoContabilAuditEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterTypeEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ValorParametroTemporalEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyTaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PeriodoContabilAuditJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterTypeJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ValorParametroTemporalJpaRepository;
 import br.com.lalurecf.infrastructure.dto.company.CompanyDetailResponse;
 import br.com.lalurecf.infrastructure.dto.company.CompanyResponse;
@@ -91,6 +93,7 @@ public class CompanyService implements
 
   private final CompanyJpaRepository companyRepository;
   private final TaxParameterJpaRepository taxParameterRepository;
+  private final TaxParameterTypeJpaRepository taxParameterTypeRepository;
   private final CompanyTaxParameterJpaRepository companyTaxParameterRepository;
   private final PeriodoContabilAuditJpaRepository periodoContabilAuditRepository;
   private final ValorParametroTemporalJpaRepository valorParametroTemporalRepository;
@@ -122,6 +125,13 @@ public class CompanyService implements
             .collect(Collectors.toList())
         : Collections.emptyList();
     validateParametersExistAndActive(periodicIds);
+
+    // Validar tipos obrigatórios (dinâmico via banco)
+    List<Long> globalIds = request.globalParameterIds() != null
+        ? request.globalParameterIds() : Collections.emptyList();
+    List<Long> allParameterIds = new java.util.ArrayList<>(globalIds);
+    allParameterIds.addAll(periodicIds);
+    validateRequiredParameterTypes(allParameterIds);
 
     // Validar máscara de níveis
     MascaraNiveisUtils.validarFormato(request.mascaraNiveis());
@@ -259,6 +269,13 @@ public class CompanyService implements
             .collect(Collectors.toList())
         : Collections.emptyList();
     validateParametersExistAndActive(periodicIds);
+
+    // Validar tipos obrigatórios (dinâmico via banco)
+    List<Long> globalIds = request.globalParameterIds() != null
+        ? request.globalParameterIds() : Collections.emptyList();
+    List<Long> allParameterIds = new java.util.ArrayList<>(globalIds);
+    allParameterIds.addAll(periodicIds);
+    validateRequiredParameterTypes(allParameterIds);
 
     // Buscar empresa existente
     CompanyEntity entity = companyRepository.findById(id)
@@ -890,6 +907,38 @@ public class CompanyService implements
         throw new IllegalArgumentException(
             "Não é permitido associar parâmetro INACTIVE. Parâmetro ID: " + parameterId);
       }
+    }
+  }
+
+  /**
+   * Valida que todos os tipos de parâmetros obrigatórios (obrigatorio=true)
+   * possuem ao menos um parâmetro na lista de IDs fornecida.
+   */
+  private void validateRequiredParameterTypes(List<Long> allParameterIds) {
+    List<TaxParameterTypeEntity> requiredTypes =
+        taxParameterTypeRepository.findByObrigatorioTrueAndStatus(Status.ACTIVE);
+
+    if (requiredTypes.isEmpty()) {
+      return;
+    }
+
+    List<TaxParameterEntity> parameters = allParameterIds != null && !allParameterIds.isEmpty()
+        ? taxParameterRepository.findAllById(allParameterIds)
+        : Collections.emptyList();
+
+    java.util.Set<Long> presentTypeIds = parameters.stream()
+        .map(p -> p.getTipoParametro().getId())
+        .collect(Collectors.toSet());
+
+    List<String> missingTypes = requiredTypes.stream()
+        .filter(type -> !presentTypeIds.contains(type.getId()))
+        .map(TaxParameterTypeEntity::getDescricao)
+        .toList();
+
+    if (!missingTypes.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Parâmetros obrigatórios ausentes. Tipos faltando: "
+              + String.join(", ", missingTypes));
     }
   }
 

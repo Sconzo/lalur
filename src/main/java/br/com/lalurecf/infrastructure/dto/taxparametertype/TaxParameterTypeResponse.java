@@ -19,6 +19,8 @@ public record TaxParameterTypeResponse(
     String description,
     ParameterNature nature,
     Status status,
+    Boolean required,
+    Integer displayOrder,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}

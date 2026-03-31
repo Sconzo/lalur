@@ -30,4 +30,6 @@ public class TaxParameterType {
   private LocalDateTime updatedAt;
   private Long createdBy;
   private Long updatedBy;
+  private Boolean required;
+  private Integer displayOrder;
 }

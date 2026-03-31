@@ -319,6 +319,8 @@ public class TaxParameterService implements
               type.getDescription(),
               type.getNature(),
               type.getStatus(),
+              type.getRequired(),
+              type.getDisplayOrder(),
               type.getCreatedAt(),
               type.getUpdatedAt());
     }

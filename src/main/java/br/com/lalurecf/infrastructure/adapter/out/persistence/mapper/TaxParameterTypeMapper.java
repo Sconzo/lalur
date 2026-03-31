@@ -23,6 +23,8 @@ public interface TaxParameterTypeMapper {
    */
   @Mapping(source = "descricao", target = "description")
   @Mapping(source = "natureza", target = "nature")
+  @Mapping(source = "obrigatorio", target = "required")
+  @Mapping(source = "ordemExibicao", target = "displayOrder")
   TaxParameterType toDomain(TaxParameterTypeEntity entity);
 
   /**
@@ -33,5 +35,7 @@ public interface TaxParameterTypeMapper {
    */
   @Mapping(source = "description", target = "descricao")
   @Mapping(source = "nature", target = "natureza")
+  @Mapping(source = "required", target = "obrigatorio")
+  @Mapping(source = "displayOrder", target = "ordemExibicao")
   TaxParameterTypeEntity toEntity(TaxParameterType domain);
 }

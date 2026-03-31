@@ -30,4 +30,9 @@ public interface TaxParameterTypeJpaRepository extends JpaRepository<TaxParamete
    * @return lista de tipos ordenados por descrição
    */
   List<TaxParameterTypeEntity> findByStatusOrderByDescricaoAsc(Status status);
+
+  /**
+   * Busca todos os tipos obrigatórios ativos.
+   */
+  List<TaxParameterTypeEntity> findByObrigatorioTrueAndStatus(Status status);
 }
