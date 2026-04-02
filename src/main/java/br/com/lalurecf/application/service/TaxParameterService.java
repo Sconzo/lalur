@@ -241,6 +241,8 @@ public class TaxParameterService implements
     HashMap<String, TaxParameterTypeGroup> map = new HashMap<>();
     String currentType = null;
     ParameterNature currentNature = null;
+    Boolean currentRequired = null;
+    Integer currentDisplayOrder = null;
     List<FilterDropdown> parameterList = new ArrayList<>();
 
     for (TaxParameter parameter : allParameters) {
@@ -250,16 +252,21 @@ public class TaxParameterService implements
           parameter.getType() != null ? parameter.getType().getNature() : null;
 
       if (!Objects.equals(typeDescription, currentType) && currentType != null) {
-        map.put(currentType, new TaxParameterTypeGroup(currentNature, parameterList));
+        map.put(currentType, new TaxParameterTypeGroup(
+            currentNature, currentRequired, currentDisplayOrder, parameterList));
         parameterList = new ArrayList<>();
       }
       currentType = typeDescription;
       currentNature = nature;
+      currentRequired = parameter.getType() != null ? parameter.getType().getRequired() : null;
+      currentDisplayOrder =
+          parameter.getType() != null ? parameter.getType().getDisplayOrder() : null;
       parameterList.add(new FilterDropdown(parameter.getId(), parameter.getDescription()));
     }
 
     if (currentType != null) {
-      map.put(currentType, new TaxParameterTypeGroup(currentNature, parameterList));
+      map.put(currentType, new TaxParameterTypeGroup(
+          currentNature, currentRequired, currentDisplayOrder, parameterList));
     }
 
     return map;
