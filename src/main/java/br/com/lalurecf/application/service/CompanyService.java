@@ -553,7 +553,7 @@ public class CompanyService implements
    * Converte Entity para CompanyDetailResponse (detalhes).
    */
   private CompanyDetailResponse toDetailResponse(CompanyEntity entity) {
-    List<TaxParameterSummary> parameterSummaries = buildParameterSummaries(entity.getId());
+    List<TaxParameterSummary> parameterSummaries = buildAllParameterSummaries(entity.getId());
 
     return new CompanyDetailResponse(
         entity.getId(),
@@ -862,6 +862,7 @@ public class CompanyService implements
               param.getCodigo(),
               param.getTipoParametro().getDescricao(),
               param.getDescricao(),
+              param.getTipoParametro().getOrdemExibicao(),
               assoc.getCreatedAt(),
               createdByEmail,
               hasTemporalValues,
@@ -943,9 +944,22 @@ public class CompanyService implements
   }
 
   /**
-   * Constrói a lista de TaxParameterSummary para todos os parâmetros associados a uma empresa.
+   * Constrói summaries para listagem — apenas parâmetros com displayOrder definido,
+   * ordenados por displayOrder.
    */
   private List<TaxParameterSummary> buildParameterSummaries(Long companyId) {
+    return buildParameterSummariesInternal(companyId, true);
+  }
+
+  /**
+   * Constrói summaries para detalhe — todos os parâmetros associados.
+   */
+  private List<TaxParameterSummary> buildAllParameterSummaries(Long companyId) {
+    return buildParameterSummariesInternal(companyId, false);
+  }
+
+  private List<TaxParameterSummary> buildParameterSummariesInternal(
+      Long companyId, boolean onlyWithDisplayOrder) {
     List<CompanyTaxParameterEntity> associations =
         companyTaxParameterRepository.findByCompanyId(companyId);
 
@@ -976,7 +990,15 @@ public class CompanyService implements
             e -> e.getKey(),
             e -> e.getValue().getId()));
 
-    return parameters.stream()
+    java.util.stream.Stream<TaxParameterEntity> stream = parameters.stream();
+    if (onlyWithDisplayOrder) {
+      stream = stream
+          .filter(p -> p.getTipoParametro().getOrdemExibicao() != null)
+          .sorted(java.util.Comparator.comparingInt(
+              p -> p.getTipoParametro().getOrdemExibicao()));
+    }
+
+    return stream
         .map(p -> {
           CompanyTaxParameterEntity assoc = associationMap.get(p.getId());
           String createdByEmail = "admin@example.com"; // TODO: buscar email do usuário
@@ -998,6 +1020,7 @@ public class CompanyService implements
               p.getCodigo(),
               p.getTipoParametro().getDescricao(),
               p.getDescricao(),
+              p.getTipoParametro().getOrdemExibicao(),
               assoc != null ? assoc.getCreatedAt() : null,
               createdByEmail,
               hasTemporalValues,

@@ -22,6 +22,7 @@ public record TaxParameterSummary(
     String codigo,
     String tipo,
     String descricao,
+    Integer displayOrder,
     LocalDateTime associatedAt,
     String associatedBy,
     boolean hasTemporalValues,
