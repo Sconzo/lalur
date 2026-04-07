@@ -21,6 +21,7 @@ public record TaxParameterTypeResponse(
     Status status,
     Boolean required,
     Integer displayOrder,
+    Boolean fiscalMovementExclusive,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}

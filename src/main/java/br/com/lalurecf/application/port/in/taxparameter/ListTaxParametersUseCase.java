@@ -34,6 +34,7 @@ public interface ListTaxParametersUseCase {
       ParameterNature nature,
       String search,
       boolean includeInactive,
+      Boolean fiscalMovementExclusive,
       Pageable pageable
   );
 }

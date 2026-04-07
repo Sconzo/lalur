@@ -103,13 +103,14 @@ public class TaxParameterService implements
       ParameterNature nature,
       String search,
       boolean includeInactive,
+      Boolean fiscalMovementExclusive,
       Pageable pageable) {
 
     log.info("Listando parâmetros tributários. Type: {}, Nature: {}, Search: {}",
         type, nature, search);
 
     Specification<TaxParameterEntity> spec =
-        buildSpecification(type, nature, search, includeInactive);
+        buildSpecification(type, nature, search, includeInactive, fiscalMovementExclusive);
     Page<TaxParameter> page = taxParameterRepository.findAll(spec, pageable);
 
     return page.map(this::toResponse);
@@ -236,7 +237,11 @@ public class TaxParameterService implements
   @Override
   public HashMap<String, TaxParameterTypeGroup> getTaxParametersForCompanyCreation() {
 
-    List<TaxParameter> allParameters = taxParameterRepository.findTaxParametersOrderByType();
+    List<TaxParameter> allParameters = taxParameterRepository.findTaxParametersOrderByType()
+        .stream()
+        .filter(p -> p.getType() == null
+            || Boolean.FALSE.equals(p.getType().getFiscalMovementExclusive()))
+        .toList();
 
     HashMap<String, TaxParameterTypeGroup> map = new HashMap<>();
     String currentType = null;
@@ -276,7 +281,8 @@ public class TaxParameterService implements
    * Constrói Specification para filtros dinâmicos.
    */
   private Specification<TaxParameterEntity> buildSpecification(
-      String type, ParameterNature nature, String search, boolean includeInactive) {
+      String type, ParameterNature nature, String search, boolean includeInactive,
+      Boolean fiscalMovementExclusive) {
 
     return (root, query, criteriaBuilder) -> {
       List<Predicate> predicates = new ArrayList<>();
@@ -309,6 +315,12 @@ public class TaxParameterService implements
         predicates.add(criteriaBuilder.equal(root.get("status"), Status.ACTIVE));
       }
 
+      // Filtro por exclusividade de lançamentos
+      if (fiscalMovementExclusive != null) {
+        predicates.add(criteriaBuilder.equal(
+            tipoParametroJoin.get("exclusivoLancamentos"), fiscalMovementExclusive));
+      }
+
       return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
     };
   }
@@ -328,6 +340,7 @@ public class TaxParameterService implements
               type.getStatus(),
               type.getRequired(),
               type.getDisplayOrder(),
+              type.getFiscalMovementExclusive(),
               type.getCreatedAt(),
               type.getUpdatedAt());
     }

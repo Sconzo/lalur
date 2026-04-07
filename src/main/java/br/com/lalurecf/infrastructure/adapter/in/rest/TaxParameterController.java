@@ -94,11 +94,13 @@ public class TaxParameterController {
       @RequestParam(required = false) ParameterNature nature,
       @RequestParam(required = false) String search,
       @RequestParam(defaultValue = "false") boolean includeInactive,
+      @RequestParam(required = false) Boolean fiscalMovementExclusive,
       @PageableDefault(size = 50, sort = "codigo") Pageable pageable) {
 
     log.info("GET /tax-parameters - Listando parâmetros. Nature: {}", nature);
     Page<TaxParameterResponse> response =
-        listTaxParametersUseCase.list(type, nature, search, includeInactive, pageable);
+        listTaxParametersUseCase.list(type, nature, search, includeInactive,
+            fiscalMovementExclusive, pageable);
     return ResponseEntity.ok(response);
   }
 

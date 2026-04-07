@@ -42,4 +42,14 @@ public interface TaxParameterTypeRepositoryPort {
    * @return Optional contendo o tipo se encontrado
    */
   Optional<TaxParameterType> findById(Long id);
+
+  Optional<TaxParameterType> findByDisplayOrder(Integer displayOrder);
+
+  /**
+   * Busca todos os tipos de parâmetros tributários ativos que NÃO são exclusivos de lançamentos.
+   * Usado na tela de parâmetros tributários da empresa.
+   *
+   * @return lista de tipos não-exclusivos ativos ordenados por descrição
+   */
+  List<TaxParameterType> findAllActiveNonExclusive();
 }

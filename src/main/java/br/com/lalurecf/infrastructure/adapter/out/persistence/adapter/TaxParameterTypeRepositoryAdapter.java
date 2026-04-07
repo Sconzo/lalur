@@ -47,4 +47,18 @@ public class TaxParameterTypeRepositoryAdapter implements TaxParameterTypeReposi
   public Optional<TaxParameterType> findById(Long id) {
     return jpaRepository.findById(id).map(mapper::toDomain);
   }
+
+  @Override
+  public Optional<TaxParameterType> findByDisplayOrder(Integer displayOrder) {
+    return jpaRepository.findByOrdemExibicao(displayOrder).map(mapper::toDomain);
+  }
+
+  @Override
+  public List<TaxParameterType> findAllActiveNonExclusive() {
+    return jpaRepository
+        .findByStatusAndExclusivoLancamentosFalseOrderByDescricaoAsc(Status.ACTIVE)
+        .stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
 }

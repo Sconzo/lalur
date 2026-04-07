@@ -32,4 +32,5 @@ public class TaxParameterType {
   private Long updatedBy;
   private Boolean required;
   private Integer displayOrder;
+  private Boolean fiscalMovementExclusive;
 }

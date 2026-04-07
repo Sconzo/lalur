@@ -41,6 +41,18 @@ public class TaxParameterTypeService
                       + request.description());
             });
 
+    // Verificar se ordem de exibição já está em uso
+    if (request.displayOrder() != null) {
+      taxParameterTypeRepository
+          .findByDisplayOrder(request.displayOrder())
+          .ifPresent(existing -> {
+            log.warn("Tentativa de criar tipo com ordem duplicada: {}", request.displayOrder());
+            throw new IllegalArgumentException(
+                "Já existe um tipo de parâmetro tributário com a ordem de exibição: "
+                    + request.displayOrder());
+          });
+    }
+
     // Criar domain model
     TaxParameterType taxParameterType =
         TaxParameterType.builder()
@@ -48,6 +60,8 @@ public class TaxParameterTypeService
             .nature(request.nature())
             .required(request.required() != null ? request.required() : false)
             .displayOrder(request.displayOrder())
+            .fiscalMovementExclusive(
+                request.fiscalMovementExclusive() != null ? request.fiscalMovementExclusive() : false)
             .status(Status.ACTIVE)
             .build();
 
@@ -71,6 +85,17 @@ public class TaxParameterTypeService
     return types.stream().map(this::toResponse).toList();
   }
 
+  @Override
+  @Transactional(readOnly = true)
+  public List<TaxParameterTypeResponse> listForTaxParameters() {
+    log.info("Listando tipos de parâmetros tributários ativos (excluindo exclusivos de lançamentos)");
+
+    List<TaxParameterType> types = taxParameterTypeRepository.findAllActiveNonExclusive();
+    log.info("Encontrados {} tipos de parâmetros tributários para uso em empresas", types.size());
+
+    return types.stream().map(this::toResponse).toList();
+  }
+
   /**
    * Converte domain model para DTO de resposta.
    */
@@ -82,6 +107,7 @@ public class TaxParameterTypeService
         taxParameterType.getStatus(),
         taxParameterType.getRequired(),
         taxParameterType.getDisplayOrder(),
+        taxParameterType.getFiscalMovementExclusive(),
         taxParameterType.getCreatedAt(),
         taxParameterType.getUpdatedAt());
   }

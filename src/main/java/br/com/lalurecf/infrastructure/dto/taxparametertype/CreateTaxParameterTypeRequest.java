@@ -1,6 +1,7 @@
 package br.com.lalurecf.infrastructure.dto.taxparametertype;
 
 import br.com.lalurecf.domain.enums.ParameterNature;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,5 +22,8 @@ public record CreateTaxParameterTypeRequest(
 
     Boolean required,
 
-    Integer displayOrder
+    @Min(value = 1, message = "Ordem de exibição deve ser maior que zero")
+    Integer displayOrder,
+
+    Boolean fiscalMovementExclusive
 ) {}

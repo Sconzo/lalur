@@ -16,4 +16,12 @@ public interface ListTaxParameterTypesUseCase {
    * @return lista de tipos ordenados por descrição
    */
   List<TaxParameterTypeResponse> listAll();
+
+  /**
+   * Lista tipos de parâmetros tributários ativos para uso na tela de parâmetros da empresa.
+   * Exclui tipos exclusivos de Lançamentos E-LALUR e E-LACS.
+   *
+   * @return lista de tipos não-exclusivos ativos ordenados por descrição
+   */
+  List<TaxParameterTypeResponse> listForTaxParameters();
 }

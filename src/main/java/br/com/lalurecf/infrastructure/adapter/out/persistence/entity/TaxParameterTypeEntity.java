@@ -39,4 +39,7 @@ public class TaxParameterTypeEntity extends BaseEntity {
 
   @Column(name = "ordem_exibicao")
   private Integer ordemExibicao;
+
+  @Column(name = "exclusivo_lancamentos", nullable = false)
+  private Boolean exclusivoLancamentos;
 }
