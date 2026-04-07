@@ -38,5 +38,6 @@ public interface TaxParameterTypeJpaRepository extends JpaRepository<TaxParamete
 
   Optional<TaxParameterTypeEntity> findByOrdemExibicao(Integer ordemExibicao);
 
-  List<TaxParameterTypeEntity> findByStatusAndExclusivoLancamentosFalseOrderByDescricaoAsc(Status status);
+  List<TaxParameterTypeEntity> findByStatusAndExclusivoLancamentosFalseOrderByDescricaoAsc(
+      Status status);
 }

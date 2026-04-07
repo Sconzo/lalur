@@ -61,7 +61,7 @@ public class TaxParameterTypeService
             .required(request.required() != null ? request.required() : false)
             .displayOrder(request.displayOrder())
             .fiscalMovementExclusive(
-                request.fiscalMovementExclusive() != null ? request.fiscalMovementExclusive() : false)
+                Boolean.TRUE.equals(request.fiscalMovementExclusive()))
             .status(Status.ACTIVE)
             .build();
 
@@ -88,7 +88,7 @@ public class TaxParameterTypeService
   @Override
   @Transactional(readOnly = true)
   public List<TaxParameterTypeResponse> listForTaxParameters() {
-    log.info("Listando tipos de parâmetros tributários ativos (excluindo exclusivos de lançamentos)");
+    log.info("Listando tipos de parâmetros tributários ativos (sem exclusivos de lançamentos)");
 
     List<TaxParameterType> types = taxParameterTypeRepository.findAllActiveNonExclusive();
     log.info("Encontrados {} tipos de parâmetros tributários para uso em empresas", types.size());
