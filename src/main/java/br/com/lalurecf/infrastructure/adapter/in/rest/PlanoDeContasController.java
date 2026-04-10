@@ -142,6 +142,7 @@ public class PlanoDeContasController {
    * @param natureza filtro por natureza (opcional)
    * @param search busca em code e name (opcional)
    * @param includeInactive incluir contas inativas (default: false)
+   * @param leafOnly se true, retorna apenas contas do último nível (default: false)
    * @param pageable configuração de paginação
    * @return página de contas
    */
@@ -153,16 +154,18 @@ public class PlanoDeContasController {
       @RequestParam(required = false) NaturezaConta natureza,
       @RequestParam(required = false) String search,
       @RequestParam(required = false, defaultValue = "false") Boolean includeInactive,
+      @RequestParam(required = false, defaultValue = "false") Boolean leafOnly,
       @PageableDefault(size = 100, sort = "code", direction = Sort.Direction.ASC)
           Pageable pageable) {
-    log.info("GET /api/v1/plano-de-contas - Listing plano de contas");
+    log.info("GET /api/v1/plano-de-contas - Listing plano de contas, leafOnly={}", leafOnly);
 
     // Obter ano fiscal do contexto (header X-Fiscal-Year)
     Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
 
     Page<PlanoDeContasResponse> response =
         listPlanoDeContasUseCase.execute(
-            fiscalYear, accountType, classe, natureza, search, includeInactive, pageable);
+            fiscalYear, accountType, classe, natureza, search, includeInactive, leafOnly,
+            pageable);
     return ResponseEntity.ok(response);
   }
 

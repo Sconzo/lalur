@@ -23,6 +23,7 @@ public interface ListPlanoDeContasUseCase {
    * @param natureza filtro por natureza (opcional)
    * @param search busca em code e name (opcional)
    * @param includeInactive incluir contas inativas (default: false)
+   * @param leafOnly se true, retorna apenas contas do último nível da máscara (default: false)
    * @param pageable configuração de paginação
    * @return página de contas
    */
@@ -33,5 +34,6 @@ public interface ListPlanoDeContasUseCase {
       NaturezaConta natureza,
       String search,
       Boolean includeInactive,
+      Boolean leafOnly,
       Pageable pageable);
 }

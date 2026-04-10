@@ -155,6 +155,7 @@ public class PlanoDeContasService
       NaturezaConta natureza,
       String search,
       Boolean includeInactive,
+      Boolean leafOnly,
       Pageable pageable) {
 
     Long companyId = CompanyContext.getCurrentCompanyId();
@@ -164,7 +165,19 @@ public class PlanoDeContasService
     }
 
     log.info(
-        "Listing PlanoDeContas for company: {}, fiscalYear: {}", companyId, fiscalYear);
+        "Listing PlanoDeContas for company: {}, fiscalYear: {}, leafOnly: {}",
+        companyId, fiscalYear, leafOnly);
+
+    // Determinar último nível da máscara (se leafOnly)
+    final Integer maxNivel;
+    if (Boolean.TRUE.equals(leafOnly)) {
+      Company company = companyRepository.findById(companyId)
+          .orElseThrow(() -> new IllegalArgumentException(
+              "Company not found with id: " + companyId));
+      maxNivel = company.getMascaraNiveis().split("\\.").length;
+    } else {
+      maxNivel = null;
+    }
 
     // Buscar todas contas da empresa
     Page<PlanoDeContas> accountsPage =
@@ -200,6 +213,11 @@ public class PlanoDeContasService
                       && !search.trim().isEmpty()
                       && !acc.getCode().toLowerCase().contains(search.toLowerCase())
                       && !acc.getName().toLowerCase().contains(search.toLowerCase())) {
+                    return false;
+                  }
+
+                  // Filtro leafOnly (último nível da máscara)
+                  if (maxNivel != null && !maxNivel.equals(acc.getNivel())) {
                     return false;
                   }
 
