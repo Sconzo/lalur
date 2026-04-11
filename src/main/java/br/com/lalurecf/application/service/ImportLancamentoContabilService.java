@@ -20,7 +20,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -79,6 +82,15 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
             .orElseThrow(
                 () -> new IllegalArgumentException("Company not found with id: " + companyId));
 
+    // Carregar todas as contas da empresa/ano de uma vez (evita N+1 queries)
+    Map<String, PlanoDeContas> contasByCode =
+        planoDeContasRepository.findByCompanyIdAndFiscalYear(companyId, fiscalYear).stream()
+            .collect(Collectors.toMap(PlanoDeContas::getCode, Function.identity(),
+                (a, b) -> a));
+
+    log.info("Loaded {} contas for company {} / fiscalYear {}", contasByCode.size(),
+        companyId, fiscalYear);
+
     List<ImportError> errors = new ArrayList<>();
     List<LancamentoContabil> lancamentosToSave = new ArrayList<>();
     List<LancamentoContabilPreview> previews = new ArrayList<>();
@@ -127,11 +139,10 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
             continue;
           }
 
-          // Buscar contas (opcional individualmente, mas ao menos uma deve existir)
+          // Buscar contas no cache em memória (sem query por linha)
           Optional<PlanoDeContas> contaDebitoOpt = Optional.empty();
           if (contaDebitoCode != null && !contaDebitoCode.isEmpty()) {
-            contaDebitoOpt = planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-                companyId, contaDebitoCode, fiscalYear);
+            contaDebitoOpt = Optional.ofNullable(contasByCode.get(contaDebitoCode));
             if (contaDebitoOpt.isEmpty()) {
               errors.add(
                   ImportError.builder()
@@ -145,8 +156,7 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
 
           Optional<PlanoDeContas> contaCreditoOpt = Optional.empty();
           if (contaCreditoCode != null && !contaCreditoCode.isEmpty()) {
-            contaCreditoOpt = planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-                companyId, contaCreditoCode, fiscalYear);
+            contaCreditoOpt = Optional.ofNullable(contasByCode.get(contaCreditoCode));
             if (contaCreditoOpt.isEmpty()) {
               errors.add(
                   ImportError.builder()

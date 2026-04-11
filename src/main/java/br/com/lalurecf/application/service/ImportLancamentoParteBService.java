@@ -23,7 +23,10 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -74,6 +77,30 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
       throw new IllegalArgumentException("File is empty");
     }
 
+    // anoReferencia vem do header X-Fiscal-Year (FiscalYearContext)
+    final Integer anoReferencia = FiscalYearContext.getCurrentFiscalYear();
+    if (anoReferencia == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
+
+    // Carregar lookups de uma vez (evita N+1 queries)
+    Map<String, PlanoDeContas> contasByCode =
+        planoDeContasRepository.findByCompanyIdAndFiscalYear(companyId, anoReferencia).stream()
+            .collect(Collectors.toMap(PlanoDeContas::getCode, Function.identity(),
+                (a, b) -> a));
+    Map<String, ContaParteB> contasParteBByCode =
+        contaParteBRepository.findByCompanyIdAndAnoBase(companyId, anoReferencia).stream()
+            .collect(Collectors.toMap(ContaParteB::getCodigoConta, Function.identity(),
+                (a, b) -> a));
+    Map<String, TaxParameter> taxParamsByCode =
+        taxParameterRepository.findAll().stream()
+            .collect(Collectors.toMap(TaxParameter::getCode, Function.identity(),
+                (a, b) -> a));
+
+    log.info("Loaded {} contas, {} contasParteB, {} taxParams for lookup",
+        contasByCode.size(), contasParteBByCode.size(), taxParamsByCode.size());
+
     List<ImportError> errors = new ArrayList<>();
     List<LancamentoParteB> lancamentosToSave = new ArrayList<>();
     List<LancamentoParteBPreview> previews = new ArrayList<>();
@@ -90,14 +117,6 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
         lineNumber++;
 
         try {
-          // Extrair campos por nome (cabeçalho obrigatório)
-          // anoReferencia vem do header X-Fiscal-Year (FiscalYearContext)
-          final Integer anoReferencia = FiscalYearContext.getCurrentFiscalYear();
-          if (anoReferencia == null) {
-            throw new IllegalArgumentException(
-                "Fiscal year context is required (header X-Fiscal-Year missing)");
-          }
-
           final String mesReferenciaStr = getRequiredField(record, "mesReferencia", lineNumber);
           final String tipoApuracaoStr = getRequiredField(record, "tipoApuracao", lineNumber);
           final String tipoRelacionamentoStr =
@@ -207,9 +226,9 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
             continue;
           }
 
-          // Validar parâmetro tributário por código
+          // Validar parâmetro tributário por código (lookup em memória)
           Optional<TaxParameter> parametroOpt =
-              taxParameterRepository.findByCode(parametroTributarioCodigo);
+              Optional.ofNullable(taxParamsByCode.get(parametroTributarioCodigo));
           if (parametroOpt.isEmpty()) {
             errors.add(
                 ImportError.builder()
@@ -255,8 +274,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                 continue;
               }
               Optional<PlanoDeContas> contaContabilOpt =
-                  planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-                      companyId, contaContabilCode, anoReferencia);
+                  Optional.ofNullable(contasByCode.get(contaContabilCode));
               if (contaContabilOpt.isEmpty()) {
                 errors.add(
                     ImportError.builder()
@@ -286,8 +304,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                 continue;
               }
               Optional<ContaParteB> contaParteBOpt =
-                  contaParteBRepository.findByCompanyIdAndCodigoContaAndAnoBase(
-                      companyId, contaParteBCode, anoReferencia);
+                  Optional.ofNullable(contasParteBByCode.get(contaParteBCode));
               if (contaParteBOpt.isEmpty()) {
                 errors.add(
                     ImportError.builder()
@@ -326,8 +343,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                 continue;
               }
               Optional<PlanoDeContas> contaContabilAmbosOpt =
-                  planoDeContasRepository.findByCompanyIdAndCodeAndFiscalYear(
-                      companyId, contaContabilCode, anoReferencia);
+                  Optional.ofNullable(contasByCode.get(contaContabilCode));
               if (contaContabilAmbosOpt.isEmpty()) {
                 errors.add(
                     ImportError.builder()
@@ -342,8 +358,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                 continue;
               }
               Optional<ContaParteB> contaParteBambosOpt =
-                  contaParteBRepository.findByCompanyIdAndCodigoContaAndAnoBase(
-                      companyId, contaParteBCode, anoReferencia);
+                  Optional.ofNullable(contasParteBByCode.get(contaParteBCode));
               if (contaParteBambosOpt.isEmpty()) {
                 errors.add(
                     ImportError.builder()

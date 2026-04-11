@@ -19,8 +19,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,6 +81,12 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
             .map(PlanoDeContas::getCode)
             .collect(Collectors.toSet());
 
+    // Precarregar contas referenciais por codigoRfb (evita N+1 queries)
+    Map<String, ContaReferencial> contasRefByCode =
+        contaReferencialRepository.findAll().stream()
+            .collect(Collectors.toMap(ContaReferencial::getCodigoRfb, Function.identity(),
+                (a, b) -> a));
+
     try (BufferedReader reader =
             new BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.ISO_8859_1));
@@ -115,12 +123,12 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
             continue;
           }
 
-          // Buscar Conta Referencial por código RFB (opcional)
+          // Buscar Conta Referencial por código RFB (lookup em memória)
           Long contaReferencialId = null;
           if (parsedLine.contaReferencialCodigo != null
               && !parsedLine.contaReferencialCodigo.isBlank()) {
             Optional<ContaReferencial> contaReferencialOpt =
-                contaReferencialRepository.findByCodigoRfb(parsedLine.contaReferencialCodigo);
+                Optional.ofNullable(contasRefByCode.get(parsedLine.contaReferencialCodigo));
             if (contaReferencialOpt.isEmpty()) {
               errors.add(
                   ImportError.builder()

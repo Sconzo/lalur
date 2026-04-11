@@ -60,6 +60,12 @@ public class ImportContaReferencialService implements ImportContaReferencialUseC
       throw new IllegalArgumentException("File size exceeds maximum allowed (10MB)");
     }
 
+    // Precarregar chaves existentes no banco (evita N+1 queries)
+    Set<String> existingKeys = new HashSet<>();
+    for (ContaReferencial existing : contaReferencialRepository.findAll()) {
+      existingKeys.add(createUniqueKey(existing.getCodigoRfb(), existing.getAnoValidade()));
+    }
+
     List<ImportError> errors = new ArrayList<>();
     List<ContaReferencialPreview> preview = dryRun ? new ArrayList<>() : null;
     List<ContaReferencial> contasToSave = new ArrayList<>();
@@ -100,11 +106,9 @@ public class ImportContaReferencialService implements ImportContaReferencialUseC
             continue;
           }
 
-          // Verificar duplicata no banco
-          Optional<ContaReferencial> existing =
-              contaReferencialRepository.findByCodigoRfbAndAnoValidade(
-                  parsedLine.codigoRfb, parsedLine.anoValidade);
-          if (existing.isPresent()) {
+          // Verificar duplicata no banco (lookup em memória)
+          String dbKey = createUniqueKey(parsedLine.codigoRfb, parsedLine.anoValidade);
+          if (existingKeys.contains(dbKey)) {
             errors.add(
                 ImportError.builder()
                     .lineNumber(lineNumber)
