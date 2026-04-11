@@ -364,21 +364,14 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
 
     char delimiter = firstLine.contains(";") ? ';' : ',';
 
-    // Detectar se a primeira linha é header (contém nomes de campos conhecidos)
-    String lower = firstLine.toLowerCase();
-    boolean hasHeader = lower.contains("contadebitocode") || lower.contains("data")
-        || lower.contains("valor") || lower.contains("historico");
-
     reader.reset();
 
     CSVFormat.Builder builder = CSVFormat.DEFAULT.builder()
         .setDelimiter(delimiter)
         .setIgnoreEmptyLines(true)
-        .setTrim(true);
-
-    if (hasHeader) {
-      builder.setSkipHeaderRecord(true);
-    }
+        .setTrim(true)
+        .setHeader()
+        .setSkipHeaderRecord(true);
 
     return new CSVParser(reader, builder.build());
   }

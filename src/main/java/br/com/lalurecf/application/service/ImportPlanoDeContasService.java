@@ -261,20 +261,14 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
     }
     char delimiter = firstLine.contains(";") ? ';' : ',';
 
-    String lower = firstLine.toLowerCase();
-    boolean hasHeader = lower.contains("code") || lower.contains("accounttype")
-        || lower.contains("classe");
-
     reader.reset();
 
     CSVFormat.Builder builder = CSVFormat.DEFAULT.builder()
         .setDelimiter(delimiter)
         .setIgnoreEmptyLines(true)
-        .setTrim(true);
-
-    if (hasHeader) {
-      builder.setSkipHeaderRecord(true);
-    }
+        .setTrim(true)
+        .setHeader()
+        .setSkipHeaderRecord(true);
 
     return new CSVParser(reader, builder.build());
   }

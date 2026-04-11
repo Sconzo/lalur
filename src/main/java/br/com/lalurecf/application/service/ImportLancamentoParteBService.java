@@ -521,20 +521,14 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
 
     char delimiter = firstLine.contains(";") ? ';' : ',';
 
-    String lower = firstLine.toLowerCase();
-    boolean hasHeader = lower.contains("mesreferencia") || lower.contains("tipoapuracao")
-        || lower.contains("tipoajuste");
-
     reader.reset();
 
     CSVFormat.Builder builder = CSVFormat.DEFAULT.builder()
         .setDelimiter(delimiter)
         .setIgnoreEmptyLines(true)
-        .setTrim(true);
-
-    if (hasHeader) {
-      builder.setSkipHeaderRecord(true);
-    }
+        .setTrim(true)
+        .setHeader()
+        .setSkipHeaderRecord(true);
 
     return new CSVParser(reader, builder.build());
   }
