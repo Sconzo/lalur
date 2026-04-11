@@ -42,7 +42,9 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImportLancamentoContabilService implements ImportLancamentoContabilUseCase {
 
   private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+  private static final DateTimeFormatter DATE_FORMATTER_ISO = DateTimeFormatter.ISO_LOCAL_DATE;
+  private static final DateTimeFormatter DATE_FORMATTER_BR =
+      DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
   private final LancamentoContabilRepositoryPort lancamentoContabilRepository;
   private final PlanoDeContasRepositoryPort planoDeContasRepository;
@@ -114,8 +116,8 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
             continue;
           }
 
-          // Validar contas diferentes
-          if (contaDebitoCode.equals(contaCreditoCode)) {
+          // Validar contas diferentes (só quando ambas informadas)
+          if (contaDebitoCode != null && contaDebitoCode.equals(contaCreditoCode)) {
             errors.add(
                 ImportError.builder()
                     .lineNumber(lineNumber)
@@ -156,15 +158,18 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
             }
           }
 
-          // Parse data
+          // Parse data (aceita YYYY-MM-DD ou dd/MM/yyyy)
           LocalDate data;
           try {
-            data = LocalDate.parse(dataStr, DATE_FORMATTER);
+            data = dataStr.contains("/")
+                ? LocalDate.parse(dataStr, DATE_FORMATTER_BR)
+                : LocalDate.parse(dataStr, DATE_FORMATTER_ISO);
           } catch (DateTimeParseException e) {
             errors.add(
                 ImportError.builder()
                     .lineNumber(lineNumber)
-                    .error("Invalid date format. Expected YYYY-MM-DD, got: " + dataStr)
+                    .error("Invalid date format. Expected YYYY-MM-DD or dd/MM/yyyy, got: "
+                        + dataStr)
                     .build());
             skippedLines++;
             continue;
