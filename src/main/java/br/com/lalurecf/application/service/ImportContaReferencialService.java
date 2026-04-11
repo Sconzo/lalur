@@ -205,39 +205,45 @@ public class ImportContaReferencialService implements ImportContaReferencialUseC
   }
 
   private CSVParser createCsvParser(BufferedReader reader, MultipartFile file) throws Exception {
-    // Detectar separador
     reader.mark(8192);
     String firstLine = reader.readLine();
     if (firstLine == null) {
-      throw new IllegalArgumentException("File is empty or contains only header");
+      throw new IllegalArgumentException("File is empty");
     }
     char delimiter = firstLine.contains(";") ? ';' : ',';
+
+    String lower = firstLine.toLowerCase();
+    boolean hasHeader = lower.contains("codigorfb") || lower.contains("descricao")
+        || lower.contains("anovalidade");
+
     reader.reset();
 
-    CSVFormat format =
-        CSVFormat.DEFAULT
-            .builder()
-            .setDelimiter(delimiter)
-            .setHeader()
-            .setSkipHeaderRecord(true)
-            .setIgnoreEmptyLines(true)
-            .setTrim(true)
-            .build();
+    CSVFormat.Builder builder = CSVFormat.DEFAULT.builder()
+        .setDelimiter(delimiter)
+        .setIgnoreEmptyLines(true)
+        .setTrim(true);
 
-    return new CSVParser(reader, format);
+    if (hasHeader) {
+      builder.setSkipHeaderRecord(true);
+    }
+
+    return new CSVParser(reader, builder.build());
   }
 
   private ParsedContaReferencialLine parseLine(CSVRecord record, int lineNumber) {
-    // Validar campos obrigatórios
-    String codigoRfb = getField(record, "codigoRfb", lineNumber);
-    String descricao = getField(record, "descricao", lineNumber);
+    if (record.size() < 2) {
+      throw new IllegalArgumentException("Linha com menos de 2 colunas (esperado 2-3)");
+    }
+    // Extrair campos por posição (header opcional)
+    String codigoRfb = getRequired(record.get(0), "codigoRfb", lineNumber);
+    String descricao = getRequired(record.get(1), "descricao", lineNumber);
 
-    // Campo opcional anoValidade
+    // Campo opcional anoValidade (coluna 3)
     Integer anoValidade = null;
-    if (record.isMapped("anoValidade")) {
-      String anoValidadeStr = record.get("anoValidade");
-      if (anoValidadeStr != null && !anoValidadeStr.trim().isEmpty()) {
-        anoValidade = parseAnoValidade(anoValidadeStr.trim(), lineNumber);
+    if (record.size() > 2) {
+      String anoValidadeStr = normalizeField(record.get(2));
+      if (anoValidadeStr != null) {
+        anoValidade = parseAnoValidade(anoValidadeStr, lineNumber);
       }
     }
 
@@ -250,20 +256,17 @@ public class ImportContaReferencialService implements ImportContaReferencialUseC
     return new ParsedContaReferencialLine(codigoRfb, descricao, anoValidade);
   }
 
-  private String getField(CSVRecord record, String fieldName, int lineNumber) {
-    try {
-      String value = record.get(fieldName);
-      if (value == null || value.trim().isEmpty()) {
-        throw new IllegalArgumentException(
-            "Field '" + fieldName + "' is required but was empty");
-      }
-      return value.trim();
-    } catch (IllegalArgumentException e) {
-      if (e.getMessage().contains("Mapping for")) {
-        throw new IllegalArgumentException("Field '" + fieldName + "' not found in CSV header");
-      }
-      throw e;
+  private String normalizeField(String value) {
+    return (value == null || value.trim().isEmpty()) ? null : value.trim();
+  }
+
+  private String getRequired(String value, String fieldName, int lineNumber) {
+    String normalized = normalizeField(value);
+    if (normalized == null) {
+      throw new IllegalArgumentException(
+          "Campo '" + fieldName + "' é obrigatório (coluna vazia na linha " + lineNumber + ")");
     }
+    return normalized;
   }
 
   private Integer parseAnoValidade(String value, int lineNumber) {

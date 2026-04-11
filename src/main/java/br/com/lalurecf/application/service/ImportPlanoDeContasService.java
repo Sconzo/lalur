@@ -254,38 +254,45 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
   }
 
   private CSVParser createCsvParser(BufferedReader reader, MultipartFile file) throws Exception {
-    // Detectar separador
     reader.mark(8192);
     String firstLine = reader.readLine();
     if (firstLine == null) {
-      throw new IllegalArgumentException("File is empty or contains only header");
+      throw new IllegalArgumentException("File is empty");
     }
     char delimiter = firstLine.contains(";") ? ';' : ',';
+
+    String lower = firstLine.toLowerCase();
+    boolean hasHeader = lower.contains("code") || lower.contains("accounttype")
+        || lower.contains("classe");
+
     reader.reset();
 
-    CSVFormat format =
-        CSVFormat.DEFAULT
-            .builder()
-            .setDelimiter(delimiter)
-            .setHeader()
-            .setSkipHeaderRecord(true)
-            .setIgnoreEmptyLines(true)
-            .setTrim(true)
-            .build();
+    CSVFormat.Builder builder = CSVFormat.DEFAULT.builder()
+        .setDelimiter(delimiter)
+        .setIgnoreEmptyLines(true)
+        .setTrim(true);
 
-    return new CSVParser(reader, format);
+    if (hasHeader) {
+      builder.setSkipHeaderRecord(true);
+    }
+
+    return new CSVParser(reader, builder.build());
   }
 
   private ParsedAccountLine parseLine(CSVRecord record, int lineNumber) {
-    // Validar campos obrigatórios
-    String code = getField(record, "code", lineNumber);
-    String name = getField(record, "name", lineNumber);
-    String accountTypeStr = getField(record, "accountType", lineNumber);
-    String contaReferencialCodigo = getOptionalField(record, "contaReferencialCodigo");
-    String classeStr = getField(record, "classe", lineNumber);
-    String naturezaStr = getField(record, "natureza", lineNumber);
-    String afetaResultadoStr = getField(record, "afetaResultado", lineNumber);
-    String dedutivelStr = getField(record, "dedutivel", lineNumber);
+    if (record.size() < 8) {
+      throw new IllegalArgumentException(
+          "Linha com menos de 8 colunas (esperado 8)");
+    }
+    // Extrair campos por posição (header opcional)
+    String code = getRequired(record.get(0), "code", lineNumber);
+    String name = getRequired(record.get(1), "name", lineNumber);
+    String accountTypeStr = getRequired(record.get(2), "accountType", lineNumber);
+    String contaReferencialCodigo = normalizeField(record.get(3));
+    String classeStr = getRequired(record.get(4), "classe", lineNumber);
+    String naturezaStr = getRequired(record.get(5), "natureza", lineNumber);
+    String afetaResultadoStr = getRequired(record.get(6), "afetaResultado", lineNumber);
+    String dedutivelStr = getRequired(record.get(7), "dedutivel", lineNumber);
 
     // Parse enums
     AccountType accountType = parseAccountType(accountTypeStr, lineNumber);
@@ -311,26 +318,17 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
         dedutivel);
   }
 
-  private String getOptionalField(CSVRecord record, String fieldName) {
-    try {
-      String value = record.get(fieldName);
-      return (value == null || value.trim().isEmpty()) ? null : value.trim();
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
+  private String normalizeField(String value) {
+    return (value == null || value.trim().isEmpty()) ? null : value.trim();
   }
 
-  private String getField(CSVRecord record, String fieldName, int lineNumber) {
-    try {
-      String value = record.get(fieldName);
-      if (value == null || value.trim().isEmpty()) {
-        throw new IllegalArgumentException(
-            "Field '" + fieldName + "' is required but was empty");
-      }
-      return value.trim();
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Field '" + fieldName + "' not found in CSV header");
+  private String getRequired(String value, String fieldName, int lineNumber) {
+    String normalized = normalizeField(value);
+    if (normalized == null) {
+      throw new IllegalArgumentException(
+          "Campo '" + fieldName + "' é obrigatório (coluna vazia na linha " + lineNumber + ")");
     }
+    return normalized;
   }
 
   private AccountType parseAccountType(String value, int lineNumber) {

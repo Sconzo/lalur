@@ -138,17 +138,29 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
         lineNumber++;
 
         try {
-          final String mesReferenciaStr = getRequiredField(record, "mesReferencia", lineNumber);
-          final String tipoApuracaoStr = getRequiredField(record, "tipoApuracao", lineNumber);
-          final String tipoRelacionamentoStr =
-              getRequiredField(record, "tipoRelacionamento", lineNumber);
-          final String contaContabilCode = getField(record, "contaContabilCode");
-          final String contaParteBCode = getField(record, "contaParteBCode");
-          final String parametroTributarioCodigo =
-              getRequiredField(record, "parametroTributarioCodigo", lineNumber);
-          final String tipoAjusteStr = getRequiredField(record, "tipoAjuste", lineNumber);
-          final String descricao = getRequiredField(record, "descricao", lineNumber);
-          final String valorStr = getRequiredField(record, "valor", lineNumber);
+          // Extrair campos por posição (header opcional)
+          if (record.size() < 9) {
+            errors.add(ImportError.builder().lineNumber(lineNumber)
+                .error("Linha com menos de 9 colunas (esperado 9)").build());
+            skippedLines++;
+            continue;
+          }
+          final String mesReferenciaStr = normalizeRequired(record.get(0),
+              "mesReferencia", lineNumber);
+          final String tipoApuracaoStr = normalizeRequired(record.get(1),
+              "tipoApuracao", lineNumber);
+          final String tipoRelacionamentoStr = normalizeRequired(record.get(2),
+              "tipoRelacionamento", lineNumber);
+          final String contaContabilCode = normalizeField(record.get(3));
+          final String contaParteBCode = normalizeField(record.get(4));
+          final String parametroTributarioCodigo = normalizeRequired(record.get(5),
+              "parametroTributarioCodigo", lineNumber);
+          final String tipoAjusteStr = normalizeRequired(record.get(6),
+              "tipoAjuste", lineNumber);
+          final String descricao = normalizeRequired(record.get(7),
+              "descricao", lineNumber);
+          final String valorStr = normalizeRequired(record.get(8),
+              "valor", lineNumber);
 
           // Parse mesReferencia
           int mesReferencia;
@@ -483,55 +495,47 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
     }
   }
 
-  private String getRequiredField(CSVRecord record, String fieldName, int lineNumber) {
-    try {
-      String value = record.get(fieldName);
-      if (value == null || value.trim().isEmpty()) {
-        throw new IllegalArgumentException("Field '" + fieldName + "' is required but was empty");
-      }
-      return value.trim();
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Field '" + fieldName + "' not found or empty in header");
-    }
+  private String normalizeField(String value) {
+    return (value == null || value.trim().isEmpty()) ? null : value.trim();
   }
 
-  private String getField(CSVRecord record, String fieldName) {
-    try {
-      String value = record.get(fieldName);
-      return (value == null || value.trim().isEmpty()) ? null : value.trim();
-    } catch (IllegalArgumentException e) {
-      return null;
+  private String normalizeRequired(String value, String fieldName, int lineNumber) {
+    String normalized = normalizeField(value);
+    if (normalized == null) {
+      throw new IllegalArgumentException(
+          "Campo '" + fieldName + "' é obrigatório (coluna vazia na linha " + lineNumber + ")");
     }
+    return normalized;
   }
 
   /**
-   * Cria CSVParser com auto-detecção de separador (; ou ,).
-   *
-   * @param reader BufferedReader do arquivo
-   * @return CSVParser configurado
+   * Cria CSVParser com auto-detecção de separador e header opcional.
    */
   private CSVParser createCsvParser(BufferedReader reader) throws Exception {
     reader.mark(8192);
 
     String firstLine = reader.readLine();
     if (firstLine == null || firstLine.trim().isEmpty()) {
-      throw new IllegalArgumentException("File is empty or has no header");
+      throw new IllegalArgumentException("File is empty");
     }
 
     char delimiter = firstLine.contains(";") ? ';' : ',';
 
+    String lower = firstLine.toLowerCase();
+    boolean hasHeader = lower.contains("mesreferencia") || lower.contains("tipoapuracao")
+        || lower.contains("tipoajuste");
+
     reader.reset();
 
-    CSVFormat format =
-        CSVFormat.DEFAULT
-            .builder()
-            .setDelimiter(delimiter)
-            .setHeader()
-            .setSkipHeaderRecord(true)
-            .setIgnoreEmptyLines(true)
-            .setTrim(true)
-            .build();
+    CSVFormat.Builder builder = CSVFormat.DEFAULT.builder()
+        .setDelimiter(delimiter)
+        .setIgnoreEmptyLines(true)
+        .setTrim(true);
 
-    return new CSVParser(reader, format);
+    if (hasHeader) {
+      builder.setSkipHeaderRecord(true);
+    }
+
+    return new CSVParser(reader, builder.build());
   }
 }

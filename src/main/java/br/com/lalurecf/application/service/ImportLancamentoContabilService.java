@@ -128,13 +128,43 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
         lineNumber++;
 
         try {
-          // Extrair campos por nome (cabeçalho obrigatório)
-          final String contaDebitoCode = getField(record, "contaDebitoCode");
-          final String contaCreditoCode = getField(record, "contaCreditoCode");
-          final String dataStr = getRequiredField(record, "data", lineNumber);
-          final String valorStr = getRequiredField(record, "valor", lineNumber);
-          final String historico = getRequiredField(record, "historico", lineNumber);
-          final String numeroDocumento = getField(record, "numeroDocumento");
+          // Extrair campos por posição (header opcional)
+          if (record.size() < 5) {
+            errors.add(
+                ImportError.builder()
+                    .lineNumber(lineNumber)
+                    .error("Linha com menos de 5 colunas (esperado 6)")
+                    .build());
+            skippedLines++;
+            continue;
+          }
+          final String contaDebitoCode = normalizeField(record.get(0));
+          final String contaCreditoCode = normalizeField(record.get(1));
+          final String dataStr = record.get(2) == null ? null : record.get(2).trim();
+          final String valorStr = record.get(3) == null ? null : record.get(3).trim();
+          final String historico = record.get(4) == null ? null : record.get(4).trim();
+          final String numeroDocumento =
+              record.size() > 5 ? normalizeField(record.get(5)) : null;
+
+          // Validar campos obrigatórios
+          if (dataStr == null || dataStr.isEmpty()) {
+            errors.add(ImportError.builder().lineNumber(lineNumber)
+                .error("Campo 'data' é obrigatório").build());
+            skippedLines++;
+            continue;
+          }
+          if (valorStr == null || valorStr.isEmpty()) {
+            errors.add(ImportError.builder().lineNumber(lineNumber)
+                .error("Campo 'valor' é obrigatório").build());
+            skippedLines++;
+            continue;
+          }
+          if (historico == null || historico.isEmpty()) {
+            errors.add(ImportError.builder().lineNumber(lineNumber)
+                .error("Campo 'historico' é obrigatório").build());
+            skippedLines++;
+            continue;
+          }
 
           // Validar ao menos uma conta informada
           if ((contaDebitoCode == null || contaDebitoCode.isEmpty())
@@ -317,61 +347,39 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
     }
   }
 
-  private String getRequiredField(CSVRecord record, String fieldName, int lineNumber) {
-    try {
-      String value = record.get(fieldName);
-      if (value == null || value.trim().isEmpty()) {
-        throw new IllegalArgumentException("Field '" + fieldName + "' is required but was empty");
-      }
-      return value.trim();
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Field '" + fieldName + "' not found or empty in header");
-    }
-  }
-
-  private String getField(CSVRecord record, String fieldName) {
-    try {
-      String value = record.get(fieldName);
-      return (value == null || value.trim().isEmpty()) ? null : value.trim();
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
+  private String normalizeField(String value) {
+    return (value == null || value.trim().isEmpty()) ? null : value.trim();
   }
 
   /**
-   * Cria CSVParser com auto-detecção de separador.
-   *
-   * @param reader BufferedReader do arquivo
-   * @param file arquivo original para mensagens de erro
-   * @return CSVParser configurado
+   * Cria CSVParser com auto-detecção de separador e header opcional.
    */
   private CSVParser createCsvParser(BufferedReader reader, MultipartFile file) throws Exception {
-    // Marcar posição inicial para poder resetar
     reader.mark(8192);
 
-    // Ler primeira linha para detectar separador
     String firstLine = reader.readLine();
     if (firstLine == null || firstLine.trim().isEmpty()) {
-      throw new IllegalArgumentException("File is empty or has no header");
+      throw new IllegalArgumentException("File is empty");
     }
 
-    // Detectar separador (priorizar ; sobre ,)
     char delimiter = firstLine.contains(";") ? ';' : ',';
 
-    // Resetar reader para início
+    // Detectar se a primeira linha é header (contém nomes de campos conhecidos)
+    String lower = firstLine.toLowerCase();
+    boolean hasHeader = lower.contains("contadebitocode") || lower.contains("data")
+        || lower.contains("valor") || lower.contains("historico");
+
     reader.reset();
 
-    // Criar CSVFormat
-    CSVFormat format =
-        CSVFormat.DEFAULT
-            .builder()
-            .setDelimiter(delimiter)
-            .setHeader()
-            .setSkipHeaderRecord(true)
-            .setIgnoreEmptyLines(true)
-            .setTrim(true)
-            .build();
+    CSVFormat.Builder builder = CSVFormat.DEFAULT.builder()
+        .setDelimiter(delimiter)
+        .setIgnoreEmptyLines(true)
+        .setTrim(true);
 
-    return new CSVParser(reader, format);
+    if (hasHeader) {
+      builder.setSkipHeaderRecord(true);
+    }
+
+    return new CSVParser(reader, builder.build());
   }
 }
