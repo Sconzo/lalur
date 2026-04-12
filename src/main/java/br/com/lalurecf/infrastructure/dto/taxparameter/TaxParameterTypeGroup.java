@@ -1,7 +1,6 @@
 package br.com.lalurecf.infrastructure.dto.taxparameter;
 
 import br.com.lalurecf.domain.enums.ParameterNature;
-import br.com.lalurecf.infrastructure.dto.FilterDropdown;
 import java.util.List;
 
 /**
@@ -11,5 +10,5 @@ public record TaxParameterTypeGroup(
     ParameterNature nature,
     Boolean required,
     Integer displayOrder,
-    List<FilterDropdown> parameters) {
+    List<TaxParameterOption> parameters) {
 }

@@ -13,9 +13,9 @@ import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.TaxParameter;
 import br.com.lalurecf.domain.model.TaxParameterType;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
-import br.com.lalurecf.infrastructure.dto.FilterDropdown;
 import br.com.lalurecf.infrastructure.dto.company.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.CreateTaxParameterRequest;
+import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterOption;
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterResponse;
 import br.com.lalurecf.infrastructure.dto.taxparameter.TaxParameterTypeGroup;
 import br.com.lalurecf.infrastructure.dto.taxparameter.UpdateTaxParameterRequest;
@@ -248,7 +248,7 @@ public class TaxParameterService implements
     ParameterNature currentNature = null;
     Boolean currentRequired = null;
     Integer currentDisplayOrder = null;
-    List<FilterDropdown> parameterList = new ArrayList<>();
+    List<TaxParameterOption> parameterList = new ArrayList<>();
 
     for (TaxParameter parameter : allParameters) {
       String typeDescription =
@@ -266,7 +266,7 @@ public class TaxParameterService implements
       currentRequired = parameter.getType() != null ? parameter.getType().getRequired() : null;
       currentDisplayOrder =
           parameter.getType() != null ? parameter.getType().getDisplayOrder() : null;
-      parameterList.add(new FilterDropdown(parameter.getId(), parameter.getDescription()));
+      parameterList.add(new TaxParameterOption(parameter.getCode(), parameter.getDescription()));
     }
 
     if (currentType != null) {
