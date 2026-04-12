@@ -100,17 +100,18 @@ public class TaxParameterService implements
   @Transactional(readOnly = true)
   public Page<TaxParameterResponse> list(
       String type,
+      Long typeId,
       ParameterNature nature,
       String search,
       boolean includeInactive,
       Boolean fiscalMovementExclusive,
       Pageable pageable) {
 
-    log.info("Listando parâmetros tributários. Type: {}, Nature: {}, Search: {}",
-        type, nature, search);
+    log.info("Listando parâmetros tributários. Type: {}, TypeId: {}, Nature: {}, Search: {}",
+        type, typeId, nature, search);
 
     Specification<TaxParameterEntity> spec =
-        buildSpecification(type, nature, search, includeInactive, fiscalMovementExclusive);
+        buildSpecification(type, typeId, nature, search, includeInactive, fiscalMovementExclusive);
     Page<TaxParameter> page = taxParameterRepository.findAll(spec, pageable);
 
     return page.map(this::toResponse);
@@ -281,7 +282,7 @@ public class TaxParameterService implements
    * Constrói Specification para filtros dinâmicos.
    */
   private Specification<TaxParameterEntity> buildSpecification(
-      String type, ParameterNature nature, String search, boolean includeInactive,
+      String type, Long typeId, ParameterNature nature, String search, boolean includeInactive,
       Boolean fiscalMovementExclusive) {
 
     return (root, query, criteriaBuilder) -> {
@@ -293,6 +294,11 @@ public class TaxParameterService implements
       // Filtro por tipo (categoria) - agora usa a descrição do tipo
       if (type != null && !type.isBlank()) {
         predicates.add(criteriaBuilder.equal(tipoParametroJoin.get("descricao"), type));
+      }
+
+      // Filtro por typeId
+      if (typeId != null) {
+        predicates.add(criteriaBuilder.equal(tipoParametroJoin.get("id"), typeId));
       }
 
       // Filtro por natureza - agora usa a natureza do tipo

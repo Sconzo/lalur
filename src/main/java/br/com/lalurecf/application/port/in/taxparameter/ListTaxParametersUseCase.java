@@ -31,6 +31,7 @@ public interface ListTaxParametersUseCase {
    */
   Page<TaxParameterResponse> list(
       String type,
+      Long typeId,
       ParameterNature nature,
       String search,
       boolean includeInactive,

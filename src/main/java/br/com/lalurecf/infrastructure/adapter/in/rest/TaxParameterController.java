@@ -91,6 +91,7 @@ public class TaxParameterController {
   @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Page<TaxParameterResponse>> list(
       @RequestParam(required = false) String type,
+      @RequestParam(required = false) Long typeId,
       @RequestParam(required = false) ParameterNature nature,
       @RequestParam(required = false) String search,
       @RequestParam(defaultValue = "false") boolean includeInactive,
@@ -99,7 +100,7 @@ public class TaxParameterController {
 
     log.info("GET /tax-parameters - Listando parâmetros. Nature: {}", nature);
     Page<TaxParameterResponse> response =
-        listTaxParametersUseCase.list(type, nature, search, includeInactive,
+        listTaxParametersUseCase.list(type, typeId, nature, search, includeInactive,
             fiscalMovementExclusive, pageable);
     return ResponseEntity.ok(response);
   }
