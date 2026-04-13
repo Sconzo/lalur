@@ -267,7 +267,8 @@ public class TaxParameterService implements
       currentRequired = parameter.getType() != null ? parameter.getType().getRequired() : null;
       currentDisplayOrder =
           parameter.getType() != null ? parameter.getType().getDisplayOrder() : null;
-      parameterList.add(new TaxParameterOption(parameter.getCode(), parameter.getDescription()));
+      parameterList.add(new TaxParameterOption(
+          parameter.getId(), parameter.getCode(), parameter.getDescription()));
     }
 
     if (currentType != null) {
