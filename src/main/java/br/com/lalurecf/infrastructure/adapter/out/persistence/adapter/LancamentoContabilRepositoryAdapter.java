@@ -131,8 +131,16 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
           public void setValues(PreparedStatement ps, int i) throws SQLException {
             LancamentoContabil l = lancamentos.get(i);
             ps.setLong(1, l.getCompanyId());
-            ps.setLong(2, l.getContaDebitoId());
-            ps.setLong(3, l.getContaCreditoId());
+            if (l.getContaDebitoId() != null) {
+              ps.setLong(2, l.getContaDebitoId());
+            } else {
+              ps.setNull(2, Types.BIGINT);
+            }
+            if (l.getContaCreditoId() != null) {
+              ps.setLong(3, l.getContaCreditoId());
+            } else {
+              ps.setNull(3, Types.BIGINT);
+            }
             ps.setDate(4, Date.valueOf(l.getData()));
             ps.setBigDecimal(5, l.getValor());
             ps.setString(6, l.getHistorico());

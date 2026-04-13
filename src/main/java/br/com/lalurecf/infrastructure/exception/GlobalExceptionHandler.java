@@ -196,6 +196,25 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handler para IllegalStateException — violações de estado/regra de negócio.
+   *
+   * @param ex exceção lançada
+   * @return response 409 Conflict
+   */
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
+    log.warn("Estado inválido: {}", ex.getMessage());
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.CONFLICT.value())
+            .error("Conflict")
+            .message(ex.getMessage())
+            .build();
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+  }
+
+  /**
    * Handler para EntityNotFoundException (JPA).
    *
    * @param ex exceção lançada
