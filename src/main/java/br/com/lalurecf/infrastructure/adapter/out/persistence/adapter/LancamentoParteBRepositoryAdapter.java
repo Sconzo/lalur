@@ -1,6 +1,7 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 
 import br.com.lalurecf.application.port.out.LancamentoParteBRepositoryPort;
+import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.LancamentoParteB;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteBEntity;
@@ -181,6 +182,16 @@ public class LancamentoParteBRepositoryAdapter implements LancamentoParteBReposi
   public List<LancamentoParteB> findByCompanyIdAndAnoReferencia(
       Long companyId, Integer anoReferencia) {
     return jpaRepository.findByCompanyIdAndAnoReferencia(companyId, anoReferencia).stream()
+        .map(mapper::toDomain)
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  public List<LancamentoParteB> findByCompanyIdAndAnoReferenciaAndStatus(
+      Long companyId, Integer anoReferencia, Status status) {
+    return jpaRepository
+        .findByCompanyIdAndAnoReferenciaAndStatus(companyId, anoReferencia, status)
+        .stream()
         .map(mapper::toDomain)
         .collect(Collectors.toList());
   }

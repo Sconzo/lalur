@@ -1,6 +1,9 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 
 import br.com.lalurecf.application.port.out.PlanoDeContasRepositoryPort;
+import br.com.lalurecf.domain.enums.AccountType;
+import br.com.lalurecf.domain.enums.ClasseContabil;
+import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.PlanoDeContasEntity;
@@ -9,15 +12,18 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.Company
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaReferencialJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
+import jakarta.persistence.criteria.Predicate;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -153,5 +159,54 @@ public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPo
   @Override
   public boolean existsActiveByCompanyId(Long companyId) {
     return jpaRepository.existsByCompanyIdAndStatus(companyId, Status.ACTIVE);
+  }
+
+  @Override
+  public Page<PlanoDeContas> findFiltered(
+      Long companyId,
+      Integer fiscalYear,
+      AccountType accountType,
+      ClasseContabil classe,
+      NaturezaConta natureza,
+      String search,
+      Integer nivel,
+      boolean includeInactive,
+      Pageable pageable) {
+
+    Specification<PlanoDeContasEntity> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          predicates.add(cb.equal(root.get("company").get("id"), companyId));
+
+          if (fiscalYear != null) {
+            predicates.add(cb.equal(root.get("fiscalYear"), fiscalYear));
+          }
+          if (accountType != null) {
+            predicates.add(cb.equal(root.get("accountType"), accountType));
+          }
+          if (classe != null) {
+            predicates.add(cb.equal(root.get("classe"), classe));
+          }
+          if (natureza != null) {
+            predicates.add(cb.equal(root.get("natureza"), natureza));
+          }
+          if (search != null && !search.trim().isEmpty()) {
+            String pattern = "%" + search.toLowerCase() + "%";
+            predicates.add(
+                cb.or(
+                    cb.like(cb.lower(root.get("code")), pattern),
+                    cb.like(cb.lower(root.get("name")), pattern)));
+          }
+          if (nivel != null) {
+            predicates.add(cb.equal(root.get("nivel"), nivel));
+          }
+          if (!includeInactive) {
+            predicates.add(cb.equal(root.get("status"), Status.ACTIVE));
+          }
+
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    return jpaRepository.findAll(spec, pageable).map(mapper::toDomain);
   }
 }

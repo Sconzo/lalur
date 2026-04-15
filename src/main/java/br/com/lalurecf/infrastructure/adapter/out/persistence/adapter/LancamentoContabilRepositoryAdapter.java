@@ -11,16 +11,20 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.Company
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.LancamentoContabilJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
+import jakarta.persistence.criteria.Predicate;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -177,15 +181,68 @@ public class LancamentoContabilRepositoryAdapter implements LancamentoContabilRe
   }
 
   @Override
-  public List<LancamentoContabil> findByCompanyId(Long companyId) {
-    log.debug("Finding all LancamentosContabeis by companyId: {}", companyId);
-    return jpaRepository.findByCompanyId(companyId).stream().map(mapper::toDomain).toList();
-  }
-
-  @Override
   public Page<LancamentoContabil> findByCompanyId(Long companyId, Pageable pageable) {
     log.debug("Finding LancamentosContabeis by companyId: {} with pagination", companyId);
     return jpaRepository.findByCompanyId(companyId, pageable).map(mapper::toDomain);
+  }
+
+  @Override
+  public List<LancamentoContabil> findForExport(
+      Long companyId, Integer fiscalYear, LocalDate dataInicio, LocalDate dataFim) {
+    log.debug(
+        "Finding LancamentosContabeis for export: companyId={}, fiscalYear={}, range=[{}, {}]",
+        companyId, fiscalYear, dataInicio, dataFim);
+    return jpaRepository
+        .findForExport(companyId, fiscalYear, Status.ACTIVE, dataInicio, dataFim)
+        .stream()
+        .map(mapper::toDomain)
+        .toList();
+  }
+
+  @Override
+  public Page<LancamentoContabil> findFiltered(
+      Long companyId,
+      Long contaDebitoId,
+      Long contaCreditoId,
+      LocalDate data,
+      LocalDate dataInicio,
+      LocalDate dataFim,
+      Integer fiscalYear,
+      boolean includeInactive,
+      Pageable pageable) {
+    log.debug("Finding filtered LancamentosContabeis by companyId: {} with pagination", companyId);
+
+    Specification<LancamentoContabilEntity> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          predicates.add(cb.equal(root.get("company").get("id"), companyId));
+
+          if (contaDebitoId != null) {
+            predicates.add(cb.equal(root.get("contaDebito").get("id"), contaDebitoId));
+          }
+          if (contaCreditoId != null) {
+            predicates.add(cb.equal(root.get("contaCredito").get("id"), contaCreditoId));
+          }
+          if (data != null) {
+            predicates.add(cb.equal(root.get("data"), data));
+          }
+          if (dataInicio != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("data"), dataInicio));
+          }
+          if (dataFim != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("data"), dataFim));
+          }
+          if (fiscalYear != null) {
+            predicates.add(cb.equal(root.get("fiscalYear"), fiscalYear));
+          }
+          if (!includeInactive) {
+            predicates.add(cb.equal(root.get("status"), Status.ACTIVE));
+          }
+
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    return jpaRepository.findAll(spec, pageable).map(mapper::toDomain);
   }
 
   @Override

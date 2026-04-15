@@ -13,7 +13,6 @@ import br.com.lalurecf.domain.model.LancamentoParteB;
 import br.com.lalurecf.infrastructure.dto.ecf.GenerateArquivoParcialResponse;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,20 +50,18 @@ public class ArquivoParcialAssemblerService implements GenerateArquivoParcialUse
 
     log.info("Gerando Arquivo Parcial ECF: companyId={}, fiscalYear={}", companyId, fiscalYear);
 
-    // Passo 1: validar lançamentos ACTIVE
-    List<LancamentoParteB> allLancamentos =
-        lancamentoParteBRepositoryPort.findByCompanyIdAndAnoReferencia(companyId, fiscalYear);
-    List<LancamentoParteB> active = allLancamentos.stream()
-        .filter(l -> l.getStatus() == Status.ACTIVE)
-        .collect(Collectors.toList());
+    // Passo 1: validar lançamentos ACTIVE (filtrados no banco)
+    List<LancamentoParteB> active =
+        lancamentoParteBRepositoryPort.findByCompanyIdAndAnoReferenciaAndStatus(
+            companyId, fiscalYear, Status.ACTIVE);
 
     if (active.isEmpty()) {
       throw new IllegalArgumentException(
           "Nenhum Lançamento da Parte B encontrado para o ano fiscal " + fiscalYear);
     }
 
-    // Passo 2: gerar conteúdo do bloco M
-    String content = partMGeneratorService.generateArquivoParcial(companyId, fiscalYear);
+    // Passo 2: gerar conteúdo do bloco M reutilizando a lista já carregada
+    String content = partMGeneratorService.generateArquivoParcial(active, fiscalYear);
 
     // Passo 3: montar EcfFile
     Company company = companyRepositoryPort.findById(companyId)

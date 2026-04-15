@@ -9,14 +9,17 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
@@ -210,6 +213,78 @@ public class GlobalExceptionHandler {
             .status(HttpStatus.CONFLICT.value())
             .error("Conflict")
             .message(ex.getMessage())
+            .build();
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+  }
+
+  /**
+   * Handler para JSON malformado ou tipo de campo inválido no body.
+   *
+   * @param ex exceção lançada
+   * @return response 400 Bad Request
+   */
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+      HttpMessageNotReadableException ex) {
+    log.warn("Body inválido: {}", ex.getMessage());
+    Throwable cause = ex.getMostSpecificCause();
+    String message = cause != null ? cause.getMessage() : ex.getMessage();
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error(BAD_REQUEST)
+            .message("JSON inválido: " + message)
+            .build();
+    return ResponseEntity.badRequest().body(error);
+  }
+
+  /**
+   * Handler para tipo inválido em query/path param.
+   *
+   * @param ex exceção lançada
+   * @return response 400 Bad Request
+   */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(
+      MethodArgumentTypeMismatchException ex) {
+    log.warn("Tipo inválido em parâmetro '{}': {}", ex.getName(), ex.getMessage());
+    String expectedType =
+        ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "desconhecido";
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error(BAD_REQUEST)
+            .message(
+                "Parâmetro '"
+                    + ex.getName()
+                    + "' tem valor inválido '"
+                    + ex.getValue()
+                    + "'. Esperado tipo: "
+                    + expectedType)
+            .build();
+    return ResponseEntity.badRequest().body(error);
+  }
+
+  /**
+   * Handler para violações de constraint do banco (unique, FK, NOT NULL).
+   *
+   * @param ex exceção lançada
+   * @return response 409 Conflict
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+      DataIntegrityViolationException ex) {
+    log.warn("Violação de integridade de dados: {}", ex.getMessage());
+    Throwable cause = ex.getMostSpecificCause();
+    String message = cause != null ? cause.getMessage() : ex.getMessage();
+    ErrorResponse error =
+        ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.CONFLICT.value())
+            .error("Conflict")
+            .message("Violação de integridade: " + message)
             .build();
     return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
   }

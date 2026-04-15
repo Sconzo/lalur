@@ -1,6 +1,7 @@
 package br.com.lalurecf.application.port.out;
 
 import br.com.lalurecf.domain.model.LancamentoContabil;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -42,14 +43,6 @@ public interface LancamentoContabilRepositoryPort {
   List<LancamentoContabil> findByCompanyIdAndFiscalYear(Long companyId, Integer fiscalYear);
 
   /**
-   * Busca todos lançamentos de uma empresa.
-   *
-   * @param companyId ID da empresa
-   * @return lista de lançamentos
-   */
-  List<LancamentoContabil> findByCompanyId(Long companyId);
-
-  /**
    * Busca lançamentos de uma empresa com paginação.
    *
    * @param companyId ID da empresa
@@ -57,6 +50,43 @@ public interface LancamentoContabilRepositoryPort {
    * @return página de lançamentos
    */
   Page<LancamentoContabil> findByCompanyId(Long companyId, Pageable pageable);
+
+  /**
+   * Busca lançamentos para export aplicando filtros no banco (status, fiscalYear, range de datas).
+   *
+   * @param companyId ID da empresa
+   * @param fiscalYear ano fiscal
+   * @param dataInicio data inicial (inclusive, opcional)
+   * @param dataFim data final (inclusive, opcional)
+   * @return lista de lançamentos ativos ordenados por data ASC
+   */
+  List<LancamentoContabil> findForExport(
+      Long companyId, Integer fiscalYear, LocalDate dataInicio, LocalDate dataFim);
+
+  /**
+   * Busca lançamentos aplicando filtros dinâmicos direto no banco com paginação.
+   *
+   * @param companyId ID da empresa (obrigatório)
+   * @param contaDebitoId filtro opcional por conta de débito
+   * @param contaCreditoId filtro opcional por conta de crédito
+   * @param data filtro opcional por data exata
+   * @param dataInicio filtro opcional por data inicial (inclusive)
+   * @param dataFim filtro opcional por data final (inclusive)
+   * @param fiscalYear filtro opcional por ano fiscal
+   * @param includeInactive se true, inclui lançamentos inativos
+   * @param pageable configuração de paginação
+   * @return página filtrada de lançamentos
+   */
+  Page<LancamentoContabil> findFiltered(
+      Long companyId,
+      Long contaDebitoId,
+      Long contaCreditoId,
+      LocalDate data,
+      LocalDate dataInicio,
+      LocalDate dataFim,
+      Integer fiscalYear,
+      boolean includeInactive,
+      Pageable pageable);
 
   /**
    * Salva uma lista de lançamentos contábeis em batch via JDBC.

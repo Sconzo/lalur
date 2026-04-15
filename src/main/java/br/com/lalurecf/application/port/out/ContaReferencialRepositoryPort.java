@@ -1,6 +1,7 @@
 package br.com.lalurecf.application.port.out;
 
 import br.com.lalurecf.domain.model.ContaReferencial;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -86,6 +87,14 @@ public interface ContaReferencialRepositoryPort {
    * @return página de contas
    */
   Page<ContaReferencial> findAll(Pageable pageable);
+
+  /**
+   * Busca várias contas referenciais por IDs em uma única query (para evitar N+1).
+   *
+   * @param ids IDs das contas
+   * @return lista de contas encontradas
+   */
+  List<ContaReferencial> findAllById(Collection<Long> ids);
 
   /**
    * Busca contas referenciais por status com paginação.

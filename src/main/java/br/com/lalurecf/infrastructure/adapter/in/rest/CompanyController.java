@@ -207,7 +207,7 @@ public class CompanyController {
     Status status = includeInactive ? null : Status.ACTIVE;
     List<String> cnpjs = status != null
         ? companyRepository.findDistinctCnpjsByStatus(status)
-        : companyRepository.findAll().stream().map(e -> e.getCnpj()).distinct().sorted().toList();
+        : companyRepository.findDistinctCnpjs();
 
     // Aplicar filtro de busca se fornecido
     if (search != null && !search.isBlank()) {
@@ -246,8 +246,7 @@ public class CompanyController {
     Status status = includeInactive ? null : Status.ACTIVE;
     List<String> razoesSociais = status != null
         ? companyRepository.findDistinctRazaoSocialByStatus(status)
-        : companyRepository.findAll().stream()
-        .map(e -> e.getRazaoSocial()).distinct().sorted().toList();
+        : companyRepository.findDistinctRazaoSocial();
 
     // Aplicar filtro de busca se fornecido
     if (search != null && !search.isBlank()) {

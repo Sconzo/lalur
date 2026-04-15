@@ -56,6 +56,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImportLancamentoParteBService implements ImportLancamentoParteBUseCase {
 
   private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+  private static final int CHUNK_SIZE = 1000;
 
   private final LancamentoParteBRepositoryPort lancamentoParteBRepository;
   private final PlanoDeContasRepositoryPort planoDeContasRepository;
@@ -452,6 +453,12 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                     .build());
           } else {
             lancamentosToSave.add(lancamento);
+
+            if (lancamentosToSave.size() >= CHUNK_SIZE) {
+              lancamentoParteBRepository.saveAll(lancamentosToSave);
+              log.info("Persisted chunk of {} lançamentos Parte B", lancamentosToSave.size());
+              lancamentosToSave.clear();
+            }
           }
 
           processedLines++;
@@ -467,10 +474,10 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
         }
       }
 
-      // Persistir em batch se não for dry run
+      // Persistir chunk final se não for dry run
       if (!dryRun && !lancamentosToSave.isEmpty()) {
         lancamentoParteBRepository.saveAll(lancamentosToSave);
-        log.info("Persisted {} lançamentos Parte B", lancamentosToSave.size());
+        log.info("Persisted final chunk of {} lançamentos Parte B", lancamentosToSave.size());
       }
 
       boolean success = skippedLines == 0;

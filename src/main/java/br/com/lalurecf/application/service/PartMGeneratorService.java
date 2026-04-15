@@ -62,12 +62,17 @@ public class PartMGeneratorService {
    */
   @Transactional(readOnly = true)
   public String generateArquivoParcial(Long companyId, Integer fiscalYear) {
-    List<LancamentoParteB> active = lancamentoRepo
-        .findByCompanyIdAndAnoReferencia(companyId, fiscalYear)
-        .stream()
-        .filter(l -> l.getStatus() == Status.ACTIVE)
-        .collect(Collectors.toList());
+    List<LancamentoParteB> active =
+        lancamentoRepo.findByCompanyIdAndAnoReferenciaAndStatus(
+            companyId, fiscalYear, Status.ACTIVE);
+    return generateArquivoParcial(active, fiscalYear);
+  }
 
+  /**
+   * Variante que recebe a lista já filtrada, evitando nova consulta ao banco quando o chamador
+   * já carregou os lançamentos.
+   */
+  public String generateArquivoParcial(List<LancamentoParteB> active, Integer fiscalYear) {
     if (active.isEmpty()) {
       throw new IllegalArgumentException(
           "Nenhum lançamento da Parte B ativo encontrado para o ano " + fiscalYear);
@@ -78,9 +83,6 @@ public class PartMGeneratorService {
     lines.addAll(generateGrupoCsll(active, fiscalYear));
     lines.addAll(generateGrupo3ParteB(active));
 
-    // M990: count = body lines + 1 (M990 itself)
-    // Note: Story 5.3 assembler prepends M001; for full SPED M990 count
-    // use lines.size() + 2 when M001 is also included.
     lines.add(String.format("|M990|%d|", lines.size() + 1));
 
     return String.join("\n", lines) + "\n";

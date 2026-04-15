@@ -46,6 +46,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
 
   private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  private static final int CHUNK_SIZE = 1000;
 
   private final PlanoDeContasRepositoryPort planoDeContasRepository;
   private final ContaReferencialRepositoryPort contaReferencialRepository;
@@ -209,6 +210,12 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
                     .build());
           } else {
             accountsToSave.add(account);
+
+            if (accountsToSave.size() >= CHUNK_SIZE) {
+              planoDeContasRepository.saveAll(accountsToSave);
+              log.info("Persisted chunk of {} contas", accountsToSave.size());
+              accountsToSave.clear();
+            }
           }
 
           processedCodes.add(parsedLine.code);
@@ -221,9 +228,10 @@ public class ImportPlanoDeContasService implements ImportPlanoDeContasUseCase {
         }
       }
 
-      // Persistir em batch se não for dry-run (1 INSERT em vez de N)
+      // Persistir chunk final se não for dry-run
       if (!dryRun && !accountsToSave.isEmpty()) {
         planoDeContasRepository.saveAll(accountsToSave);
+        log.info("Persisted final chunk of {} contas", accountsToSave.size());
       }
 
       // Montar response

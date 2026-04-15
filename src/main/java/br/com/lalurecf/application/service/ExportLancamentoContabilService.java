@@ -62,20 +62,9 @@ public class ExportLancamentoContabilService implements ExportLancamentoContabil
       throw new IllegalArgumentException("dataFim must be >= dataInicio");
     }
 
-    // Buscar lançamentos
+    // Buscar lançamentos já filtrados e ordenados no banco
     List<LancamentoContabil> lancamentos =
-        lancamentoContabilRepository.findByCompanyIdAndFiscalYear(companyId, fiscalYear);
-
-    // Filtrar por range de data se fornecido
-    if (dataInicio != null && dataFim != null) {
-      lancamentos =
-          lancamentos.stream()
-              .filter(
-                  l ->
-                      !l.getData().isBefore(dataInicio)
-                          && !l.getData().isAfter(dataFim))
-              .toList();
-    }
+        lancamentoContabilRepository.findForExport(companyId, fiscalYear, dataInicio, dataFim);
 
     // Validar se há lançamentos
     if (lancamentos.isEmpty()) {
@@ -85,10 +74,6 @@ public class ExportLancamentoContabilService implements ExportLancamentoContabil
               + " and fiscalYear "
               + fiscalYear);
     }
-
-    // Ordenar por data ASC
-    lancamentos =
-        lancamentos.stream().sorted((a, b) -> a.getData().compareTo(b.getData())).toList();
 
     try {
       // Gerar CSV

@@ -26,11 +26,14 @@ import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import br.com.lalurecf.infrastructure.security.FiscalYearContext;
 import java.time.Year;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -169,81 +172,49 @@ public class PlanoDeContasService
         companyId, fiscalYear, leafOnly);
 
     // Determinar último nível da máscara (se leafOnly)
-    final Integer maxNivel;
+    Integer nivelFilter = null;
     if (Boolean.TRUE.equals(leafOnly)) {
       Company company = companyRepository.findById(companyId)
           .orElseThrow(() -> new IllegalArgumentException(
               "Company not found with id: " + companyId));
-      maxNivel = company.getMascaraNiveis().split("\\.").length;
-    } else {
-      maxNivel = null;
+      nivelFilter = company.getMascaraNiveis().split("\\.").length;
     }
 
-    // Buscar todas contas da empresa
     Page<PlanoDeContas> accountsPage =
-        planoDeContasRepository.findByCompanyId(companyId, pageable);
+        planoDeContasRepository.findFiltered(
+            companyId,
+            fiscalYear,
+            accountType,
+            classe,
+            natureza,
+            search,
+            nivelFilter,
+            Boolean.TRUE.equals(includeInactive),
+            pageable);
 
-    // Filtrar por critérios
-    var filteredAccounts =
+    // Batch-fetch contas referenciais da página (evita N+1)
+    List<Long> contaRefIds =
         accountsPage.getContent().stream()
-            .filter(
-                acc -> {
-                  // Filtro fiscal year
-                  if (fiscalYear != null && !fiscalYear.equals(acc.getFiscalYear())) {
-                    return false;
-                  }
+            .map(PlanoDeContas::getContaReferencialId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
 
-                  // Filtro account type
-                  if (accountType != null && !accountType.equals(acc.getAccountType())) {
-                    return false;
-                  }
+    Map<Long, String> codigoRfbById =
+        contaRefIds.isEmpty()
+            ? Map.of()
+            : contaReferencialRepository.findAllById(contaRefIds).stream()
+                .collect(
+                    Collectors.toMap(ContaReferencial::getId, ContaReferencial::getCodigoRfb));
 
-                  // Filtro classe
-                  if (classe != null && !classe.equals(acc.getClasse())) {
-                    return false;
-                  }
-
-                  // Filtro natureza
-                  if (natureza != null && !natureza.equals(acc.getNatureza())) {
-                    return false;
-                  }
-
-                  // Filtro search (code ou name)
-                  if (search != null
-                      && !search.trim().isEmpty()
-                      && !acc.getCode().toLowerCase().contains(search.toLowerCase())
-                      && !acc.getName().toLowerCase().contains(search.toLowerCase())) {
-                    return false;
-                  }
-
-                  // Filtro leafOnly (último nível da máscara)
-                  if (maxNivel != null && !maxNivel.equals(acc.getNivel())) {
-                    return false;
-                  }
-
-                  // Filtro status
-                  if (includeInactive == null || !includeInactive) {
-                    return acc.getStatus() == Status.ACTIVE;
-                  }
-
-                  return true;
-                })
-            .map(
-                acc -> {
-                  // Buscar código da conta referencial (se vinculada)
-                  String codigoRfb = null;
-                  if (acc.getContaReferencialId() != null) {
-                    codigoRfb =
-                        contaReferencialRepository
-                            .findById(acc.getContaReferencialId())
-                            .map(ContaReferencial::getCodigoRfb)
-                            .orElse(null);
-                  }
-                  return dtoMapper.toResponse(acc, codigoRfb);
-                })
-            .toList();
-
-    return new PageImpl<>(filteredAccounts, pageable, accountsPage.getTotalElements());
+    return accountsPage.map(
+        acc -> {
+          String codigoRfb =
+              acc.getContaReferencialId() != null
+                  ? codigoRfbById.get(acc.getContaReferencialId())
+                  : null;
+          return dtoMapper.toResponse(acc, codigoRfb);
+        });
   }
 
   @Override

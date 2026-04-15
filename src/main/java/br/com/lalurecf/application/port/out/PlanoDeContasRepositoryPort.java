@@ -1,5 +1,8 @@
 package br.com.lalurecf.application.port.out;
 
+import br.com.lalurecf.domain.enums.AccountType;
+import br.com.lalurecf.domain.enums.ClasseContabil;
+import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.model.PlanoDeContas;
 import java.util.List;
 import java.util.Optional;
@@ -80,4 +83,29 @@ public interface PlanoDeContasRepositoryPort {
    * @return página de contas da empresa
    */
   Page<PlanoDeContas> findByCompanyId(Long companyId, Pageable pageable);
+
+  /**
+   * Busca contas aplicando filtros dinâmicos direto no banco com paginação.
+   *
+   * @param companyId ID da empresa (obrigatório)
+   * @param fiscalYear filtro opcional por ano fiscal
+   * @param accountType filtro opcional por tipo de conta
+   * @param classe filtro opcional por classe contábil
+   * @param natureza filtro opcional por natureza
+   * @param search busca opcional em código ou nome (case-insensitive)
+   * @param nivel filtro opcional por nível (usado para leafOnly)
+   * @param includeInactive se true, inclui contas inativas
+   * @param pageable configuração de paginação
+   * @return página filtrada de contas
+   */
+  Page<PlanoDeContas> findFiltered(
+      Long companyId,
+      Integer fiscalYear,
+      AccountType accountType,
+      ClasseContabil classe,
+      NaturezaConta natureza,
+      String search,
+      Integer nivel,
+      boolean includeInactive,
+      Pageable pageable);
 }

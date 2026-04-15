@@ -21,12 +21,9 @@ import br.com.lalurecf.infrastructure.security.CompanyContext;
 import br.com.lalurecf.infrastructure.validation.EnforcePeriodoContabil;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -173,63 +170,16 @@ public class LancamentoContabilService
           "Company context is required (X-Company-Id header missing)");
     }
 
-    // Aplicar filtros manualmente (simplificado - em produção usar Specification ou QueryDSL)
-    List<LancamentoContabil> allLancamentos =
-        lancamentoContabilRepository.findByCompanyId(companyId);
-
-    // Filtrar por status
-    List<LancamentoContabil> filtered = new ArrayList<>();
-    for (LancamentoContabil lancamento : allLancamentos) {
-      boolean matches = true;
-
-      // Status filter
-      if (includeInactive == null || !includeInactive) {
-        if (lancamento.getStatus() != Status.ACTIVE) {
-          matches = false;
-        }
-      }
-
-      // Conta débito filter
-      if (contaDebitoId != null
-          && !contaDebitoId.equals(lancamento.getContaDebitoId())) {
-        matches = false;
-      }
-
-      // Conta crédito filter
-      if (contaCreditoId != null
-          && !contaCreditoId.equals(lancamento.getContaCreditoId())) {
-        matches = false;
-      }
-
-      // Data filter
-      if (data != null && !lancamento.getData().equals(data)) {
-        matches = false;
-      }
-
-      // Data range filter
-      if (dataInicio != null && lancamento.getData().isBefore(dataInicio)) {
-        matches = false;
-      }
-      if (dataFim != null && lancamento.getData().isAfter(dataFim)) {
-        matches = false;
-      }
-
-      // FiscalYear filter
-      if (fiscalYear != null && !lancamento.getFiscalYear().equals(fiscalYear)) {
-        matches = false;
-      }
-
-      if (matches) {
-        filtered.add(lancamento);
-      }
-    }
-
-    // Aplicar paginação manualmente
-    int start = (int) pageable.getOffset();
-    int end = Math.min((start + pageable.getPageSize()), filtered.size());
-    List<LancamentoContabil> page = filtered.subList(start, end);
-
-    return new PageImpl<>(page, pageable, filtered.size());
+    return lancamentoContabilRepository.findFiltered(
+        companyId,
+        contaDebitoId,
+        contaCreditoId,
+        data,
+        dataInicio,
+        dataFim,
+        fiscalYear,
+        Boolean.TRUE.equals(includeInactive),
+        pageable);
   }
 
   @Override

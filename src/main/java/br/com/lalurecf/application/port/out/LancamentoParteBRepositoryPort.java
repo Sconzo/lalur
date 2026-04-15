@@ -1,5 +1,6 @@
 package br.com.lalurecf.application.port.out;
 
+import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.domain.model.LancamentoParteB;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +40,17 @@ public interface LancamentoParteBRepositoryPort {
    * @return lista de lançamentos da empresa no ano especificado
    */
   List<LancamentoParteB> findByCompanyIdAndAnoReferencia(Long companyId, Integer anoReferencia);
+
+  /**
+   * Busca lançamentos Parte B filtrando por status no banco.
+   *
+   * @param companyId ID da empresa
+   * @param anoReferencia ano de referência
+   * @param status status dos lançamentos (ex: ACTIVE)
+   * @return lista de lançamentos filtrados
+   */
+  List<LancamentoParteB> findByCompanyIdAndAnoReferenciaAndStatus(
+      Long companyId, Integer anoReferencia, Status status);
 
   /**
    * Busca todos lançamentos Parte B de uma empresa com paginação.

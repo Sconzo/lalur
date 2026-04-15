@@ -1,5 +1,6 @@
 package br.com.lalurecf.infrastructure.adapter.out.persistence.repository;
 
+import br.com.lalurecf.domain.enums.Status;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.LancamentoParteBEntity;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,17 @@ public interface LancamentoParteBJpaRepository
    */
   List<LancamentoParteBEntity> findByCompanyIdAndAnoReferencia(
       Long companyId, Integer anoReferencia);
+
+  /**
+   * Busca lançamentos Parte B filtrados por status (ex: ACTIVE) direto no banco.
+   *
+   * @param companyId ID da empresa
+   * @param anoReferencia ano de referência
+   * @param status status dos lançamentos
+   * @return lista de entities
+   */
+  List<LancamentoParteBEntity> findByCompanyIdAndAnoReferenciaAndStatus(
+      Long companyId, Integer anoReferencia, Status status);
 
   /**
    * Busca todas lançamentos Parte B de uma empresa com paginação.

@@ -47,6 +47,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class ImportLancamentoContabilService implements ImportLancamentoContabilUseCase {
 
   private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+  private static final int CHUNK_SIZE = 1000;
   private static final DateTimeFormatter DATE_FORMATTER_ISO = DateTimeFormatter.ISO_LOCAL_DATE;
   private static final DateTimeFormatter DATE_FORMATTER_BR =
       DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -302,6 +303,13 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
           } else {
             // Adicionar para persistir
             lancamentosToSave.add(lancamento);
+
+            // Flush em chunks para limitar memória
+            if (lancamentosToSave.size() >= CHUNK_SIZE) {
+              lancamentoContabilRepository.saveAll(lancamentosToSave);
+              log.info("Persisted chunk of {} lançamentos contábeis", lancamentosToSave.size());
+              lancamentosToSave.clear();
+            }
           }
 
           processedLines++;
@@ -317,10 +325,10 @@ public class ImportLancamentoContabilService implements ImportLancamentoContabil
         }
       }
 
-      // Persistir lançamentos em batch se não for dry run
+      // Persistir lançamentos restantes (chunk final)
       if (!dryRun && !lancamentosToSave.isEmpty()) {
         lancamentoContabilRepository.saveAll(lancamentosToSave);
-        log.info("Persisted {} lançamentos contábeis", lancamentosToSave.size());
+        log.info("Persisted final chunk of {} lançamentos contábeis", lancamentosToSave.size());
       }
 
       // Montar resposta

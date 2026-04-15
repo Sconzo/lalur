@@ -9,6 +9,7 @@ import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -137,6 +138,13 @@ public class ContaReferencialRepositoryAdapter implements ContaReferencialReposi
   @Override
   public Page<ContaReferencial> findAll(Pageable pageable) {
     return jpaRepository.findAll(pageable).map(mapper::toDomain);
+  }
+
+  @Override
+  public List<ContaReferencial> findAllById(Collection<Long> ids) {
+    return jpaRepository.findAllById(ids).stream()
+        .map(mapper::toDomain)
+        .collect(Collectors.toList());
   }
 
   @Override

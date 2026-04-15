@@ -61,4 +61,20 @@ public interface CompanyJpaRepository extends JpaRepository<CompanyEntity, Long>
   @Query("SELECT DISTINCT c.razaoSocial FROM CompanyEntity c WHERE c.status = :status "
       + "ORDER BY c.razaoSocial")
   List<String> findDistinctRazaoSocialByStatus(Status status);
+
+  /**
+   * Retorna lista de CNPJs únicos (todas as empresas, independente do status).
+   *
+   * @return lista de CNPJs únicos
+   */
+  @Query("SELECT DISTINCT c.cnpj FROM CompanyEntity c ORDER BY c.cnpj")
+  List<String> findDistinctCnpjs();
+
+  /**
+   * Retorna lista de Razões Sociais únicas (todas as empresas, independente do status).
+   *
+   * @return lista de Razões Sociais únicas
+   */
+  @Query("SELECT DISTINCT c.razaoSocial FROM CompanyEntity c ORDER BY c.razaoSocial")
+  List<String> findDistinctRazaoSocial();
 }
