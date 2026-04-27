@@ -7,6 +7,7 @@ import br.com.lalurecf.application.port.in.ecf.GenerateCompleteEcfUseCase;
 import br.com.lalurecf.application.port.in.ecf.ListEcfFilesUseCase;
 import br.com.lalurecf.application.port.in.ecf.UploadImportedEcfUseCase;
 import br.com.lalurecf.application.port.in.ecf.ValidateEcfFileUseCase;
+import br.com.lalurecf.domain.enums.EcfFileType;
 import br.com.lalurecf.domain.model.EcfFileDownloadData;
 import br.com.lalurecf.infrastructure.dto.ecf.EcfFileListResponse;
 import br.com.lalurecf.infrastructure.dto.ecf.FinalizeEcfFileResponse;
@@ -148,6 +149,8 @@ public class EcfController {
    * existente com status VALIDATED ou FINALIZED para DRAFT.
    *
    * @param file arquivo ECF no formato SPED (extensão .txt)
+   * @param overwrite se true, sobrescreve ECF importada existente; se false e existir, retorna
+   *                  aviso com success=false
    * @return metadados do arquivo armazenado
    * @throws IOException se ocorrer erro ao ler o arquivo
    */
@@ -160,7 +163,9 @@ public class EcfController {
               + "Valida extensão .txt, tamanho máx 50MB, formato SPED e presença de bloco M. "
               + "Requer headers X-Company-Id e X-Fiscal-Year.")
   public ResponseEntity<UploadImportedEcfResponse> uploadImportado(
-      @RequestParam("file") MultipartFile file) throws IOException {
+      @RequestParam("file") MultipartFile file,
+      @RequestParam(value = "overwrite", required = false, defaultValue = "false")
+          boolean overwrite) throws IOException {
 
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
@@ -181,7 +186,8 @@ public class EcfController {
         companyId, fiscalYear, file.getOriginalFilename());
 
     UploadImportedEcfResponse response = uploadImportedEcfUseCase.upload(
-        file.getBytes(), file.getOriginalFilename(), fiscalYear, companyId, generatedBy);
+        file.getBytes(), file.getOriginalFilename(), fiscalYear, companyId, generatedBy,
+        overwrite);
 
     return ResponseEntity.ok(response);
   }
@@ -263,18 +269,18 @@ public class EcfController {
   /**
    * Faz download do arquivo ECF com encoding ISO-8859-1 (padrão SPED).
    *
-   * @param ecfFileId ID do arquivo ECF
+   * @param fileType tipo do arquivo (ARQUIVO_PARCIAL, IMPORTED_ECF, COMPLETE_ECF)
    * @return arquivo .txt como byte[] com headers Content-Disposition, Content-Type
    */
-  @GetMapping("/{ecfFileId}/download")
+  @GetMapping("/download/{fileType}")
   @PreAuthorize("hasRole('CONTADOR')")
   @Operation(
       summary = "Download do arquivo ECF",
       description =
           "Retorna o arquivo ECF (.txt) com encoding ISO-8859-1. "
-              + "Funciona para ARQUIVO_PARCIAL, IMPORTED_ECF e COMPLETE_ECF. "
-              + "Requer header X-Company-Id.")
-  public ResponseEntity<byte[]> downloadEcfFile(@PathVariable Long ecfFileId) {
+              + "Informe o tipo: ARQUIVO_PARCIAL, IMPORTED_ECF ou COMPLETE_ECF. "
+              + "Requer headers X-Company-Id e X-Fiscal-Year.")
+  public ResponseEntity<byte[]> downloadEcfFile(@PathVariable EcfFileType fileType) {
 
     Long companyId = CompanyContext.getCurrentCompanyId();
     if (companyId == null) {
@@ -282,9 +288,16 @@ public class EcfController {
           "Company context é obrigatório (header X-Company-Id ausente)");
     }
 
-    log.info("GET /api/v1/ecf/{}/download - companyId={}", ecfFileId, companyId);
+    Integer fiscalYear = FiscalYearContext.getCurrentFiscalYear();
+    if (fiscalYear == null) {
+      throw new IllegalArgumentException(
+          "Fiscal year context is required (header X-Fiscal-Year missing)");
+    }
 
-    EcfFileDownloadData data = downloadEcfFileUseCase.download(ecfFileId, companyId);
+    log.info("GET /api/v1/ecf/download/{} - companyId={}, fiscalYear={}",
+        fileType, companyId, fiscalYear);
+
+    EcfFileDownloadData data = downloadEcfFileUseCase.download(fileType, companyId, fiscalYear);
 
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.parseMediaType("text/plain; charset=ISO-8859-1"));

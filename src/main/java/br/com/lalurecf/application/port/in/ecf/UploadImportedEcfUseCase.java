@@ -22,5 +22,5 @@ public interface UploadImportedEcfUseCase {
    */
   UploadImportedEcfResponse upload(
       byte[] fileContent, String originalFileName,
-      Integer fiscalYear, Long companyId, String generatedBy);
+      Integer fiscalYear, Long companyId, String generatedBy, boolean overwrite);
 }

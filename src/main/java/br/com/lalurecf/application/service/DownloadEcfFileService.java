@@ -2,20 +2,20 @@ package br.com.lalurecf.application.service;
 
 import br.com.lalurecf.application.port.in.ecf.DownloadEcfFileUseCase;
 import br.com.lalurecf.application.port.out.EcfFileRepositoryPort;
+import br.com.lalurecf.domain.enums.EcfFileType;
 import br.com.lalurecf.domain.model.EcfFile;
 import br.com.lalurecf.domain.model.EcfFileDownloadData;
 import jakarta.persistence.EntityNotFoundException;
 import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Serviço responsável por preparar o download de arquivos ECF.
  *
- * <p>Busca o EcfFile, verifica ownership e converte o conteúdo String
+ * <p>Busca o EcfFile por tipo (unique por empresa+ano+tipo) e converte o conteúdo String
  * para byte[] usando encoding ISO-8859-1 (padrão SPED ECF).
  */
 @Service
@@ -27,16 +27,15 @@ public class DownloadEcfFileService implements DownloadEcfFileUseCase {
 
   @Override
   @Transactional(readOnly = true)
-  public EcfFileDownloadData download(Long ecfFileId, Long companyId) {
-    log.info("Download EcfFile: id={}, companyId={}", ecfFileId, companyId);
+  public EcfFileDownloadData download(EcfFileType fileType, Long companyId, Integer fiscalYear) {
+    log.info("Download EcfFile: fileType={}, companyId={}, fiscalYear={}",
+        fileType, companyId, fiscalYear);
 
-    EcfFile ecfFile = ecfFileRepositoryPort.findById(ecfFileId)
+    EcfFile ecfFile = ecfFileRepositoryPort
+        .findByCompanyAndFiscalYearAndType(companyId, fiscalYear, fileType)
         .orElseThrow(() -> new EntityNotFoundException(
-            "EcfFile não encontrado: " + ecfFileId));
-
-    if (!ecfFile.getCompanyId().equals(companyId)) {
-      throw new AccessDeniedException("Arquivo ECF não pertence à empresa informada");
-    }
+            String.format("Arquivo ECF do tipo %s não encontrado para empresa %d e ano %d",
+                fileType, companyId, fiscalYear)));
 
     byte[] bytes = ecfFile.getContent().getBytes(StandardCharsets.ISO_8859_1);
 
