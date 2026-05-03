@@ -174,15 +174,19 @@ public class EcfUploadService implements UploadImportedEcfUseCase {
   }
 
   private void validateFiscalYearFromLine(String line, Integer fiscalYear) {
+    // Layout SPED ECF |0000|:
+    // |0000|LECF|CODE_VER|CNPJ|NOME|IND_SIT_INI_PER|SIT_ESPECIAL|
+    //   PAT_REM_PJ|DT_SIT_ESP|DT_INI|DT_FIN|...
+    // fields[0]="" fields[1]="0000" ... fields[10]=DT_INI (DDMMAAAA)
+    // fields[11]=DT_FIN (DDMMAAAA)
     String[] fields = line.split("\\|", -1);
-    // fields[0]="" fields[1]="0000" fields[2]=tipo fields[3]=dataInicio fields[4]=dataFim
-    if (fields.length < 5 || fields[4].length() < 8) {
+    if (fields.length < 12 || fields[11].length() < 8) {
       throw new IllegalArgumentException(
           "Registro |0000| com formato inválido — "
               + "não foi possível extrair o ano fiscal");
     }
 
-    String dataFim = fields[4];
+    String dataFim = fields[11];
     int anoArquivo;
     try {
       anoArquivo = Integer.parseInt(dataFim.substring(4, 8));
