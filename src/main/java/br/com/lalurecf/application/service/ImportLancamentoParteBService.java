@@ -296,7 +296,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
 
           switch (tipoRelacionamento) {
             case CONTA_CONTABIL:
-              if (contaContabilCode.isEmpty()) {
+              if (contaContabilCode == null) {
                 errors.add(
                     ImportError.builder()
                         .lineNumber(lineNumber)
@@ -326,7 +326,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
               break;
 
             case CONTA_PARTE_B:
-              if (contaParteBCode.isEmpty()) {
+              if (contaParteBCode == null) {
                 errors.add(
                     ImportError.builder()
                         .lineNumber(lineNumber)
@@ -356,7 +356,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
               break;
 
             case AMBOS:
-              if (contaContabilCode.isEmpty()) {
+              if (contaContabilCode == null) {
                 errors.add(
                     ImportError.builder()
                         .lineNumber(lineNumber)
@@ -366,7 +366,7 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                 skippedLines++;
                 continue;
               }
-              if (contaParteBCode.isEmpty()) {
+              if (contaParteBCode == null) {
                 errors.add(
                     ImportError.builder()
                         .lineNumber(lineNumber)
@@ -444,8 +444,8 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
                     .anoReferencia(String.valueOf(anoReferencia))
                     .tipoApuracao(tipoApuracaoStr)
                     .tipoRelacionamento(tipoRelacionamentoStr)
-                    .contaContabilCode(contaContabilCode.isEmpty() ? null : contaContabilCode)
-                    .contaParteBCode(contaParteBCode.isEmpty() ? null : contaParteBCode)
+                    .contaContabilCode(contaContabilCode)
+                    .contaParteBCode(contaParteBCode)
                     .parametroTributarioCodigo(parametroTributarioCodigo)
                     .tipoAjuste(tipoAjusteStr)
                     .descricao(descricao)
