@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -16,7 +17,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
 public interface LancamentoParteBJpaRepository
-    extends JpaRepository<LancamentoParteBEntity, Long> {
+    extends JpaRepository<LancamentoParteBEntity, Long>,
+        JpaSpecificationExecutor<LancamentoParteBEntity> {
 
   /**
    * Busca todos lançamentos Parte B de uma empresa em um ano de referência.

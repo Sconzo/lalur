@@ -148,52 +148,29 @@ public class LancamentoParteBService
     log.info("Listing LancamentosParteB for company: {}", companyId);
 
     Page<LancamentoParteB> lancamentosPage =
-        lancamentoParteBRepository.findByCompanyId(companyId, pageable);
+        lancamentoParteBRepository.findFiltered(
+            companyId,
+            anoReferencia,
+            mesReferencia,
+            tipoApuracao,
+            tipoAjuste,
+            Boolean.TRUE.equals(includeInactive),
+            pageable);
 
-    var filtered =
-        lancamentosPage.getContent().stream()
-            .filter(
-                lancamento -> {
-                  if (!Boolean.TRUE.equals(includeInactive)
-                      && lancamento.getStatus() == Status.INACTIVE) {
-                    return false;
-                  }
-                  if (anoReferencia != null
-                      && !lancamento.getAnoReferencia().equals(anoReferencia)) {
-                    return false;
-                  }
-                  if (mesReferencia != null
-                      && !lancamento.getMesReferencia().equals(mesReferencia)) {
-                    return false;
-                  }
-                  if (tipoApuracao != null && lancamento.getTipoApuracao() != tipoApuracao) {
-                    return false;
-                  }
-                  if (tipoAjuste != null && lancamento.getTipoAjuste() != tipoAjuste) {
-                    return false;
-                  }
-                  return true;
-                })
-            .toList();
+    List<LancamentoParteB> content = lancamentosPage.getContent();
 
     // Batch-fetch códigos relacionados para evitar N+1
-    Map<Long, String> contaContabilCodes = fetchPlanoDeContasCodes(filtered);
-    Map<Long, String> contaParteBCodes = fetchContaParteBCodes(filtered);
-    Map<Long, String> parametroCodes = fetchParametroCodes(filtered);
+    Map<Long, String> contaContabilCodes = fetchPlanoDeContasCodes(content);
+    Map<Long, String> contaParteBCodes = fetchContaParteBCodes(content);
+    Map<Long, String> parametroCodes = fetchParametroCodes(content);
 
-    var responses =
-        filtered.stream()
-            .map(
-                l ->
-                    dtoMapper.toResponse(
-                        l,
-                        contaContabilCodes.get(l.getContaContabilId()),
-                        contaParteBCodes.get(l.getContaParteBId()),
-                        parametroCodes.get(l.getParametroTributarioId())))
-            .toList();
-
-    return new org.springframework.data.domain.PageImpl<>(
-        responses, pageable, responses.size());
+    return lancamentosPage.map(
+        l ->
+            dtoMapper.toResponse(
+                l,
+                contaContabilCodes.get(l.getContaContabilId()),
+                contaParteBCodes.get(l.getContaParteBId()),
+                parametroCodes.get(l.getParametroTributarioId())));
   }
 
   private Map<Long, String> fetchPlanoDeContasCodes(List<LancamentoParteB> lancamentos) {

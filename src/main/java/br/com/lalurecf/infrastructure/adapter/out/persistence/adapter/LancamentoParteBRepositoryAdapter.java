@@ -2,6 +2,8 @@ package br.com.lalurecf.infrastructure.adapter.out.persistence.adapter;
 
 import br.com.lalurecf.application.port.out.LancamentoParteBRepositoryPort;
 import br.com.lalurecf.domain.enums.Status;
+import br.com.lalurecf.domain.enums.TipoAjuste;
+import br.com.lalurecf.domain.enums.TipoApuracao;
 import br.com.lalurecf.domain.model.LancamentoParteB;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.CompanyEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteBEntity;
@@ -15,15 +17,18 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.Lancame
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.PlanoDeContasJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
 import br.com.lalurecf.infrastructure.security.SpringSecurityAuditorAware;
+import jakarta.persistence.criteria.Predicate;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -199,6 +204,43 @@ public class LancamentoParteBRepositoryAdapter implements LancamentoParteBReposi
   @Override
   public Page<LancamentoParteB> findByCompanyId(Long companyId, Pageable pageable) {
     return jpaRepository.findByCompanyId(companyId, pageable).map(mapper::toDomain);
+  }
+
+  @Override
+  public Page<LancamentoParteB> findFiltered(
+      Long companyId,
+      Integer anoReferencia,
+      Integer mesReferencia,
+      TipoApuracao tipoApuracao,
+      TipoAjuste tipoAjuste,
+      boolean includeInactive,
+      Pageable pageable) {
+
+    Specification<LancamentoParteBEntity> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          predicates.add(cb.equal(root.get("company").get("id"), companyId));
+
+          if (anoReferencia != null) {
+            predicates.add(cb.equal(root.get("anoReferencia"), anoReferencia));
+          }
+          if (mesReferencia != null) {
+            predicates.add(cb.equal(root.get("mesReferencia"), mesReferencia));
+          }
+          if (tipoApuracao != null) {
+            predicates.add(cb.equal(root.get("tipoApuracao"), tipoApuracao));
+          }
+          if (tipoAjuste != null) {
+            predicates.add(cb.equal(root.get("tipoAjuste"), tipoAjuste));
+          }
+          if (!includeInactive) {
+            predicates.add(cb.equal(root.get("status"), Status.ACTIVE));
+          }
+
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    return jpaRepository.findAll(spec, pageable).map(mapper::toDomain);
   }
 
   @Override

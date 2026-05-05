@@ -1,6 +1,8 @@
 package br.com.lalurecf.application.port.out;
 
 import br.com.lalurecf.domain.enums.Status;
+import br.com.lalurecf.domain.enums.TipoAjuste;
+import br.com.lalurecf.domain.enums.TipoApuracao;
 import br.com.lalurecf.domain.model.LancamentoParteB;
 import java.util.List;
 import java.util.Optional;
@@ -60,6 +62,27 @@ public interface LancamentoParteBRepositoryPort {
    * @return página de lançamentos da empresa
    */
   Page<LancamentoParteB> findByCompanyId(Long companyId, Pageable pageable);
+
+  /**
+   * Busca lançamentos aplicando filtros dinâmicos direto no banco com paginação.
+   *
+   * @param companyId ID da empresa (obrigatório)
+   * @param anoReferencia filtro opcional por ano
+   * @param mesReferencia filtro opcional por mês
+   * @param tipoApuracao filtro opcional por tipo de apuração
+   * @param tipoAjuste filtro opcional por tipo de ajuste
+   * @param includeInactive se true, inclui INACTIVE
+   * @param pageable configuração de paginação
+   * @return página filtrada de lançamentos
+   */
+  Page<LancamentoParteB> findFiltered(
+      Long companyId,
+      Integer anoReferencia,
+      Integer mesReferencia,
+      TipoApuracao tipoApuracao,
+      TipoAjuste tipoAjuste,
+      boolean includeInactive,
+      Pageable pageable);
 
   /**
    * Busca lançamentos por empresa, ano e mês de referência.
