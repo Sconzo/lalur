@@ -96,8 +96,13 @@ public class ImportLancamentoParteBService implements ImportLancamentoParteBUseC
         contaParteBRepository.findByCompanyIdAndAnoBase(companyId, anoReferencia).stream()
             .collect(Collectors.toMap(ContaParteB::getCodigoConta, Function.identity(),
                 (a, b) -> a));
+    // Filtra apenas TaxParameters do tipo "CÓDIGOS LANÇAMENTOS E-LALUR E E-LACS"
+    // (fiscalMovementExclusive=true). Sem o filtro, codes como "6" e "8" colidem
+    // com tipos como "FORMA TRIBUTAÇÃO LUCRO REAL", causando lookup ambíguo.
     Map<String, TaxParameter> taxParamsByCode =
         taxParameterRepository.findAll().stream()
+            .filter(p -> p.getType() != null
+                && Boolean.TRUE.equals(p.getType().getFiscalMovementExclusive()))
             .collect(Collectors.toMap(TaxParameter::getCode, Function.identity(),
                 (a, b) -> a));
 
