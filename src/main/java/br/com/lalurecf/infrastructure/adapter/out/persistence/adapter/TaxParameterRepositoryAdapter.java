@@ -5,8 +5,10 @@ import br.com.lalurecf.domain.model.TaxParameter;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.TaxParameterEntity;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.TaxParameterMapper;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.TaxParameterJpaRepository;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +45,13 @@ public class TaxParameterRepositoryAdapter implements TaxParameterRepositoryPort
   public Optional<TaxParameter> findById(Long id) {
     return jpaRepository.findById(id)
         .map(mapper::toDomain);
+  }
+
+  @Override
+  public List<TaxParameter> findAllById(Collection<Long> ids) {
+    return jpaRepository.findAllById(ids).stream()
+        .map(mapper::toDomain)
+        .collect(Collectors.toList());
   }
 
   @Override

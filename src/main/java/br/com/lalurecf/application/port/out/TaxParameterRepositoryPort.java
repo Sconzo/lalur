@@ -1,6 +1,7 @@
 package br.com.lalurecf.application.port.out;
 
 import br.com.lalurecf.domain.model.TaxParameter;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -39,6 +40,14 @@ public interface TaxParameterRepositoryPort {
    * @return Optional contendo o parâmetro se encontrado
    */
   Optional<TaxParameter> findById(Long id);
+
+  /**
+   * Busca vários parâmetros tributários por IDs em uma única query (para evitar N+1).
+   *
+   * @param ids IDs dos parâmetros
+   * @return lista de parâmetros encontrados
+   */
+  List<TaxParameter> findAllById(Collection<Long> ids);
 
   /**
    * Busca todos os parâmetros tributários.

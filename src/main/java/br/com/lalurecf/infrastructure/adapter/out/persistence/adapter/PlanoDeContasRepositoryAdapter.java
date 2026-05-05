@@ -17,6 +17,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -129,6 +130,13 @@ public class PlanoDeContasRepositoryAdapter implements PlanoDeContasRepositoryPo
   @Override
   public Optional<PlanoDeContas> findById(Long id) {
     return jpaRepository.findById(id).map(mapper::toDomain);
+  }
+
+  @Override
+  public List<PlanoDeContas> findAllById(Collection<Long> ids) {
+    return jpaRepository.findAllById(ids).stream()
+        .map(mapper::toDomain)
+        .collect(Collectors.toList());
   }
 
   @Override

@@ -7,6 +7,7 @@ import br.com.lalurecf.infrastructure.adapter.out.persistence.entity.ContaParteB
 import br.com.lalurecf.infrastructure.adapter.out.persistence.mapper.ContaParteBMapper;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import br.com.lalurecf.infrastructure.adapter.out.persistence.repository.ContaParteBJpaRepository;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -74,6 +75,13 @@ public class ContaParteBRepositoryAdapter implements ContaParteBRepositoryPort {
   @Override
   public Optional<ContaParteB> findById(Long id) {
     return jpaRepository.findById(id).map(mapper::toDomain);
+  }
+
+  @Override
+  public List<ContaParteB> findAllById(Collection<Long> ids) {
+    return jpaRepository.findAllById(ids).stream()
+        .map(mapper::toDomain)
+        .collect(Collectors.toList());
   }
 
   @Override

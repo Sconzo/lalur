@@ -4,6 +4,7 @@ import br.com.lalurecf.domain.enums.AccountType;
 import br.com.lalurecf.domain.enums.ClasseContabil;
 import br.com.lalurecf.domain.enums.NaturezaConta;
 import br.com.lalurecf.domain.model.PlanoDeContas;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,14 @@ public interface PlanoDeContasRepositoryPort {
    * @return Optional com conta se encontrada
    */
   Optional<PlanoDeContas> findById(Long id);
+
+  /**
+   * Busca várias contas contábeis por IDs em uma única query (para evitar N+1).
+   *
+   * @param ids IDs das contas
+   * @return lista de contas encontradas
+   */
+  List<PlanoDeContas> findAllById(Collection<Long> ids);
 
   /**
    * Busca todas contas contábeis de uma empresa para um ano fiscal.

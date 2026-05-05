@@ -35,9 +35,15 @@ public class LancamentoParteBResponse {
 
   private Long contaContabilId;
 
+  private String contaContabilCode;
+
   private Long contaParteBId;
 
+  private String contaParteBCode;
+
   private Long parametroTributarioId;
+
+  private String parametroTributarioCodigo;
 
   private TipoAjuste tipoAjuste;
 

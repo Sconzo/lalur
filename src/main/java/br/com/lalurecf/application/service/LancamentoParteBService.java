@@ -26,6 +26,10 @@ import br.com.lalurecf.infrastructure.dto.user.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import br.com.lalurecf.infrastructure.security.FiscalYearContext;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -122,7 +126,7 @@ public class LancamentoParteBService
     LancamentoParteB saved = lancamentoParteBRepository.save(lancamento);
     log.info("LancamentoParteB created successfully with id: {}", saved.getId());
 
-    return dtoMapper.toResponse(saved);
+    return toResponseWithCodes(saved);
   }
 
   @Override
@@ -143,50 +147,108 @@ public class LancamentoParteBService
 
     log.info("Listing LancamentosParteB for company: {}", companyId);
 
-    // Buscar todos lançamentos da empresa
     Page<LancamentoParteB> lancamentosPage =
         lancamentoParteBRepository.findByCompanyId(companyId, pageable);
 
-    // Filtrar por critérios
-    var filteredLancamentos =
+    var filtered =
         lancamentosPage.getContent().stream()
             .filter(
                 lancamento -> {
-                  // Filtro de status
                   if (!Boolean.TRUE.equals(includeInactive)
                       && lancamento.getStatus() == Status.INACTIVE) {
                     return false;
                   }
-
-                  // Filtro de anoReferencia
                   if (anoReferencia != null
                       && !lancamento.getAnoReferencia().equals(anoReferencia)) {
                     return false;
                   }
-
-                  // Filtro de mesReferencia
                   if (mesReferencia != null
                       && !lancamento.getMesReferencia().equals(mesReferencia)) {
                     return false;
                   }
-
-                  // Filtro de tipoApuracao
                   if (tipoApuracao != null && lancamento.getTipoApuracao() != tipoApuracao) {
                     return false;
                   }
-
-                  // Filtro de tipoAjuste
                   if (tipoAjuste != null && lancamento.getTipoAjuste() != tipoAjuste) {
                     return false;
                   }
-
                   return true;
                 })
-            .map(dtoMapper::toResponse)
+            .toList();
+
+    // Batch-fetch códigos relacionados para evitar N+1
+    Map<Long, String> contaContabilCodes = fetchPlanoDeContasCodes(filtered);
+    Map<Long, String> contaParteBCodes = fetchContaParteBCodes(filtered);
+    Map<Long, String> parametroCodes = fetchParametroCodes(filtered);
+
+    var responses =
+        filtered.stream()
+            .map(
+                l ->
+                    dtoMapper.toResponse(
+                        l,
+                        contaContabilCodes.get(l.getContaContabilId()),
+                        contaParteBCodes.get(l.getContaParteBId()),
+                        parametroCodes.get(l.getParametroTributarioId())))
             .toList();
 
     return new org.springframework.data.domain.PageImpl<>(
-        filteredLancamentos, pageable, filteredLancamentos.size());
+        responses, pageable, responses.size());
+  }
+
+  private Map<Long, String> fetchPlanoDeContasCodes(List<LancamentoParteB> lancamentos) {
+    List<Long> ids =
+        lancamentos.stream()
+            .map(LancamentoParteB::getContaContabilId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    return ids.isEmpty()
+        ? Map.of()
+        : planoDeContasRepository.findAllById(ids).stream()
+            .collect(Collectors.toMap(PlanoDeContas::getId, PlanoDeContas::getCode));
+  }
+
+  private Map<Long, String> fetchContaParteBCodes(List<LancamentoParteB> lancamentos) {
+    List<Long> ids =
+        lancamentos.stream()
+            .map(LancamentoParteB::getContaParteBId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    return ids.isEmpty()
+        ? Map.of()
+        : contaParteBRepository.findAllById(ids).stream()
+            .collect(Collectors.toMap(ContaParteB::getId, ContaParteB::getCodigoConta));
+  }
+
+  private Map<Long, String> fetchParametroCodes(List<LancamentoParteB> lancamentos) {
+    List<Long> ids =
+        lancamentos.stream()
+            .map(LancamentoParteB::getParametroTributarioId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+    return ids.isEmpty()
+        ? Map.of()
+        : taxParameterRepository.findAllById(ids).stream()
+            .collect(Collectors.toMap(TaxParameter::getId, TaxParameter::getCode));
+  }
+
+  private LancamentoParteBResponse toResponseWithCodes(LancamentoParteB lancamento) {
+    String contaContabilCode = lancamento.getContaContabilId() == null
+        ? null
+        : planoDeContasRepository.findById(lancamento.getContaContabilId())
+            .map(PlanoDeContas::getCode).orElse(null);
+    String contaParteBCode = lancamento.getContaParteBId() == null
+        ? null
+        : contaParteBRepository.findById(lancamento.getContaParteBId())
+            .map(ContaParteB::getCodigoConta).orElse(null);
+    String parametroCodigo = lancamento.getParametroTributarioId() == null
+        ? null
+        : taxParameterRepository.findById(lancamento.getParametroTributarioId())
+            .map(TaxParameter::getCode).orElse(null);
+    return dtoMapper.toResponse(lancamento, contaContabilCode, contaParteBCode, parametroCodigo);
   }
 
   @Override
@@ -200,7 +262,7 @@ public class LancamentoParteBService
             .orElseThrow(
                 () -> new ResourceNotFoundException("LancamentoParteB not found with id: " + id));
 
-    return dtoMapper.toResponse(lancamento);
+    return toResponseWithCodes(lancamento);
   }
 
   @Override
@@ -268,7 +330,7 @@ public class LancamentoParteBService
     LancamentoParteB updated = lancamentoParteBRepository.save(lancamento);
     log.info("LancamentoParteB updated successfully with id: {}", updated.getId());
 
-    return dtoMapper.toResponse(updated);
+    return toResponseWithCodes(updated);
   }
 
   @Override

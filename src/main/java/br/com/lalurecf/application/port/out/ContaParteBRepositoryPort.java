@@ -1,6 +1,7 @@
 package br.com.lalurecf.application.port.out;
 
 import br.com.lalurecf.domain.model.ContaParteB;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,14 @@ public interface ContaParteBRepositoryPort {
    * @return Optional com conta se encontrada
    */
   Optional<ContaParteB> findById(Long id);
+
+  /**
+   * Busca várias contas Parte B por IDs em uma única query (para evitar N+1).
+   *
+   * @param ids IDs das contas
+   * @return lista de contas encontradas
+   */
+  List<ContaParteB> findAllById(Collection<Long> ids);
 
   /**
    * Busca todas contas Parte B de uma empresa em um ano base.
