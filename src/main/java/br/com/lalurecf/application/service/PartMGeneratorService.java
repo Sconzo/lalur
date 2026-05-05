@@ -116,7 +116,15 @@ public class PartMGeneratorService {
       return new ArrayList<>();
     }
 
-    // Group by mesReferencia (sorted ascending)
+    // Batch-fetch entidades relacionadas (evita N+1 dentro dos loops)
+    Map<Long, TaxParameter> parametrosById = batchFetchParametros(filtered);
+    Map<Long, ContaParteB> contasParteBById = batchFetchContasParteB(filtered);
+    Map<Long, PlanoDeContas> contasContabeisById = batchFetchPlanoDeContas(filtered);
+
+    // Período cumulativo desde 01/01 do ano fiscal
+    LocalDate inicioAno = LocalDate.of(fiscalYear, 1, 1);
+
+    // Agrupar por mesReferencia (ordenado)
     Map<Integer, List<LancamentoParteB>> byMes = new TreeMap<>(
         filtered.stream().collect(Collectors.groupingBy(LancamentoParteB::getMesReferencia)));
 
@@ -124,17 +132,17 @@ public class PartMGeneratorService {
 
     for (Map.Entry<Integer, List<LancamentoParteB>> mesEntry : byMes.entrySet()) {
       int mes = mesEntry.getKey();
-      List<LancamentoParteB> lancamentos = mesEntry.getValue();
+      List<LancamentoParteB> lancamentosMes = mesEntry.getValue();
 
-      // M030
-      LocalDate inicio = LocalDate.of(fiscalYear, mes, 1);
-      LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
+      // M030 — sempre 01/01 a último dia do mês corrente
+      LocalDate fim = LocalDate.of(fiscalYear, mes, 1)
+          .withDayOfMonth(LocalDate.of(fiscalYear, mes, 1).lengthOfMonth());
       String codigoApuracao = "A" + String.format("%02d", mes);
       lines.add(String.format("|M030|%s|%s|%s|",
-          inicio.format(DATE_FORMAT), fim.format(DATE_FORMAT), codigoApuracao));
+          inicioAno.format(DATE_FORMAT), fim.format(DATE_FORMAT), codigoApuracao));
 
-      // Group by parametroTributarioId (same code = same codigoEnquadramento)
-      Map<Long, List<LancamentoParteB>> byParametro = lancamentos.stream()
+      // Agrupar por parametroTributarioId (mesmo code = mesmo codigoEnquadramento)
+      Map<Long, List<LancamentoParteB>> byParametro = lancamentosMes.stream()
           .collect(Collectors.groupingBy(
               LancamentoParteB::getParametroTributarioId,
               LinkedHashMap::new,
@@ -144,50 +152,105 @@ public class PartMGeneratorService {
         Long parametroId = paramEntry.getKey();
         List<LancamentoParteB> grupo = paramEntry.getValue();
 
-        TaxParameter parametro = taxParameterRepo.findById(parametroId)
-            .orElseThrow(() -> new IllegalArgumentException(
-                "ParametroTributario não encontrado: " + parametroId));
+        TaxParameter parametro = parametrosById.get(parametroId);
+        if (parametro == null) {
+          throw new IllegalArgumentException(
+              "ParametroTributario não encontrado: " + parametroId);
+        }
 
-        String codigoEnquadramento = parametro.getCode();
-        String descricao = parametro.getDescription();
         TipoAjuste tipoAjuste = grupo.get(0).getTipoAjuste();
         String tipoAjusteStr = tipoAjuste == TipoAjuste.ADICAO ? "A" : "E";
+        String dc = tipoAjuste == TipoAjuste.ADICAO ? "D" : "C";
         String indicador = determineIndicador(grupo);
         BigDecimal somaValores = grupo.stream()
             .map(LancamentoParteB::getValor)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         String historico = grupo.get(0).getDescricao();
 
+        // M300/M350 — registro pai
         lines.add(String.format("|%s|%s|%s|%s|%s|%s|%s|",
-            regPai, codigoEnquadramento, descricao, tipoAjusteStr,
+            regPai, parametro.getCode(), parametro.getDescription(), tipoAjusteStr,
             indicador, formatValor(somaValores), historico));
 
-        // Child records (M305/M355 and M310/M360) per lançamento
-        for (LancamentoParteB lanc : grupo) {
-          String dc = lanc.getTipoAjuste() == TipoAjuste.ADICAO ? "D" : "C";
+        // M305/M355 — agrupado por contaParteBId, todos juntos primeiro
+        Map<Long, BigDecimal> m305Totals = grupo.stream()
+            .filter(l -> l.getTipoRelacionamento() == TipoRelacionamento.CONTA_PARTE_B
+                || l.getTipoRelacionamento() == TipoRelacionamento.AMBOS)
+            .filter(l -> l.getContaParteBId() != null)
+            .collect(Collectors.groupingBy(
+                LancamentoParteB::getContaParteBId,
+                LinkedHashMap::new,
+                Collectors.reducing(BigDecimal.ZERO,
+                    LancamentoParteB::getValor, BigDecimal::add)));
 
-          if (lanc.getTipoRelacionamento() == TipoRelacionamento.CONTA_PARTE_B
-              || lanc.getTipoRelacionamento() == TipoRelacionamento.AMBOS) {
-            ContaParteB conta = contaParteBRepo.findById(lanc.getContaParteBId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                    "ContaParteB não encontrada: " + lanc.getContaParteBId()));
-            lines.add(String.format("|%s|%s|%s|%s|",
-                regFilhoParteB, conta.getCodigoConta(), formatValor(lanc.getValor()), dc));
+        for (Map.Entry<Long, BigDecimal> e : m305Totals.entrySet()) {
+          ContaParteB conta = contasParteBById.get(e.getKey());
+          if (conta == null) {
+            throw new IllegalArgumentException("ContaParteB não encontrada: " + e.getKey());
           }
+          lines.add(String.format("|%s|%s|%s|%s|",
+              regFilhoParteB, conta.getCodigoConta(), formatValor(e.getValue()), dc));
+        }
 
-          if (lanc.getTipoRelacionamento() == TipoRelacionamento.CONTA_CONTABIL
-              || lanc.getTipoRelacionamento() == TipoRelacionamento.AMBOS) {
-            PlanoDeContas plano = planoDeContasRepo.findById(lanc.getContaContabilId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                    "PlanoDeContas não encontrado: " + lanc.getContaContabilId()));
-            lines.add(String.format("|%s|%s||%s|%s|",
-                regFilhoContabil, plano.getCode(), formatValor(lanc.getValor()), dc));
+        // M310/M360 — agrupado por contaContabilId, depois dos M305
+        Map<Long, BigDecimal> m310Totals = grupo.stream()
+            .filter(l -> l.getTipoRelacionamento() == TipoRelacionamento.CONTA_CONTABIL
+                || l.getTipoRelacionamento() == TipoRelacionamento.AMBOS)
+            .filter(l -> l.getContaContabilId() != null)
+            .collect(Collectors.groupingBy(
+                LancamentoParteB::getContaContabilId,
+                LinkedHashMap::new,
+                Collectors.reducing(BigDecimal.ZERO,
+                    LancamentoParteB::getValor, BigDecimal::add)));
+
+        for (Map.Entry<Long, BigDecimal> e : m310Totals.entrySet()) {
+          PlanoDeContas plano = contasContabeisById.get(e.getKey());
+          if (plano == null) {
+            throw new IllegalArgumentException("PlanoDeContas não encontrado: " + e.getKey());
           }
+          lines.add(String.format("|%s|%s||%s|%s|",
+              regFilhoContabil, plano.getCode(), formatValor(e.getValue()), dc));
         }
       }
     }
 
     return lines;
+  }
+
+  private Map<Long, TaxParameter> batchFetchParametros(List<LancamentoParteB> lancamentos) {
+    List<Long> ids = lancamentos.stream()
+        .map(LancamentoParteB::getParametroTributarioId)
+        .filter(java.util.Objects::nonNull)
+        .distinct()
+        .collect(Collectors.toList());
+    return ids.isEmpty()
+        ? Map.of()
+        : taxParameterRepo.findAllById(ids).stream()
+            .collect(Collectors.toMap(TaxParameter::getId, p -> p));
+  }
+
+  private Map<Long, ContaParteB> batchFetchContasParteB(List<LancamentoParteB> lancamentos) {
+    List<Long> ids = lancamentos.stream()
+        .map(LancamentoParteB::getContaParteBId)
+        .filter(java.util.Objects::nonNull)
+        .distinct()
+        .collect(Collectors.toList());
+    return ids.isEmpty()
+        ? Map.of()
+        : contaParteBRepo.findAllById(ids).stream()
+            .collect(Collectors.toMap(ContaParteB::getId, c -> c));
+  }
+
+  private Map<Long, PlanoDeContas> batchFetchPlanoDeContas(List<LancamentoParteB> lancamentos) {
+    List<Long> ids = lancamentos.stream()
+        .map(LancamentoParteB::getContaContabilId)
+        .filter(java.util.Objects::nonNull)
+        .distinct()
+        .collect(Collectors.toList());
+    return ids.isEmpty()
+        ? Map.of()
+        : planoDeContasRepo.findAllById(ids).stream()
+            .collect(Collectors.toMap(PlanoDeContas::getId, p -> p));
   }
 
   /**
