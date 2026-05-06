@@ -81,7 +81,6 @@ public class PartMGeneratorService {
     List<String> lines = new ArrayList<>();
     lines.addAll(generateGrupoIrpj(active, fiscalYear));
     lines.addAll(generateGrupoCsll(active, fiscalYear));
-    lines.addAll(generateGrupo3ParteB(active));
 
     lines.add(String.format("|M990|%d|", lines.size() + 1));
 
