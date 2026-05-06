@@ -140,14 +140,25 @@ public class PartMGeneratorService {
       lines.add(String.format("|M030|%s|%s|%s|",
           inicioAno.format(DATE_FORMAT), fim.format(DATE_FORMAT), codigoApuracao));
 
-      // Agrupar por parametroTributarioId (mesmo code = mesmo codigoEnquadramento)
+      // Agrupar por parametroTributarioId, ordenado pelo code (numérico crescente)
+      // para seguir o padrão do ECF (ex: 6 → 8 → 8.65 → 8.75 → 95)
       Map<Long, List<LancamentoParteB>> byParametro = lancamentosMes.stream()
           .collect(Collectors.groupingBy(
               LancamentoParteB::getParametroTributarioId,
               LinkedHashMap::new,
               Collectors.toList()));
 
-      for (Map.Entry<Long, List<LancamentoParteB>> paramEntry : byParametro.entrySet()) {
+      List<Map.Entry<Long, List<LancamentoParteB>>> sortedByParametro =
+          new ArrayList<>(byParametro.entrySet());
+      sortedByParametro.sort((a, b) -> {
+        TaxParameter pa = parametrosById.get(a.getKey());
+        TaxParameter pb = parametrosById.get(b.getKey());
+        return compareCodesNumerically(
+            pa != null ? pa.getCode() : "",
+            pb != null ? pb.getCode() : "");
+      });
+
+      for (Map.Entry<Long, List<LancamentoParteB>> paramEntry : sortedByParametro) {
         Long parametroId = paramEntry.getKey();
         List<LancamentoParteB> grupo = paramEntry.getValue();
 
@@ -330,6 +341,21 @@ public class PartMGeneratorService {
       return "2";
     }
     return "3";
+  }
+
+  /**
+   * Compara dois códigos de parâmetro como números (ex: "6" &lt; "8" &lt; "8.65" &lt; "95").
+   * Aceita "," ou "." como separador decimal. Códigos não-numéricos são comparados
+   * lexicograficamente como fallback.
+   */
+  private int compareCodesNumerically(String a, String b) {
+    try {
+      BigDecimal va = new BigDecimal(a.replace(",", "."));
+      BigDecimal vb = new BigDecimal(b.replace(",", "."));
+      return va.compareTo(vb);
+    } catch (NumberFormatException e) {
+      return a.compareTo(b);
+    }
   }
 
   private String formatValor(BigDecimal valor) {
