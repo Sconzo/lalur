@@ -68,8 +68,9 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
     // Passos 3, 4: Merge linha a linha
     List<String> resultLines = mergeContent(importedEcf.getContent(), parsed);
 
-    // Passo 5: Recalcular M990
+    // Passo 5: Recalcular M990 e os totalizadores do bloco 9 (9900/9990/9999)
     recalcularM990(resultLines);
+    recalcularBloco9(resultLines);
 
     String resultContent = String.join("\n", resultLines) + "\n";
 
@@ -307,6 +308,70 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
       }
     }
     return lines;
+  }
+
+  /**
+   * Recalcula os totalizadores do bloco 9 (encerramento do arquivo).
+   *
+   * <ul>
+   *   <li>|9900|TIPO_REG|QTD| — quantidade de registros de cada tipo no arquivo
+   *   <li>|9990|QTD_LIN_9| — total de linhas do bloco 9 (inclui o próprio 9990)
+   *   <li>|9999|QTD_LIN| — total geral de linhas do arquivo (inclui o próprio 9999)
+   * </ul>
+   *
+   * <p>Os tipos listados nos registros 9900 são preservados; apenas o contador é atualizado
+   * com a contagem atual do arquivo após o merge.
+   */
+  void recalcularBloco9(List<String> resultLines) {
+    // Contagem de cada tipo de registro no arquivo final
+    Map<String, Integer> countByTipo = new LinkedHashMap<>();
+    for (String line : resultLines) {
+      String tipo = extractTipo(line);
+      if (tipo != null) {
+        countByTipo.merge(tipo, 1, Integer::sum);
+      }
+    }
+
+    // Atualizar cada |9900|TIPO|QTD| com a contagem correta
+    for (int i = 0; i < resultLines.size(); i++) {
+      String line = resultLines.get(i);
+      if (!"9900".equals(extractTipo(line))) {
+        continue;
+      }
+      String[] parts = line.split("\\|", -1);
+      if (parts.length < 4) {
+        continue;
+      }
+      String tipoReg = parts[2];
+      int novoCount = countByTipo.getOrDefault(tipoReg, 0);
+      parts[3] = String.valueOf(novoCount);
+      resultLines.set(i, String.join("|", parts));
+    }
+
+    // Recontar (os 9900s podem ter mudado de tamanho de string mas a contagem por tipo é a mesma)
+    // |9990|: total de linhas do bloco 9 = soma dos counts de todos os registros tipo "9xxx"
+    int total9 = 0;
+    int totalGeral = 0;
+    for (String line : resultLines) {
+      String tipo = extractTipo(line);
+      if (tipo == null) {
+        continue;
+      }
+      totalGeral++;
+      if (tipo.startsWith("9")) {
+        total9++;
+      }
+    }
+
+    for (int i = 0; i < resultLines.size(); i++) {
+      String line = resultLines.get(i);
+      String tipo = extractTipo(line);
+      if ("9990".equals(tipo)) {
+        resultLines.set(i, "|9990|" + total9 + "|");
+      } else if ("9999".equals(tipo)) {
+        resultLines.set(i, "|9999|" + totalGeral + "|");
+      }
+    }
   }
 
   void recalcularM990(List<String> resultLines) {

@@ -13,6 +13,7 @@ import br.com.lalurecf.domain.model.LancamentoParteB;
 import br.com.lalurecf.domain.model.PlanoDeContas;
 import br.com.lalurecf.domain.model.TaxParameter;
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -179,8 +180,8 @@ public class PartMGeneratorService {
 
         // M300/M350 — registro pai
         lines.add(String.format("|%s|%s|%s|%s|%s|%s|%s|",
-            regPai, parametro.getCode(), parametro.getDescription(), tipoAjusteStr,
-            indicador, formatValor(somaValores), historico));
+            regPai, parametro.getCode(), removeAccents(parametro.getDescription()),
+            tipoAjusteStr, indicador, formatValor(somaValores), removeAccents(historico)));
 
         // M305/M355 — agrupado por contaParteBId, todos juntos primeiro
         Map<Long, BigDecimal> m305Totals = grupo.stream()
@@ -356,6 +357,18 @@ public class PartMGeneratorService {
     } catch (NumberFormatException e) {
       return a.compareTo(b);
     }
+  }
+
+  /**
+   * Remove acentos e diacríticos de uma string (ex: "Provisões" → "Provisoes").
+   * Mantém o texto legível em qualquer encoding e evita problemas de exibição.
+   */
+  private String removeAccents(String s) {
+    if (s == null) {
+      return null;
+    }
+    return Normalizer.normalize(s, Normalizer.Form.NFD)
+        .replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
   }
 
   private String formatValor(BigDecimal valor) {
