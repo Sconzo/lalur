@@ -332,7 +332,11 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
       }
     }
 
-    // Atualizar cada |9900|TIPO|QTD| com a contagem correta
+    // Atualizar cada |9900|TIPO|QTD| com a contagem correta;
+    // coletar tipos que já têm registro 9900 (para depois identificar os faltantes).
+    Set<String> tiposComRegistro9900 = new LinkedHashSet<>();
+    int ultimoIndice9900 = -1;
+    String template9900 = null;
     for (int i = 0; i < resultLines.size(); i++) {
       String line = resultLines.get(i);
       if (!"9900".equals(extractTipo(line))) {
@@ -343,13 +347,43 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
         continue;
       }
       String tipoReg = parts[2];
+      tiposComRegistro9900.add(tipoReg);
       int novoCount = countByTipo.getOrDefault(tipoReg, 0);
       parts[3] = String.valueOf(novoCount);
       resultLines.set(i, String.join("|", parts));
+      ultimoIndice9900 = i;
+      template9900 = line; // guarda última linha pra clonar formato (nº de campos)
     }
 
-    // Recontar (os 9900s podem ter mudado de tamanho de string mas a contagem por tipo é a mesma)
-    // |9990|: total de linhas do bloco 9 = soma dos counts de todos os registros tipo "9xxx"
+    // Adicionar |9900| para tipos que apareceram no arquivo após o merge
+    // mas não estavam no bloco 9 original (ex: M305, M310 vindos do parcial).
+    List<String> tiposFaltantes = new ArrayList<>();
+    for (String tipo : countByTipo.keySet()) {
+      if (tipo == null || tipo.isEmpty()) {
+        continue;
+      }
+      // Ignora os totalizadores do bloco 9
+      if ("9900".equals(tipo) || "9990".equals(tipo) || "9999".equals(tipo)
+          || "9001".equals(tipo) || "9100".equals(tipo)) {
+        continue;
+      }
+      if (!tiposComRegistro9900.contains(tipo)) {
+        tiposFaltantes.add(tipo);
+      }
+    }
+
+    if (!tiposFaltantes.isEmpty() && ultimoIndice9900 >= 0) {
+      // Detectar formato do 9900 (número de campos) a partir de um existente
+      int numCampos = template9900 != null ? template9900.split("\\|", -1).length : 6;
+      List<String> novasLinhas = new ArrayList<>();
+      for (String tipo : tiposFaltantes) {
+        int count = countByTipo.getOrDefault(tipo, 0);
+        novasLinhas.add(formatRegistro9900(tipo, count, numCampos));
+      }
+      resultLines.addAll(ultimoIndice9900 + 1, novasLinhas);
+    }
+
+    // Recontar |9990| (total bloco 9) e |9999| (total geral)
     int total9 = 0;
     int totalGeral = 0;
     for (String line : resultLines) {
@@ -372,6 +406,22 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
         resultLines.set(i, "|9999|" + totalGeral + "|");
       }
     }
+  }
+
+  /**
+   * Constrói uma linha |9900| com o número de campos compatível com o formato existente.
+   * Layout: |9900|TIPO_REG|QTD_REG|... campos extras vazios|
+   */
+  private String formatRegistro9900(String tipoReg, int qtd, int numCampos) {
+    StringBuilder sb = new StringBuilder();
+    sb.append("|9900|").append(tipoReg).append("|").append(qtd).append("|");
+    // numCampos inclui os 2 vazios das pontas; já preenchemos 4 (vazio, 9900, tipo, qtd)
+    // restam (numCampos - 5) campos vazios antes do "|" final
+    int camposExtras = Math.max(0, numCampos - 5);
+    for (int i = 0; i < camposExtras; i++) {
+      sb.append("|");
+    }
+    return sb.toString();
   }
 
   void recalcularM990(List<String> resultLines) {
