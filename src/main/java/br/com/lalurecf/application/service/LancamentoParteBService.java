@@ -26,6 +26,7 @@ import br.com.lalurecf.infrastructure.dto.user.ToggleStatusResponse;
 import br.com.lalurecf.infrastructure.exception.ResourceNotFoundException;
 import br.com.lalurecf.infrastructure.security.CompanyContext;
 import br.com.lalurecf.infrastructure.security.FiscalYearContext;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -180,10 +181,11 @@ public class LancamentoParteBService
             .filter(Objects::nonNull)
             .distinct()
             .collect(Collectors.toList());
-    return ids.isEmpty()
-        ? Map.of()
-        : planoDeContasRepository.findAllById(ids).stream()
-            .collect(Collectors.toMap(PlanoDeContas::getId, PlanoDeContas::getCode));
+    if (ids.isEmpty()) {
+      return new HashMap<>();
+    }
+    return planoDeContasRepository.findAllById(ids).stream()
+        .collect(Collectors.toMap(PlanoDeContas::getId, PlanoDeContas::getCode));
   }
 
   private Map<Long, String> fetchContaParteBCodes(List<LancamentoParteB> lancamentos) {
@@ -193,10 +195,11 @@ public class LancamentoParteBService
             .filter(Objects::nonNull)
             .distinct()
             .collect(Collectors.toList());
-    return ids.isEmpty()
-        ? Map.of()
-        : contaParteBRepository.findAllById(ids).stream()
-            .collect(Collectors.toMap(ContaParteB::getId, ContaParteB::getCodigoConta));
+    if (ids.isEmpty()) {
+      return new HashMap<>();
+    }
+    return contaParteBRepository.findAllById(ids).stream()
+        .collect(Collectors.toMap(ContaParteB::getId, ContaParteB::getCodigoConta));
   }
 
   private Map<Long, String> fetchParametroCodes(List<LancamentoParteB> lancamentos) {
@@ -206,10 +209,11 @@ public class LancamentoParteBService
             .filter(Objects::nonNull)
             .distinct()
             .collect(Collectors.toList());
-    return ids.isEmpty()
-        ? Map.of()
-        : taxParameterRepository.findAllById(ids).stream()
-            .collect(Collectors.toMap(TaxParameter::getId, TaxParameter::getCode));
+    if (ids.isEmpty()) {
+      return new HashMap<>();
+    }
+    return taxParameterRepository.findAllById(ids).stream()
+        .collect(Collectors.toMap(TaxParameter::getId, TaxParameter::getCode));
   }
 
   private LancamentoParteBResponse toResponseWithCodes(LancamentoParteB lancamento) {
