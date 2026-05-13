@@ -375,15 +375,17 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
     if (!tiposFaltantes.isEmpty() && ultimoIndice9900 >= 0) {
       // Detectar formato do 9900 (número de campos) a partir de um existente
       int numCampos = template9900 != null ? template9900.split("\\|", -1).length : 6;
-      List<String> novasLinhas = new ArrayList<>();
+
+      // Inserir cada novo 9900 na posição alfabética correta dentro do bloco
       for (String tipo : tiposFaltantes) {
         int count = countByTipo.getOrDefault(tipo, 0);
-        novasLinhas.add(formatRegistro9900(tipo, count, numCampos));
+        String novaLinha = formatRegistro9900(tipo, count, numCampos);
+        int posicao = findInsertPosition9900(resultLines, tipo);
+        resultLines.add(posicao, novaLinha);
       }
-      resultLines.addAll(ultimoIndice9900 + 1, novasLinhas);
 
       // Atualizar countByTipo com os novos 9900 inseridos (afeta |9900|9900|)
-      countByTipo.merge("9900", novasLinhas.size(), Integer::sum);
+      countByTipo.merge("9900", tiposFaltantes.size(), Integer::sum);
 
       // Re-percorrer os |9900| para atualizar o contador do tipo "9900"
       // (que agora cresceu por causa das novas linhas adicionadas).
@@ -424,6 +426,33 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
         resultLines.set(i, "|9999|" + totalGeral + "|");
       }
     }
+  }
+
+  /**
+   * Encontra a posição correta para inserir um novo |9900|TIPO|...| mantendo
+   * a ordem dos registros 9900 existentes (geralmente alfabética).
+   *
+   * <p>Procura o primeiro 9900 cujo tipo seja "maior" que o novo (comparação alfabética),
+   * e insere antes dele. Se nenhum for maior, insere após o último 9900.
+   */
+  private int findInsertPosition9900(List<String> lines, String novoTipo) {
+    int ultimoIndice9900 = -1;
+    for (int i = 0; i < lines.size(); i++) {
+      String line = lines.get(i);
+      if (!"9900".equals(extractTipo(line))) {
+        continue;
+      }
+      String[] parts = line.split("\\|", -1);
+      if (parts.length < 3) {
+        continue;
+      }
+      String tipoAtual = parts[2];
+      if (tipoAtual.compareTo(novoTipo) > 0) {
+        return i;
+      }
+      ultimoIndice9900 = i;
+    }
+    return ultimoIndice9900 + 1;
   }
 
   /**
