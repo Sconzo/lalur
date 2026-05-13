@@ -381,6 +381,24 @@ public class EcfMergerService implements GenerateCompleteEcfUseCase {
         novasLinhas.add(formatRegistro9900(tipo, count, numCampos));
       }
       resultLines.addAll(ultimoIndice9900 + 1, novasLinhas);
+
+      // Atualizar countByTipo com os novos 9900 inseridos (afeta |9900|9900|)
+      countByTipo.merge("9900", novasLinhas.size(), Integer::sum);
+
+      // Re-percorrer os |9900| para atualizar o contador do tipo "9900"
+      // (que agora cresceu por causa das novas linhas adicionadas).
+      for (int i = 0; i < resultLines.size(); i++) {
+        String line = resultLines.get(i);
+        if (!"9900".equals(extractTipo(line))) {
+          continue;
+        }
+        String[] parts = line.split("\\|", -1);
+        if (parts.length < 4 || !"9900".equals(parts[2])) {
+          continue;
+        }
+        parts[3] = String.valueOf(countByTipo.getOrDefault("9900", 0));
+        resultLines.set(i, String.join("|", parts));
+      }
     }
 
     // Recontar |9990| (total bloco 9) e |9999| (total geral)
