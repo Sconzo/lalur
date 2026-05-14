@@ -449,7 +449,7 @@ public class LancamentoContabilController {
         new ImportFieldSchema("numeroDocumento", "String", false, null, null, null, 100,
             "NF-001234")
     );
-    ImportSchemaResponse schema = new ImportSchemaResponse(6, ";", true, fields);
+    ImportSchemaResponse schema = new ImportSchemaResponse(fields);
     byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));

@@ -240,7 +240,7 @@ public class ContaReferencialController {
         new ImportFieldSchema("anoValidade", "Integer", false,
             "2000 até " + maxAnoValidade, null, null, null, "2024")
     );
-    ImportSchemaResponse schema = new ImportSchemaResponse(3, ";", true, fields);
+    ImportSchemaResponse schema = new ImportSchemaResponse(fields);
     byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));

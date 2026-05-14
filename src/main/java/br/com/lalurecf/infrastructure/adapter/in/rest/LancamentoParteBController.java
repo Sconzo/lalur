@@ -266,7 +266,7 @@ public class LancamentoParteBController {
         new ImportFieldSchema("valor", "Decimal", true,
             "Ponto como separador decimal. Deve ser maior que zero", null, null, null, "5000.00")
     );
-    ImportSchemaResponse schema = new ImportSchemaResponse(9, ";", true, fields);
+    ImportSchemaResponse schema = new ImportSchemaResponse(fields);
     byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));

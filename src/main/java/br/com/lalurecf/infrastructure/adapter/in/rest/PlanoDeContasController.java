@@ -249,7 +249,7 @@ public class PlanoDeContasController {
         new ImportFieldSchema("dedutivel", "Boolean", true, null,
             ImportFieldSchema.BOOLEAN_ALLOWED_VALUES, null, null, "false")
     );
-    ImportSchemaResponse schema = new ImportSchemaResponse(8, ";", true, fields);
+    ImportSchemaResponse schema = new ImportSchemaResponse(fields);
     byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
