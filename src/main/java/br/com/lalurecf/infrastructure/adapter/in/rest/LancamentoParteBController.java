@@ -233,11 +233,12 @@ public class LancamentoParteBController {
   }
 
   /**
-   * Retorna o schema do arquivo CSV de importação de lançamentos da Parte B.
+   * Retorna o schema do arquivo CSV de importação de lançamentos da Parte B em formato CSV
+   * (para visualização em Excel).
    */
   @GetMapping("/import-schema")
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<ImportSchemaResponse> importSchema() {
+  public ResponseEntity<byte[]> importSchema() {
     List<String> tipoApuracaoValues = Arrays.stream(TipoApuracao.values())
         .map(Enum::name).toList();
     List<String> tipoRelacionamentoValues = Arrays.stream(TipoRelacionamento.values())
@@ -265,7 +266,12 @@ public class LancamentoParteBController {
         new ImportFieldSchema("valor", "Decimal", true,
             "Ponto como separador decimal. Deve ser maior que zero", null, null, null, "5000.00")
     );
-    return ResponseEntity.ok(new ImportSchemaResponse(9, ";", true, fields));
+    ImportSchemaResponse schema = new ImportSchemaResponse(9, ";", true, fields);
+    byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "schema-lancamento-parte-b.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 
   /**

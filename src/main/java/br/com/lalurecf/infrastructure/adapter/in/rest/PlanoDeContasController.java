@@ -218,11 +218,12 @@ public class PlanoDeContasController {
   }
 
   /**
-   * Retorna o schema do arquivo CSV de importação de plano de contas.
+   * Retorna o schema do arquivo CSV de importação de plano de contas em formato CSV
+   * (para visualização em Excel).
    */
   @GetMapping("/import-schema")
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<ImportSchemaResponse> importSchema() {
+  public ResponseEntity<byte[]> importSchema() {
     List<String> accountTypeValues = Arrays.stream(AccountType.values())
         .map(Enum::name).toList();
     List<String> classeValues = Arrays.stream(ClasseContabil.values())
@@ -248,7 +249,12 @@ public class PlanoDeContasController {
         new ImportFieldSchema("dedutivel", "Boolean", true, null,
             ImportFieldSchema.BOOLEAN_ALLOWED_VALUES, null, null, "false")
     );
-    return ResponseEntity.ok(new ImportSchemaResponse(8, ";", true, fields));
+    ImportSchemaResponse schema = new ImportSchemaResponse(8, ";", true, fields);
+    byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "schema-plano-de-contas.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 
   /**

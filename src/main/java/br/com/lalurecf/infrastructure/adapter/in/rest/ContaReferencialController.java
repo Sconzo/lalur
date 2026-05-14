@@ -225,11 +225,12 @@ public class ContaReferencialController {
   }
 
   /**
-   * Retorna o schema do arquivo CSV de importação de contas referenciais.
+   * Retorna o schema do arquivo CSV de importação de contas referenciais em formato CSV
+   * (para visualização em Excel).
    */
   @GetMapping("/import-schema")
   @PreAuthorize("hasRole('ADMIN')")
-  public ResponseEntity<ImportSchemaResponse> importSchema() {
+  public ResponseEntity<byte[]> importSchema() {
     int maxAnoValidade = Year.now().getValue() + 5;
     List<ImportFieldSchema> fields = List.of(
         new ImportFieldSchema("codigoRfb", "String", true, null, null, null, null,
@@ -239,7 +240,12 @@ public class ContaReferencialController {
         new ImportFieldSchema("anoValidade", "Integer", false,
             "2000 até " + maxAnoValidade, null, null, null, "2024")
     );
-    return ResponseEntity.ok(new ImportSchemaResponse(3, ";", true, fields));
+    ImportSchemaResponse schema = new ImportSchemaResponse(3, ";", true, fields);
+    byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "schema-conta-referencial.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 
   /**

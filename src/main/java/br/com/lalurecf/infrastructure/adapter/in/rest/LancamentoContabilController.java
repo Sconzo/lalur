@@ -426,11 +426,12 @@ public class LancamentoContabilController {
   }
 
   /**
-   * Retorna o schema do arquivo CSV de importação de lançamentos contábeis.
+   * Retorna o schema do arquivo CSV de importação de lançamentos contábeis em formato CSV
+   * (para visualização em Excel).
    */
   @GetMapping("/import-schema")
   @PreAuthorize("hasRole('CONTADOR')")
-  public ResponseEntity<ImportSchemaResponse> importSchema() {
+  public ResponseEntity<byte[]> importSchema() {
     List<ImportFieldSchema> fields = List.of(
         new ImportFieldSchema("contaDebitoCode", "String", false, null, null,
             "Ao menos contaDebitoCode ou contaCreditoCode deve ser informado", null,
@@ -448,7 +449,12 @@ public class LancamentoContabilController {
         new ImportFieldSchema("numeroDocumento", "String", false, null, null, null, 100,
             "NF-001234")
     );
-    return ResponseEntity.ok(new ImportSchemaResponse(6, ";", true, fields));
+    ImportSchemaResponse schema = new ImportSchemaResponse(6, ";", true, fields);
+    byte[] bytes = schema.toCsv().getBytes(StandardCharsets.UTF_8);
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(new MediaType("text", "csv", StandardCharsets.UTF_8));
+    headers.setContentDispositionFormData("attachment", "schema-lancamento-contabil.csv");
+    return ResponseEntity.ok().headers(headers).body(bytes);
   }
 
   /**
